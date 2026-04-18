@@ -1,0 +1,21 @@
+@import './tokens.css';
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); font-family: var(--font-mono); font-size: 13px; line-height: 1.45; }
+html, body, #root { width: 100%; height: 100%; }
+.grid-bg {
+  background-image: linear-gradient(to right, var(--line-2) 1px, transparent 1px), linear-gradient(to bottom, var(--line-2) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.grid-bg-fine {
+  background-image: linear-gradient(to right, rgba(201,197,182,0.35) 1px, transparent 1px), linear-gradient(to bottom, rgba(201,197,182,0.35) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+.mono { font-family: var(--font-mono); }
+.serif { font-family: var(--font-serif); }
+.dim { color: var(--ink-3); }
+.title-serif { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; }
+.rule { border-top: 1px solid var(--ink); }
+.rule-dash { border-top: 1px dashed var(--ink-3); }
+body.no-anno .anno { display: none !important; }
+body.no-grid .grid-bg, body.no-grid .grid-bg-fine { background-image: none !important; }
+body.dense { font-size: 12px; }

@@ -1,0 +1,20 @@
+:root {
+  --paper: #F5F3EC;
+  --paper-2: #EDEAE0;
+  --ink: #1A1D24;
+  --ink-2: #3B4049;
+  --ink-3: #7B8089;
+  --line: #C9C5B6;
+  --line-2: #DDD9CB;
+  --blue: oklch(0.55 0.12 245);
+  --blue-soft: oklch(0.88 0.04 245);
+  --amber: oklch(0.72 0.14 75);
+  --amber-soft: oklch(0.92 0.05 75);
+  --red: oklch(0.58 0.17 25);
+  --red-soft: oklch(0.92 0.05 25);
+  --green: oklch(0.58 0.12 150);
+  --grid: 8px;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-serif: "Instrument Serif", "Times New Roman", serif;
+  --font-sans: "Inter Tight", system-ui, sans-serif;
+}
