@@ -10,6 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ScenesRouteImport } from './routes/scenes'
+import { Route as GraphRouteImport } from './routes/graph'
+import { Route as TimelineRouteImport } from './routes/timeline'
+import { Route as FlagshipRouteImport } from './routes/flagship'
+import { Route as CharactersRouteImport } from './routes/characters'
+import { Route as AiRouteImport } from './routes/ai'
+import { Route as CoreRouteImport } from './routes/core'
+import { Route as DraftRouteImport } from './routes/draft'
+import { Route as ScenesIdRouteImport } from './routes/scenes.$id'
+import { Route as SetupRouteImport } from './routes/setup'
+import { Route as ManuscriptRouteImport } from './routes/manuscript'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -17,26 +28,136 @@ const IndexRoute = IndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 
+const ScenesRoute = ScenesRouteImport.update({
+  id: '/scenes',
+  path: '/scenes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const GraphRoute = GraphRouteImport.update({
+  id: '/graph',
+  path: '/graph',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const TimelineRoute = TimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const FlagshipRoute = FlagshipRouteImport.update({
+  id: '/flagship',
+  path: '/flagship',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const CharactersRoute = CharactersRouteImport.update({
+  id: '/characters',
+  path: '/characters',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const AiRoute = AiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const CoreRoute = CoreRouteImport.update({
+  id: '/core',
+  path: '/core',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const DraftRoute = DraftRouteImport.update({
+  id: '/draft',
+  path: '/draft',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const ScenesIdRoute = ScenesIdRouteImport.update({
+  id: '/scenes/$id',
+  path: '/scenes/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const ManuscriptRoute = ManuscriptRouteImport.update({
+  id: '/manuscript',
+  path: '/manuscript',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/scenes': typeof ScenesRoute
+  '/graph': typeof GraphRoute
+  '/timeline': typeof TimelineRoute
+  '/flagship': typeof FlagshipRoute
+  '/characters': typeof CharactersRoute
+  '/ai': typeof AiRoute
+  '/core': typeof CoreRoute
+  '/draft': typeof DraftRoute
+  '/scenes/$id': typeof ScenesIdRoute
+  '/setup': typeof SetupRoute
+  '/manuscript': typeof ManuscriptRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/scenes': typeof ScenesRoute
+  '/graph': typeof GraphRoute
+  '/timeline': typeof TimelineRoute
+  '/flagship': typeof FlagshipRoute
+  '/characters': typeof CharactersRoute
+  '/ai': typeof AiRoute
+  '/core': typeof CoreRoute
+  '/draft': typeof DraftRoute
+  '/scenes/$id': typeof ScenesIdRoute
+  '/setup': typeof SetupRoute
+  '/manuscript': typeof ManuscriptRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/scenes': typeof ScenesRoute
+  '/graph': typeof GraphRoute
+  '/timeline': typeof TimelineRoute
+  '/flagship': typeof FlagshipRoute
+  '/characters': typeof CharactersRoute
+  '/ai': typeof AiRoute
+  '/core': typeof CoreRoute
+  '/draft': typeof DraftRoute
+  '/scenes/$id': typeof ScenesIdRoute
+  '/setup': typeof SetupRoute
+  '/manuscript': typeof ManuscriptRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/scenes' | '/graph' | '/timeline' | '/flagship' | '/characters' | '/ai' | '/core' | '/draft' | '/scenes/$id' | '/setup' | '/manuscript'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/scenes' | '/graph' | '/timeline' | '/flagship' | '/characters' | '/ai' | '/core' | '/draft' | '/scenes/$id' | '/setup' | '/manuscript'
+  id: '__root__' | '/' | '/scenes' | '/graph' | '/timeline' | '/flagship' | '/characters' | '/ai' | '/core' | '/draft' | '/scenes/$id' | '/setup' | '/manuscript'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ScenesRoute: typeof ScenesRoute
+  GraphRoute: typeof GraphRoute
+  TimelineRoute: typeof TimelineRoute
+  FlagshipRoute: typeof FlagshipRoute
+  CharactersRoute: typeof CharactersRoute
+  AiRoute: typeof AiRoute
+  CoreRoute: typeof CoreRoute
+  DraftRoute: typeof DraftRoute
+  ScenesIdRoute: typeof ScenesIdRoute
+  SetupRoute: typeof SetupRoute
+  ManuscriptRoute: typeof ManuscriptRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +169,99 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scenes': {
+      id: '/scenes'
+      path: '/scenes'
+      fullPath: '/scenes'
+      preLoaderRoute: typeof ScenesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/graph': {
+      id: '/graph'
+      path: '/graph'
+      fullPath: '/graph'
+      preLoaderRoute: typeof GraphRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/timeline': {
+      id: '/timeline'
+      path: '/timeline'
+      fullPath: '/timeline'
+      preLoaderRoute: typeof TimelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/flagship': {
+      id: '/flagship'
+      path: '/flagship'
+      fullPath: '/flagship'
+      preLoaderRoute: typeof FlagshipRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/characters': {
+      id: '/characters'
+      path: '/characters'
+      fullPath: '/characters'
+      preLoaderRoute: typeof CharactersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai': {
+      id: '/ai'
+      path: '/ai'
+      fullPath: '/ai'
+      preLoaderRoute: typeof AiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/core': {
+      id: '/core'
+      path: '/core'
+      fullPath: '/core'
+      preLoaderRoute: typeof CoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/draft': {
+      id: '/draft'
+      path: '/draft'
+      fullPath: '/draft'
+      preLoaderRoute: typeof DraftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scenes/$id': {
+      id: '/scenes/$id'
+      path: '/scenes/$id'
+      fullPath: '/scenes/$id'
+      preLoaderRoute: typeof ScenesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manuscript': {
+      id: '/manuscript'
+      path: '/manuscript'
+      fullPath: '/manuscript'
+      preLoaderRoute: typeof ManuscriptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ScenesRoute: ScenesRoute,
+  GraphRoute: GraphRoute,
+  TimelineRoute: TimelineRoute,
+  FlagshipRoute: FlagshipRoute,
+  CharactersRoute: CharactersRoute,
+  AiRoute: AiRoute,
+  CoreRoute: CoreRoute,
+  DraftRoute: DraftRoute,
+  ScenesIdRoute: ScenesIdRoute,
+  SetupRoute: SetupRoute,
+  ManuscriptRoute: ManuscriptRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
