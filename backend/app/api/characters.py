@@ -1,0 +1,55 @@
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.deps import get_current_org, get_db, get_story
+from app.models.story import Story
+from app.models.user import Organization
+from app.schemas.character import CharacterCreate, CharacterRead, CharacterUpdate
+from app.schemas.common import PaginatedResponse
+from app.services import character as character_service
+
+router = APIRouter(prefix="/api/stories/{story_id}/characters", tags=["characters"])
+
+
+@router.get("", response_model=PaginatedResponse[CharacterRead])
+async def list_characters(story: Story = Depends(get_story), db: AsyncSession = Depends(get_db)):
+    chars, total = await character_service.list_characters(db, story.id)
+    return PaginatedResponse(items=chars, total=total)
+
+
+@router.post("", response_model=CharacterRead, status_code=status.HTTP_201_CREATED)
+async def create_character(
+    body: CharacterCreate,
+    story: Story = Depends(get_story),
+    org: Organization = Depends(get_current_org),
+    db: AsyncSession = Depends(get_db),
+):
+    char = await character_service.create_character(db, story.id, org.id, body.model_dump())
+    return char
+
+
+@router.get("/{character_id}", response_model=CharacterRead)
+async def get_character(character_id: uuid.UUID, story: Story = Depends(get_story), db: AsyncSession = Depends(get_db)):
+    char = await character_service.get_character(db, story.id, character_id)
+    if not char:
+        raise HTTPException(status_code=404, detail="Character not found")
+    return char
+
+
+@router.put("/{character_id}", response_model=CharacterRead)
+async def update_character(character_id: uuid.UUID, body: CharacterUpdate, story: Story = Depends(get_story), db: AsyncSession = Depends(get_db)):
+    char = await character_service.get_character(db, story.id, character_id)
+    if not char:
+        raise HTTPException(status_code=404, detail="Character not found")
+    return await character_service.update_character(db, char, body.model_dump(exclude_unset=True))
+
+
+@router.delete("/{character_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_character(character_id: uuid.UUID, story: Story = Depends(get_story), db: AsyncSession = Depends(get_db)):
+    char = await character_service.get_character(db, story.id, character_id)
+    if not char:
+        raise HTTPException(status_code=404, detail="Character not found")
+    await character_service.delete_character(db, char)
+    return None

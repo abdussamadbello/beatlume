@@ -1,0 +1,58 @@
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.deps import get_current_org, get_db, get_story
+from app.models.user import Organization
+from app.models.story import Story
+from app.schemas.story import StoryCreate, StoryRead, StoryUpdate
+from app.schemas.common import PaginatedResponse
+from app.services import story as story_service
+
+router = APIRouter(prefix="/api/stories", tags=["stories"])
+
+
+@router.get("", response_model=PaginatedResponse[StoryRead])
+async def list_stories(
+    org: Organization = Depends(get_current_org),
+    db: AsyncSession = Depends(get_db),
+):
+    stories, total = await story_service.list_stories(db, org.id)
+    return PaginatedResponse(items=stories, total=total)
+
+
+@router.post("", response_model=StoryRead, status_code=status.HTTP_201_CREATED)
+async def create_story(
+    body: StoryCreate,
+    org: Organization = Depends(get_current_org),
+    db: AsyncSession = Depends(get_db),
+):
+    story = await story_service.create_story(
+        db, org.id, body.title, body.genres, body.target_words, body.structure_type,
+    )
+    return story
+
+
+@router.get("/{story_id}", response_model=StoryRead)
+async def get_story_detail(story: Story = Depends(get_story)):
+    return story
+
+
+@router.put("/{story_id}", response_model=StoryRead)
+async def update_story(
+    body: StoryUpdate,
+    story: Story = Depends(get_story),
+    db: AsyncSession = Depends(get_db),
+):
+    updated = await story_service.update_story(db, story, body.model_dump(exclude_unset=True))
+    return updated
+
+
+@router.delete("/{story_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_story(
+    story: Story = Depends(get_story),
+    db: AsyncSession = Depends(get_db),
+):
+    await story_service.delete_story(db, story)
+    return None

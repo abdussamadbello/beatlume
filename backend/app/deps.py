@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.config import settings
 from app.models.user import User, Organization
+from app.models.story import Story as StoryModel
 from app.services.auth import decode_token
 
 engine = create_async_engine(settings.database_url, echo=False)
@@ -68,3 +69,18 @@ async def get_current_org(
             status_code=status.HTTP_403_FORBIDDEN, detail="Organization not found"
         )
     return org
+
+
+async def get_story(
+    story_id: uuid.UUID,
+    org: Organization = Depends(get_current_org),
+    db: AsyncSession = Depends(get_db),
+) -> StoryModel:
+    """Resolve story by ID within the current org. 404 if not found."""
+    result = await db.execute(
+        select(StoryModel).where(StoryModel.id == story_id, StoryModel.org_id == org.id)
+    )
+    story = result.scalar_one_or_none()
+    if story is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Story not found")
+    return story
