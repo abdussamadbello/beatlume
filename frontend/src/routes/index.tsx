@@ -1,20 +1,26 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { AppShell, Sidebar } from '../components/chrome'
 import { TensionCurve } from '../components/charts'
-import { Panel, PanelHead, Tag, Label } from '../components/primitives'
-import { tensionData, sampleActs, samplePeaks, sampleScenes } from '../data'
+import { Panel, PanelHead, Tag, Label, PresenceStrip } from '../components/primitives'
+import { tensionData, sampleActs, samplePeaks } from '../data'
+import { useStore } from '../store'
 
 export const Route = createFileRoute('/')({
   component: Overview,
 })
 
 function Overview() {
-  const charPresence = ['Iris', 'Wren', 'Jon', 'Mara', 'Kai', 'Cole', 'Fen'] as const;
-  const charCounts = [40, 24, 18, 12, 9, 8, 6] as const;
+  const scenes = useStore(s => s.scenes)
+  const characters = useStore(s => s.characters)
+  const insights = useStore(s => s.insights)
+  const dismissInsight = useStore(s => s.dismissInsight)
+  const navigate = useNavigate()
+
+  const firstInsight = insights.length > 0 ? insights[0] : null
 
   const stats = [
-    { n: '47', l: 'Scenes', s: 'of ~58' },
-    { n: '14', l: 'Characters', s: '6 active' },
+    { n: String(scenes.length), l: 'Scenes', s: `of ~58` },
+    { n: String(characters.length), l: 'Characters', s: `${characters.filter(c => c.sceneCount > 5).length} active` },
     { n: '3', l: 'Subplots', s: '2 resolved' },
     { n: '9', l: 'Relationships', s: 'in flux' },
   ] as const;
@@ -45,24 +51,33 @@ function Overview() {
         {/* Tension curve + AI flag */}
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
           <Panel>
-            <PanelHead left="Tension curve \u00B7 whole story" right="47 scenes" />
+            <PanelHead left="Tension curve \u00B7 whole story" right={`${scenes.length} scenes`} />
             <div style={{ padding: 8 }}>
               <TensionCurve width={760} height={200} data={tensionData} acts={sampleActs} peaks={samplePeaks} />
             </div>
           </Panel>
-          <Panel>
-            <PanelHead left="Next AI flag" right={<Tag variant="amber">Review</Tag>} />
-            <div style={{ padding: '12px 16px', fontSize: 12, lineHeight: 1.55 }}>
-              <div style={{ fontFamily: 'var(--font-serif)', fontSize: 18, marginBottom: 8 }}>Middle feels flat (sc. 18\u201323).</div>
-              <div style={{ color: 'var(--ink-2)' }}>
-                Tension holds between 4\u20135 for six consecutive scenes. Consider pulling the cellar reveal earlier, or inserting an aftermath with Jon.
+          {firstInsight ? (
+            <Panel>
+              <PanelHead left="Next AI flag" right={<Tag variant={firstInsight.severity === 'red' ? 'red' : firstInsight.severity === 'amber' ? 'amber' : 'blue'}>{firstInsight.severity === 'red' ? 'Flag' : firstInsight.severity === 'amber' ? 'Review' : 'OK'}</Tag>} />
+              <div style={{ padding: '12px 16px', fontSize: 12, lineHeight: 1.55 }}>
+                <div style={{ fontFamily: 'var(--font-serif)', fontSize: 18, marginBottom: 8 }}>{firstInsight.title}</div>
+                <div style={{ color: 'var(--ink-2)' }}>
+                  {firstInsight.body}
+                </div>
+                <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                  <span className="btn" onClick={() => navigate({ to: '/ai' })} style={{ padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: 'pointer' }}>Inspect</span>
+                  <span className="btn" onClick={() => dismissInsight(0)} style={{ padding: '6px 10px', border: '1px solid var(--ink-3)', background: 'transparent', color: 'var(--ink-2)', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: 'pointer' }}>Dismiss</span>
+                </div>
               </div>
-              <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-                <span className="btn" style={{ padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: 'pointer' }}>Inspect</span>
-                <span className="btn" style={{ padding: '6px 10px', border: '1px solid var(--ink-3)', background: 'transparent', color: 'var(--ink-2)', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: 'pointer' }}>Dismiss</span>
+            </Panel>
+          ) : (
+            <Panel>
+              <PanelHead left="AI flags" right={<Tag variant="blue">All clear</Tag>} />
+              <div style={{ padding: '12px 16px', fontSize: 12, color: 'var(--ink-3)' }}>
+                No pending AI flags.
               </div>
-            </div>
-          </Panel>
+            </Panel>
+          )}
         </div>
 
         {/* 4 stat tiles */}
@@ -83,8 +98,12 @@ function Overview() {
           <Panel>
             <PanelHead left="Recent scenes" right={<Label>edited today</Label>} />
             <div style={{ padding: '4px 0' }}>
-              {sampleScenes.slice(0, 5).map((s) => (
-                <div key={s.n} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', borderBottom: '1px dashed var(--line-2)' }}>
+              {scenes.slice(0, 5).map((s) => (
+                <div
+                  key={s.n}
+                  onClick={() => navigate({ to: '/scenes/$id', params: { id: String(s.n) } })}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', borderBottom: '1px dashed var(--line-2)', cursor: 'pointer' }}
+                >
                   <div style={{ display: 'flex', gap: 12, alignItems: 'baseline' }}>
                     <Label style={{ minWidth: 24 }}>{String(s.n).padStart(2, '0')}</Label>
                     <span style={{ fontFamily: 'var(--font-serif)', fontSize: 16 }}>{s.title}</span>
@@ -98,18 +117,13 @@ function Overview() {
           <Panel>
             <PanelHead left="Character presence" right={<Label>by scene</Label>} />
             <div style={{ padding: 12 }}>
-              {charPresence.map((c, i) => (
-                <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0' }}>
-                  <span style={{ width: 42, fontSize: 11 }}>{c}</span>
-                  <div style={{ flex: 1, display: 'flex', gap: 2 }}>
-                    {Array.from({ length: 40 }).map((_, k) => {
-                      const on = c === 'Iris' || Math.sin((i + 1) * (k + 3) * 0.7) > [0.2, 0.4, 0.0, -0.2, 0.3, 0.1, 0.5][i];
-                      return (
-                        <span key={k} style={{ flex: 1, height: 10, background: on ? 'var(--ink)' : 'var(--line-2)' }} />
-                      );
-                    })}
+              {characters.map((c, i) => (
+                <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0' }}>
+                  <span style={{ width: 42, fontSize: 11 }}>{c.name}</span>
+                  <div style={{ flex: 1 }}>
+                    <PresenceStrip characterIndex={i} sceneCount={c.sceneCount} barCount={40} />
                   </div>
-                  <Label style={{ width: 30, textAlign: 'right' }}>{charCounts[i]}</Label>
+                  <Label style={{ width: 30, textAlign: 'right' }}>{c.sceneCount}</Label>
                 </div>
               ))}
             </div>

@@ -1,43 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { AppShell, Sidebar } from '../components/chrome'
 import { Tag, Btn, Label } from '../components/primitives'
-
-const treeNodes = [
-  { d: 0, l: 'Story \u00b7 A Stranger in the Orchard', k: 'story' as const, active: false },
-  { d: 1, l: 'Part I', k: 'part' as const },
-  { d: 2, l: 'Chapter 1 \u00b7 Arrival', k: 'chap' as const },
-  { d: 3, l: 'S01 Orchard at dawn', k: 'scene' as const },
-  { d: 3, l: 'S02 The letter', k: 'scene' as const },
-  { d: 4, l: 'Beat \u00b7 Iris opens the envelope', k: 'beat' as const },
-  { d: 4, l: 'Beat \u00b7 decides to answer', k: 'beat' as const },
-  { d: 3, l: 'S03 Wren returns', k: 'scene' as const },
-  { d: 2, l: 'Chapter 2 \u00b7 Rumors', k: 'chap' as const },
-  { d: 3, l: 'S04 Mara dismisses', k: 'scene' as const, active: true },
-  { d: 3, l: 'S05 Jon on the ridge', k: 'scene' as const },
-  { d: 1, l: 'Part II', k: 'part' as const },
-  { d: 2, l: 'Chapter 3 \u00b7 Fire', k: 'chap' as const },
-]
+import { useStore } from '../store'
 
 const iconMap = { story: '\u25C7', part: '\u25A4', chap: '\u25AB', scene: '\u00B7', beat: '\u2219' } as const
 
-const settingsRows: [string, string, string, string][] = [
-  ['Genre', 'Literary / Mystery', 'Story', ''],
-  ['Default POV', 'Close third', 'Story', ''],
-  ['POV', 'Iris', 'Scene', 'override'],
-  ['Location', 'Barn', 'Scene', ''],
-  ['Tone', 'Restrained, elegiac', 'Chapter', ''],
-  ['World rules', 'No supernatural', 'Story', ''],
-  ['Target tension band', '4\u20136', 'Chapter', ''],
-  ['Tension score', '4', 'Scene (manual)', ''],
-  ['Subplot link', 'Sister disappearance', 'Scene', ''],
-  ['Goal', 'Put Wren off the scent', 'Scene', ''],
-  ['Conflict', "Mara's denial vs Iris' doubt", 'Scene', ''],
-  ['Outcome', 'Tension unresolved', 'Scene', ''],
-  ['Metrics enabled', 'Tension, Emotional, Mystery', 'Story', ''],
-  ['Beat structure', 'Optional', 'Story', ''],
-]
-
 function CorePage() {
+  const coreTree = useStore(s => s.coreTree)
+  const coreSettings = useStore(s => s.coreSettings)
+  const activeCoreIndex = useStore(s => s.activeCoreIndex)
+  const setActiveCoreIndex = useStore(s => s.setActiveCoreIndex)
+
+  const activeNode = coreTree[activeCoreIndex]
+
   return (
     <AppShell sidebar={<Sidebar active="/core" />}>
       <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -57,23 +32,26 @@ function CorePage() {
         <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '330px 1fr', overflow: 'hidden' }}>
           {/* Left tree */}
           <div style={{ borderRight: '1px solid var(--ink)', padding: 14, fontFamily: 'var(--font-mono)', fontSize: 12, overflow: 'auto' }}>
-            {treeNodes.map((n, i) => {
-              const icon = iconMap[n.k]
+            {coreTree.map((n, i) => {
+              const icon = iconMap[n.kind]
+              const isActive = i === activeCoreIndex
               return (
                 <div
                   key={i}
+                  onClick={() => setActiveCoreIndex(i)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
-                    padding: `5px 0 5px ${n.d * 16 + 8}px`,
-                    background: n.active ? 'var(--paper-2)' : 'transparent',
-                    borderLeft: n.active ? '2px solid var(--blue)' : '2px solid transparent',
+                    padding: `5px 0 5px ${n.depth * 16 + 8}px`,
+                    background: isActive ? 'var(--paper-2)' : 'transparent',
+                    borderLeft: isActive ? '2px solid var(--blue)' : '2px solid transparent',
+                    cursor: 'pointer',
                   }}
                 >
                   <span style={{ color: 'var(--ink-3)', width: 10 }}>{icon}</span>
-                  <span>{n.l}</span>
-                  {n.active && <Label style={{ marginLeft: 'auto' }}>Editing</Label>}
+                  <span>{n.label}</span>
+                  {isActive && <Label style={{ marginLeft: 'auto' }}>Editing</Label>}
                 </div>
               )
             })}
@@ -83,8 +61,10 @@ function CorePage() {
           <div style={{ overflow: 'auto' }}>
             <div style={{ padding: '14px 22px', borderBottom: '1px solid var(--ink)', background: 'var(--paper-2)' }}>
               <Label>Resolving settings for</Label>
-              <div className="title-serif" style={{ fontSize: 20 }}>S04 &middot; Mara dismisses the rumor</div>
-              <div className="dim" style={{ fontSize: 11, marginTop: 2 }}>Story &#x2933; Chapter 2 &#x2933; S04 &middot; no beat overrides</div>
+              <div className="title-serif" style={{ fontSize: 20 }}>{activeNode ? activeNode.label : 'Select a node'}</div>
+              <div className="dim" style={{ fontSize: 11, marginTop: 2 }}>
+                {activeNode ? `Depth ${activeNode.depth} \u00B7 ${activeNode.kind}` : ''} &#x2933; no beat overrides
+              </div>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
@@ -96,16 +76,16 @@ function CorePage() {
                 </tr>
               </thead>
               <tbody>
-                {settingsRows.map(([k, v, src, tag], i) => (
+                {coreSettings.map((setting, i) => (
                   <tr key={i}>
-                    <td style={{ padding: '8px 16px', borderBottom: '1px dashed var(--line-2)', color: 'var(--ink-2)' }}>{k}</td>
-                    <td style={{ padding: '8px 16px', borderBottom: '1px dashed var(--line-2)', fontFamily: 'var(--font-mono)' }}>{v}</td>
+                    <td style={{ padding: '8px 16px', borderBottom: '1px dashed var(--line-2)', color: 'var(--ink-2)' }}>{setting.key}</td>
+                    <td style={{ padding: '8px 16px', borderBottom: '1px dashed var(--line-2)', fontFamily: 'var(--font-mono)' }}>{setting.value}</td>
                     <td style={{ padding: '8px 16px', borderBottom: '1px dashed var(--line-2)' }}>
-                      <Tag variant={src.startsWith('Scene') ? 'blue' : src === 'Chapter' ? 'amber' : undefined}>{src}</Tag>
+                      <Tag variant={setting.source === 'AI' ? 'blue' : setting.source === 'system' ? 'amber' : undefined}>{setting.source}</Tag>
                     </td>
                     <td style={{ padding: '8px 16px', borderBottom: '1px dashed var(--line-2)', textAlign: 'right' }}>
-                      {tag ? (
-                        <Label>{tag}</Label>
+                      {setting.tag ? (
+                        <Label>{setting.tag}</Label>
                       ) : (
                         <span className="dim" style={{ fontSize: 10 }}>inherit</span>
                       )}

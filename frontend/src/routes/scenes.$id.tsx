@@ -1,30 +1,9 @@
 import { Fragment } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { GraphRenderer } from '../components/charts'
-import { Tag, Btn, Label } from '../components/primitives'
+import { Tag, Btn, Label, TensionBar } from '../components/primitives'
+import { useStore } from '../store'
 import type { SceneNode, GraphEdge } from '../types'
-
-const fields: [string, string][] = [
-  ['POV', 'Iris'],
-  ['Location', 'Orchard \u00b7 north field'],
-  ['Time', 'Night \u00b7 Day 4'],
-  ['Participants', 'Iris, Jon (arriving), Fen (fleeing)'],
-  ['Goal', 'Save the north rows.'],
-  ['Conflict', 'Wind changes; Jon refuses to leave.'],
-  ['Outcome', 'Rows lost. Jon stays.'],
-  ['Emotional turn', 'Desperation \u2192 resigned alliance.'],
-  ['Tags', 'Fire, Alliance, Revelation'],
-  ['Subplot', 'Sister disappearance (parallel)'],
-]
-
-const scores: [string, number, string][] = [
-  ['Tension', 9, 'var(--ink)'],
-  ['Emotional', 8, 'oklch(0.45 0.12 75)'],
-  ['Stakes', 9, 'var(--blue)'],
-  ['Mystery', 6, 'var(--ink-3)'],
-  ['Danger', 9, 'var(--red)'],
-  ['Hope', 3, 'var(--green)'],
-]
 
 const graphNodes: SceneNode[] = [
   { id: 'iris', x: 180, y: 100, label: 'Iris', initials: 'IR', type: 'hub' },
@@ -45,6 +24,53 @@ const beats = [
 
 function SceneDetailPage() {
   const navigate = useNavigate()
+  const { id } = Route.useParams()
+  const sceneId = Number(id)
+  const scenes = useStore(s => s.scenes)
+  const updateScene = useStore(s => s.updateScene)
+
+  const scene = scenes.find(s => s.n === sceneId)
+
+  if (!scene) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div
+          style={{ position: 'absolute', inset: 0, background: 'rgba(26,29,36,0.35)', backdropFilter: 'blur(0.5px)' }}
+          onClick={() => navigate({ to: '/scenes' })}
+        />
+        <div style={{ position: 'relative', background: 'var(--paper)', border: '2px solid var(--ink)', boxShadow: '8px 8px 0 var(--ink)', padding: '40px 60px', textAlign: 'center' }}>
+          <div className="title-serif" style={{ fontSize: 24, marginBottom: 12 }}>Scene not found</div>
+          <Btn onClick={() => navigate({ to: '/scenes' })}>Back to scenes</Btn>
+        </div>
+      </div>
+    )
+  }
+
+  const sorted = [...scenes].sort((a, b) => a.n - b.n)
+  const currentIdx = sorted.findIndex(s => s.n === sceneId)
+  const prevScene = currentIdx > 0 ? sorted[currentIdx - 1] : null
+  const nextScene = currentIdx < sorted.length - 1 ? sorted[currentIdx + 1] : null
+
+  const fields: [string, string][] = [
+    ['POV', scene.pov],
+    ['Location', scene.location],
+    ['Act', `Act ${scene.act}`],
+    ['Tag', scene.tag],
+    ['Tension', `${scene.tension}/10`],
+  ]
+
+  if (scene.summary) {
+    fields.push(['Summary', scene.summary])
+  }
+
+  const scores: [string, number, string][] = [
+    ['Tension', scene.tension, 'var(--ink)'],
+    ['Emotional', Math.min(10, scene.tension + 1), 'oklch(0.45 0.12 75)'],
+    ['Stakes', scene.tension, 'var(--blue)'],
+    ['Mystery', Math.max(1, scene.tension - 3), 'var(--ink-3)'],
+    ['Danger', scene.tension, 'var(--red)'],
+    ['Hope', Math.max(1, 10 - scene.tension), 'var(--green)'],
+  ]
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 999 }}>
@@ -92,13 +118,21 @@ function SceneDetailPage() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
-              <Label>Scene 08 &middot; Act II</Label>
-              <span style={{ fontFamily: 'var(--font-serif)', fontSize: 26 }}>Night &mdash; the first fire</span>
-              <Tag variant="blue">Turn</Tag>
+              <Label>Scene {String(scene.n).padStart(2, '0')} &middot; Act {scene.act === 1 ? 'I' : scene.act === 2 ? 'II' : 'III'}</Label>
+              <span style={{ fontFamily: 'var(--font-serif)', fontSize: 26 }}>{scene.title}</span>
+              <Tag variant="blue">{scene.tag}</Tag>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <Btn variant="ghost">&laquo; S07</Btn>
-              <Btn variant="ghost">S09 &raquo;</Btn>
+              {prevScene && (
+                <Btn variant="ghost" onClick={() => navigate({ to: '/scenes/$id', params: { id: String(prevScene.n) } })}>
+                  &laquo; S{String(prevScene.n).padStart(2, '0')}
+                </Btn>
+              )}
+              {nextScene && (
+                <Btn variant="ghost" onClick={() => navigate({ to: '/scenes/$id', params: { id: String(nextScene.n) } })}>
+                  S{String(nextScene.n).padStart(2, '0')} &raquo;
+                </Btn>
+              )}
               <Btn variant="ghost" onClick={() => navigate({ to: '/scenes' })}>&#x2715;</Btn>
             </div>
           </div>
@@ -127,9 +161,7 @@ function SceneDetailPage() {
                     color: 'var(--ink)',
                   }}
                 >
-                  The first fire comes at the edge of the north field. Iris meets it alone until Jon arrives with a
-                  shovel. They watch Fen vanish into the smoke with something small cradled against his coat. By
-                  morning only the scarred trees and an unspoken pact remain.
+                  {scene.summary || `Scene ${scene.n}: ${scene.title}. POV: ${scene.pov}, Location: ${scene.location}.`}
                 </div>
               </div>
 
@@ -170,17 +202,14 @@ function SceneDetailPage() {
                         <span>{label}</span>
                         <span style={{ fontFamily: 'var(--font-mono)' }}>{value}/10</span>
                       </div>
-                      <div style={{ marginTop: 3, display: 'flex', gap: 2 }}>
-                        {Array.from({ length: 10 }).map((_, k) => (
-                          <span
-                            key={k}
-                            style={{
-                              flex: 1,
-                              height: 8,
-                              background: k < value ? color : 'var(--line-2)',
-                            }}
-                          />
-                        ))}
+                      <div style={{ marginTop: 3 }}>
+                        <TensionBar
+                          value={value}
+                          max={10}
+                          height={8}
+                          color={color}
+                          onClick={label === 'Tension' ? (v) => updateScene(scene.n, { tension: v }) : undefined}
+                        />
                       </div>
                     </div>
                   ))}
@@ -210,8 +239,8 @@ function SceneDetailPage() {
             }}
           >
             <div style={{ display: 'flex', gap: 8 }}>
-              <Btn>Open in Draft</Btn>
-              <Btn variant="ghost">Linked AI</Btn>
+              <Btn onClick={() => navigate({ to: '/draft' })}>Open in Draft</Btn>
+              <Btn variant="ghost" onClick={() => navigate({ to: '/ai' })}>Linked AI</Btn>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <Btn variant="ghost">Delete</Btn>

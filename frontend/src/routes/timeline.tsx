@@ -1,7 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { AppShell, Sidebar } from '../components/chrome'
 import { TensionCurve } from '../components/charts'
-import { Anno } from '../components/primitives'
+import { Anno, SegmentedControl } from '../components/primitives'
 import { tensionData, sampleActs, samplePeaks } from '../data'
 
 export const Route = createFileRoute('/timeline')({
@@ -18,8 +19,6 @@ const metricLayers = [
   { label: 'Hope', color: 'var(--green)', on: false },
 ] as const;
 
-const sourceModes = ['Manual', 'AI', 'Hybrid'] as const;
-
 const inferredMarkers = [
   { scene: 'S08', label: 'First Turn' },
   { scene: 'S20', label: 'Midpoint' },
@@ -34,6 +33,18 @@ const emotionalData = tensionData.map((v, i) => {
 });
 
 function TimelineView() {
+  const navigate = useNavigate()
+  const [sourceMode, setSourceMode] = useState('Hybrid')
+  const [visibleMetrics, setVisibleMetrics] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {}
+    metricLayers.forEach(m => { init[m.label] = m.on })
+    return init
+  })
+
+  const toggleMetric = (label: string) => {
+    setVisibleMetrics(prev => ({ ...prev, [label]: !prev[label] }))
+  }
+
   return (
     <AppShell sidebar={<Sidebar active="/timeline" />}>
       <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -55,8 +66,13 @@ function TimelineView() {
           {/* Chart area */}
           <div style={{ padding: 20, position: 'relative' }}>
             <div style={{ position: 'relative' }}>
-              <TensionCurve width={960} height={360} data={tensionData} acts={sampleActs} peaks={samplePeaks} fill="var(--ink)" />
-              <Anno variant="blue" style={{ left: 380, top: 100 }}>FLAT {'\u00B7'} sc. 18\u201323</Anno>
+              {visibleMetrics['Tension'] && (
+                <TensionCurve width={960} height={360} data={tensionData} acts={sampleActs} peaks={samplePeaks} fill="var(--ink)" />
+              )}
+              {!visibleMetrics['Tension'] && (
+                <div style={{ width: 960, height: 360 }} />
+              )}
+              <Anno variant="blue" style={{ left: 380, top: 100 }}>FLAT {'\u00B7'} sc. 18{'\u2013'}23</Anno>
               <Anno variant="amber" style={{ left: 520, top: 60 }}>MIDPOINT spike</Anno>
               <Anno variant="red" style={{ left: 760, top: 30 }}>CLIMAX S37</Anno>
               <Anno style={{ left: 100, top: 240 }}>SETUP plateau</Anno>
@@ -67,11 +83,13 @@ function TimelineView() {
               {tensionData.slice(0, 40).map((v, i) => (
                 <div
                   key={i}
+                  onClick={() => navigate({ to: '/scenes/$id', params: { id: String(i + 1) } })}
                   style={{
                     flex: 1,
                     height: 18,
                     background: v >= 8 ? 'var(--ink)' : v >= 5 ? 'var(--ink-2)' : 'var(--line)',
                     borderRight: '1px solid var(--paper)',
+                    cursor: 'pointer',
                   }}
                   title={`S${i + 1} T${v}`}
                 />
@@ -82,10 +100,12 @@ function TimelineView() {
             </div>
 
             {/* Emotional overlay */}
-            <div style={{ marginTop: 18, borderTop: '1px dashed var(--ink-3)', paddingTop: 12 }}>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--ink-3)' }}>Emotional intensity \u2014 overlay</div>
-              <TensionCurve width={960} height={140} data={emotionalData} stroke="oklch(0.45 0.12 75)" />
-            </div>
+            {visibleMetrics['Emotional'] && (
+              <div style={{ marginTop: 18, borderTop: '1px dashed var(--ink-3)', paddingTop: 12 }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--ink-3)' }}>Emotional intensity {'\u2014'} overlay</div>
+                <TensionCurve width={960} height={140} data={emotionalData} stroke="oklch(0.45 0.12 75)" />
+              </div>
+            )}
           </div>
 
           {/* Right panel */}
@@ -94,11 +114,15 @@ function TimelineView() {
             <div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--ink-3)' }}>Metric layers</div>
               <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11 }}>
-                {metricLayers.map(({ label, color, on }) => (
+                {metricLayers.map(({ label, color }) => (
                   <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ width: 10, height: 10, background: color, display: 'inline-block' }} />
                     <span style={{ flex: 1 }}>{label}</span>
-                    <input type="checkbox" defaultChecked={on} />
+                    <input
+                      type="checkbox"
+                      checked={visibleMetrics[label] ?? false}
+                      onChange={() => toggleMetric(label)}
+                    />
                   </label>
                 ))}
               </div>
@@ -107,20 +131,12 @@ function TimelineView() {
             {/* Source mode */}
             <div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--ink-3)' }}>Source mode</div>
-              <div style={{ display: 'flex', border: '1px solid var(--ink)', marginTop: 8 }}>
-                {sourceModes.map((l, i) => (
-                  <span key={l} style={{
-                    flex: 1,
-                    padding: 6,
-                    textAlign: 'center',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 10,
-                    background: i === 2 ? 'var(--ink)' : 'var(--paper)',
-                    color: i === 2 ? 'var(--paper)' : 'var(--ink)',
-                    borderRight: i < 2 ? '1px solid var(--ink)' : 'none',
-                    cursor: 'pointer',
-                  }}>{l}</span>
-                ))}
+              <div style={{ marginTop: 8 }}>
+                <SegmentedControl
+                  options={['Manual', 'AI', 'Hybrid']}
+                  value={sourceMode}
+                  onChange={setSourceMode}
+                />
               </div>
             </div>
 

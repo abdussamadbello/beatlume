@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Tag, Label, Btn, Placeholder } from '../components/primitives'
+import { useStore } from '../store'
 
 const steps: [string, string, boolean][] = [
   ['01', 'Premise', true],
@@ -9,14 +10,14 @@ const steps: [string, string, boolean][] = [
   ['04', 'Scaffold & preview', false],
 ]
 
-const characters = [
-  { n: 'Iris', r: 'Protagonist', d: "A widow returning to her family's orchard." },
-  { n: 'Cole', r: 'Antagonist', d: 'Her brother-in-law. Wants to sell the land.' },
-  { n: 'Wren', r: 'Foil', d: 'Childhood friend who vanished eleven years ago.' },
-  { n: 'Kai', r: 'Mentor', d: 'Orchard hand. Keeper of small truths.' },
-]
+const roleOptions = ['Protagonist', 'Antagonist', 'Foil', 'Mentor', 'Mirror', 'Family', 'Ward', 'Witness'] as const
 
 function StepContent({ step }: { step: number }) {
+  const setupCharacters = useStore(s => s.setupCharacters)
+  const addSetupCharacter = useStore(s => s.addSetupCharacter)
+  const updateSetupCharacter = useStore(s => s.updateSetupCharacter)
+  const removeSetupCharacter = useStore(s => s.removeSetupCharacter)
+
   if (step === 1) {
     return (
       <div>
@@ -63,9 +64,9 @@ function StepContent({ step }: { step: number }) {
         you can ignore any auto-suggestion.
       </div>
       <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 720 }}>
-        {characters.map((c) => (
+        {setupCharacters.map((c, i) => (
           <div
-            key={c.n}
+            key={i}
             style={{
               border: '1px solid var(--ink)',
               background: 'var(--paper)',
@@ -90,10 +91,11 @@ function StepContent({ step }: { step: number }) {
                 color: 'var(--ink-3)',
               }}
             >
-              {c.n.slice(0, 2).toUpperCase()}
+              {(c.name || '??').slice(0, 2).toUpperCase()}
             </div>
             <input
-              defaultValue={c.n}
+              value={c.name}
+              onChange={(e) => updateSetupCharacter(i, { name: e.target.value })}
               style={{
                 fontFamily: 'var(--font-serif)',
                 fontSize: 18,
@@ -105,7 +107,8 @@ function StepContent({ step }: { step: number }) {
               }}
             />
             <select
-              defaultValue={c.r}
+              value={c.role}
+              onChange={(e) => updateSetupCharacter(i, { role: e.target.value })}
               style={{
                 fontFamily: 'var(--font-mono)',
                 fontSize: 11,
@@ -114,10 +117,13 @@ function StepContent({ step }: { step: number }) {
                 background: 'var(--paper)',
               }}
             >
-              <option>{c.r}</option>
+              {roleOptions.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
             </select>
             <input
-              defaultValue={c.d}
+              value={c.description}
+              onChange={(e) => updateSetupCharacter(i, { description: e.target.value })}
               style={{
                 fontSize: 12,
                 border: 'none',
@@ -128,10 +134,17 @@ function StepContent({ step }: { step: number }) {
                 outline: 'none',
               }}
             />
-            <span className="dim" style={{ textAlign: 'center' }}>&#x2715;</span>
+            <span
+              className="dim"
+              onClick={() => removeSetupCharacter(i)}
+              style={{ textAlign: 'center', cursor: 'pointer' }}
+            >
+              &#x2715;
+            </span>
           </div>
         ))}
         <div
+          onClick={() => addSetupCharacter()}
           style={{
             border: '1px dashed var(--ink-3)',
             padding: 12,
@@ -141,6 +154,7 @@ function StepContent({ step }: { step: number }) {
             fontSize: 11,
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
+            cursor: 'pointer',
           }}
         >
           + Add a character

@@ -1,9 +1,61 @@
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { AppShell, Sidebar } from '../components/chrome'
 import { Btn, Label } from '../components/primitives'
-import { manuscriptChapters } from '../data'
+import { useStore } from '../store'
 
 function ManuscriptPage() {
+  const chapters = useStore(s => s.chapters)
+  const editMode = useStore(s => s.editMode)
+  const toggleEditMode = useStore(s => s.toggleEditMode)
+
+  const [scrollProgress, setScrollProgress] = useState(0)
+  const [activeChapter, setActiveChapter] = useState(chapters[0]?.num || '1')
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const chapterRefsMap = useRef<Map<string, HTMLDivElement>>(new Map())
+
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const { scrollTop, scrollHeight, clientHeight } = container
+    const progress = scrollHeight > clientHeight
+      ? Math.round((scrollTop / (scrollHeight - clientHeight)) * 100)
+      : 0
+    setScrollProgress(progress)
+
+    // Detect which chapter is visible
+    let closestChapter = chapters[0]?.num || '1'
+    let closestDistance = Infinity
+
+    chapterRefsMap.current.forEach((el, num) => {
+      const rect = el.getBoundingClientRect()
+      const containerRect = container.getBoundingClientRect()
+      const distance = Math.abs(rect.top - containerRect.top)
+      if (distance < closestDistance) {
+        closestDistance = distance
+        closestChapter = num
+      }
+    })
+
+    setActiveChapter(closestChapter)
+  }, [chapters])
+
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
+
+  const setChapterRef = useCallback((num: string, el: HTMLDivElement | null) => {
+    if (el) {
+      chapterRefsMap.current.set(num, el)
+    } else {
+      chapterRefsMap.current.delete(num)
+    }
+  }, [])
+
   return (
     <AppShell sidebar={<Sidebar active="/manuscript" />}>
       <div style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#F3EEDF' }}>
@@ -26,16 +78,18 @@ function ManuscriptPage() {
           </div>
           <div style={{ display: 'flex', gap: 20, alignItems: 'center', fontSize: 11, color: 'var(--ink-2)' }}>
             <span>72,340 words</span>
-            <span>47 scenes &middot; 18 chapters</span>
+            <span>47 scenes &middot; {chapters.length} chapters</span>
             <span>Reading time &asymp; 4h 50m</span>
             <Btn variant="ghost">Export &middot; PDF</Btn>
             <Btn variant="ghost">Export &middot; DOCX</Btn>
-            <Btn>Edit mode</Btn>
+            <Btn onClick={() => toggleEditMode()}>
+              {editMode ? 'Read mode' : 'Edit mode'}
+            </Btn>
           </div>
         </div>
 
         {/* Page */}
-        <div style={{ overflow: 'auto', flex: 1, padding: '48px 0' }}>
+        <div ref={scrollContainerRef} style={{ overflow: 'auto', flex: 1, padding: '48px 0' }}>
           <div
             style={{
               maxWidth: 640,
@@ -76,9 +130,14 @@ function ManuscriptPage() {
               <div style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 18 }}>by Elena Marsh</div>
             </div>
 
-            {/* Chapters — prose contains <em> tags from static data, safe to render as HTML */}
-            {manuscriptChapters.map((ch, i) => (
-              <div key={ch.num} style={{ marginTop: i === 0 ? 0 : 72, pageBreakBefore: 'always' as const }}>
+            {/* Chapters */}
+            {chapters.map((ch, i) => (
+              <div
+                key={ch.num}
+                id={`chapter-${ch.num}`}
+                ref={(el) => setChapterRef(ch.num, el)}
+                style={{ marginTop: i === 0 ? 0 : 72, pageBreakBefore: 'always' as const }}
+              >
                 <div
                   style={{
                     textAlign: 'center',
@@ -105,9 +164,12 @@ function ManuscriptPage() {
                 {ch.paras.map((p, pi) => (
                   <p
                     key={pi}
+                    contentEditable={editMode}
+                    suppressContentEditableWarning={editMode}
                     style={{
                       textIndent: pi === 0 ? undefined : '1.6em',
                       margin: '0 0 0.6em',
+                      outline: editMode ? '1px dashed var(--line)' : 'none',
                     }}
                     dangerouslySetInnerHTML={{ __html: p }}
                   />
@@ -145,8 +207,8 @@ function ManuscriptPage() {
           }}
         >
           <span>page 1 of 284</span>
-          <span>chapter 1&ndash;5 visible</span>
-          <span>progress &middot; 28%</span>
+          <span>chapter {activeChapter} visible</span>
+          <span>progress &middot; {scrollProgress}%</span>
         </div>
       </div>
     </AppShell>

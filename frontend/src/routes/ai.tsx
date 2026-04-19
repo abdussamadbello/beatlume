@@ -1,62 +1,73 @@
-import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { useState, useMemo } from 'react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { AppShell, Sidebar } from '../components/chrome'
 import { Tag, Btn, Label } from '../components/primitives'
+import { useStore } from '../store'
 
-const categories: [string, string][] = [
-  ['All', '12'],
-  ['Pacing', '3'],
-  ['Relationships', '4'],
-  ['Characters', '2'],
-  ['Subplots', '2'],
-  ['Climax placement', '1'],
-]
-
-const insightCards = [
-  {
-    sev: 'red' as const,
-    cat: 'Pacing',
-    title: 'Flat middle: scenes 18\u201323',
-    body: 'Six consecutive scenes hold tension between 3 and 4. The same two characters (Iris, Mara) argue variations on the same topic. Consider pulling the cellar reveal (S32) earlier, or inserting an aftermath after S08 fire.',
-    refs: ['S18', 'S19', 'S20', 'S21', 'S22', 'S23'],
-  },
-  {
-    sev: 'amber' as const,
-    cat: 'Characters',
-    title: 'Mara disappears for 9 scenes',
-    body: 'Mara is present in S01\u2013S12, then absent until S22. Longest character absence. Her last appearance (S12) does not read as an off-screen exit.',
-    refs: ['Mara', 'S12', 'S22'],
-  },
-  {
-    sev: 'amber' as const,
-    cat: 'Relationships',
-    title: "Fen\u2019s secret edge never pays off",
-    body: 'Edge Iris \u2194 Fen is typed "secret" but no scene discharges it. A reveal slot between S26\u2013S30 would match the rising curve and align with the stream.',
-    refs: ['Iris\u2194Fen', 'S26', 'S30'],
-  },
-  {
-    sev: 'blue' as const,
-    cat: 'Climax',
-    title: 'Climax feels earned',
-    body: 'S37 peak is supported by 4 consecutive scenes escalating tension 6\u219210 and two new graph edges forming at S32 and S35. No suggested change.',
-    refs: ['S32', 'S35', 'S37'],
-  },
-  {
-    sev: 'amber' as const,
-    cat: 'Subplots',
-    title: 'Court subplot disconnects at Ch. 9',
-    body: "Cole\u2019s court thread has no shared scenes with the main plot after S18. Either bring Iris to court or cut Cole\u2019s scene S15.",
-    refs: ['Cole', 'Court', 'S15', 'S18'],
-  },
-]
+const categoryRouteMap: Record<string, string> = {
+  Pacing: '/timeline',
+  Characters: '/characters',
+  Character: '/characters',
+  Relationships: '/graph',
+  Subplots: '/graph',
+  Climax: '/timeline',
+  Continuity: '/timeline',
+  Structure: '/timeline',
+  Symbol: '/graph',
+}
 
 function AIPage() {
   const [activeCategory, setActiveCategory] = useState('All')
+  const insights = useStore(s => s.insights)
+  const dismissInsight = useStore(s => s.dismissInsight)
+  const navigate = useNavigate()
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    insights.forEach(c => {
+      counts[c.category] = (counts[c.category] || 0) + 1
+    })
+    return counts
+  }, [insights])
+
+  const categories: [string, string][] = useMemo(() => {
+    const result: [string, string][] = [['All', String(insights.length)]]
+    const seen = new Set<string>()
+    insights.forEach(c => {
+      if (!seen.has(c.category)) {
+        seen.add(c.category)
+        result.push([c.category, String(categoryCounts[c.category] || 0)])
+      }
+    })
+    return result
+  }, [insights, categoryCounts])
 
   const filteredCards =
     activeCategory === 'All'
-      ? insightCards
-      : insightCards.filter((c) => c.cat === activeCategory)
+      ? insights
+      : insights.filter((c) => c.category === activeCategory)
+
+  const handleInspect = (category: string) => {
+    const route = categoryRouteMap[category]
+    if (route) {
+      navigate({ to: route })
+    }
+  }
+
+  const handleDismiss = (index: number) => {
+    // Find the actual index in the full insights array
+    if (activeCategory === 'All') {
+      dismissInsight(index)
+    } else {
+      // Find the real index by mapping filtered index back to original array
+      const filtered = insights.filter(c => c.category === activeCategory)
+      const insight = filtered[index]
+      const realIndex = insights.indexOf(insight)
+      if (realIndex !== -1) {
+        dismissInsight(realIndex)
+      }
+    }
+  }
 
   return (
     <AppShell sidebar={<Sidebar active="/ai" />}>
@@ -65,7 +76,7 @@ function AIPage() {
         <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--ink)', display: 'flex', justifyContent: 'space-between' }}>
           <div>
             <Label>AI Insights</Label>
-            <div className="title-serif" style={{ fontSize: 22 }}>12 recommendations &middot; explainable</div>
+            <div className="title-serif" style={{ fontSize: 22 }}>{insights.length} recommendations &middot; explainable</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn variant="ghost">Run again</Btn>
@@ -100,15 +111,20 @@ function AIPage() {
             <div style={{ borderTop: '1px dashed var(--line)', marginTop: 12, paddingTop: 10 }}>
               <Label>Status</Label>
               <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div>&#x25B2; Flags (3)</div>
-                <div>&#x25B8; Suggestions (7)</div>
-                <div>&#x2713; Resolved (2)</div>
+                <div>&#x25B2; Flags ({insights.filter(i => i.severity === 'red').length})</div>
+                <div>&#x25B8; Suggestions ({insights.filter(i => i.severity === 'amber').length})</div>
+                <div>&#x2713; Resolved ({insights.filter(i => i.severity === 'blue').length})</div>
               </div>
             </div>
           </div>
 
           {/* Right cards */}
           <div style={{ padding: '18px 22px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {filteredCards.length === 0 && (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-3)', fontSize: 14 }}>
+                No insights in this category.
+              </div>
+            )}
             {filteredCards.map((c, i) => (
               <div
                 key={i}
@@ -123,14 +139,14 @@ function AIPage() {
                 }}
               >
                 <Tag
-                  variant={c.sev === 'red' ? 'red' : c.sev === 'amber' ? 'amber' : 'blue'}
+                  variant={c.severity === 'red' ? 'red' : c.severity === 'amber' ? 'amber' : 'blue'}
                   style={{ marginTop: 3 }}
                 >
-                  {c.sev === 'red' ? 'FLAG' : c.sev === 'amber' ? 'REVIEW' : 'OK'}
+                  {c.severity === 'red' ? 'FLAG' : c.severity === 'amber' ? 'REVIEW' : 'OK'}
                 </Tag>
                 <div>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                    <Label>{c.cat}</Label>
+                    <Label>{c.category}</Label>
                     <span style={{ fontFamily: 'var(--font-serif)', fontSize: 20 }}>{c.title}</span>
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.55, marginTop: 6 }}>{c.body}</div>
@@ -141,9 +157,9 @@ function AIPage() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <Btn style={{ fontSize: 10 }}>Inspect &rarr;</Btn>
+                  <Btn style={{ fontSize: 10 }} onClick={() => handleInspect(c.category)}>Inspect &rarr;</Btn>
                   <Btn variant="ghost" style={{ fontSize: 10 }}>Apply</Btn>
-                  <Btn variant="ghost" style={{ fontSize: 10 }}>Dismiss</Btn>
+                  <Btn variant="ghost" style={{ fontSize: 10 }} onClick={() => handleDismiss(i)}>Dismiss</Btn>
                 </div>
               </div>
             ))}
