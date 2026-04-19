@@ -14,11 +14,15 @@ export function GraphRenderer({
   edges,
   width: w = 640,
   height: h = 460,
+  onNodeClick,
+  selectedId,
 }: {
   nodes: SceneNode[];
   edges: GraphEdge[];
   width?: number;
   height?: number;
+  onNodeClick?: (id: string) => void;
+  selectedId?: string;
 }) {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
@@ -56,16 +60,18 @@ export function GraphRenderer({
       {nodes.map((node) => {
         const r = node.type === 'hub' ? 22 : node.type === 'minor' ? 12 : 17;
         const filled = node.type === 'hub';
-        const strokeColor = node.type === 'minor' ? 'var(--ink-3)' : 'var(--ink)';
+        const isSelected = node.id === selectedId;
+        const strokeColor = isSelected ? 'var(--blue)' : node.type === 'minor' ? 'var(--ink-3)' : 'var(--ink)';
+        const strokeW = isSelected ? 2.5 : filled ? 0 : 1.5;
         return (
-          <g key={node.id}>
+          <g key={node.id} style={{ cursor: onNodeClick ? 'pointer' : 'default' }} onClick={() => onNodeClick?.(node.id)}>
             <circle
               cx={node.x}
               cy={node.y}
               r={r}
               fill={filled ? 'var(--ink)' : 'var(--paper)'}
               stroke={strokeColor}
-              strokeWidth={filled ? 0 : 1.5}
+              strokeWidth={strokeW}
             />
             <text
               x={node.x}

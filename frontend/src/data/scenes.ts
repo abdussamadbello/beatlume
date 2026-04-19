@@ -1,4 +1,5 @@
 import type { Scene } from '../types';
+import { manuscriptChapters } from './chapters';
 
 export const sampleScenes: Scene[] = [
   { n: 1, title: 'Orchard at dawn', pov: 'Iris', tension: 3, act: 1, location: 'Orchard', tag: 'Setup' },
@@ -19,3 +20,19 @@ export const allScenes: Scene[] = [
   { n: 12, title: 'Confession', pov: 'Iris', tension: 10, act: 3, location: 'Kitchen', tag: 'Climax' },
   { n: 13, title: 'The orchard emptied', pov: 'Iris', tension: 5, act: 3, location: 'Orchard', tag: 'Resolution' },
 ];
+
+export const sceneProse: Record<number, string> = {
+  1: manuscriptChapters[0].paras.join('\n\n'),
+  2: manuscriptChapters[1].paras.join('\n\n'),
+  3: manuscriptChapters[2].paras.join('\n\n'),
+  4: manuscriptChapters[3].paras.join('\n\n'),
+  5: manuscriptChapters[4].paras.join('\n\n'),
+  6: "Kai met her at the cellar door with a lantern already lit. The steps were damp, the air smelled of kerosene and cold stone. He told her what he had found buried beneath the oldest shelf — a letter in handwriting she recognized.",
+  7: "Fen sat across from Doc and lied with the ease of a man who had practiced on himself first. The clinic was too bright, the questions too careful. He answered every one and meant none of them.",
+  8: "The fire came from the north field at an hour when no one should have been awake to see it. Iris ran toward the smoke with nothing but a shovel and a half-formed prayer. By the time Jon arrived, two rows of apple trees were already gone.",
+  9: "Morning revealed what the dark had tried to hide. Ash covered the north field in a thin, even layer, as if the fire had been careful. Iris walked the rows counting what remained and trying not to count what did not.",
+  10: "Cole arrived at the county court in a suit that still smelled of the city. He carried a folder thick with documents and a confidence that came from having read every one of them. The clerk looked up and recognized trouble.",
+  11: "The root cellar was colder than Iris remembered, or perhaps she had simply forgotten how cold truth could feel. The box Kai had found was small, wooden, and sealed with wax that crumbled at her touch. Inside were three photographs and a deed she had never seen.",
+  12: "Iris set the deed on the kitchen table between them and waited. Cole looked at it the way a man looks at a door he thought he had locked. The silence lasted long enough for the kettle to boil, and then he told her everything.",
+  13: "The orchard stood empty in the late afternoon light, its remaining trees casting long shadows across the cleared ground. Iris walked the boundary one last time, touching each fence post as she passed. Some things, she decided, were better held loosely.",
+};

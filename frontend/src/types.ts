@@ -21,3 +21,6 @@ export interface CoreSetting { key: string; value: string; source: string; tag?:
 export type EdgeKind = GraphEdge['kind'];
 export type TagVariant = 'blue' | 'amber' | 'red' | 'solid';
 export type BtnVariant = 'solid' | 'ghost';
+export interface SetupCharacter { name: string; role: string; description: string; }
+export interface MockStory { id: string; title: string; genre: string; wordCount: number; sceneCount: number; draftNumber: number; lastEdited: string; status: 'in-progress' | 'completed' | 'not-started'; tensionPreview: number[]; }
+export interface UserProfile { name: string; email: string; plan: 'free' | 'pro' | 'team'; }

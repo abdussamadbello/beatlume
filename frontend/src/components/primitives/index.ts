@@ -5,3 +5,6 @@ export { Label } from './Label';
 export { Anno } from './Anno';
 export { Placeholder } from './Placeholder';
 export { Sticky } from './Sticky';
+export { TensionBar } from './TensionBar';
+export { PresenceStrip } from './PresenceStrip';
+export { SegmentedControl } from './SegmentedControl';

@@ -9,178 +9,343 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as ScenesRouteImport } from './routes/scenes'
-import { Route as GraphRouteImport } from './routes/graph'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as TimelineRouteImport } from './routes/timeline'
+import { Route as TemplatesRouteImport } from './routes/templates'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SetupRouteImport } from './routes/setup'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ScenesRouteImport } from './routes/scenes'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as ManuscriptRouteImport } from './routes/manuscript'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as GraphRouteImport } from './routes/graph'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FlagshipRouteImport } from './routes/flagship'
+import { Route as ExportRouteImport } from './routes/export'
+import { Route as DraftRouteImport } from './routes/draft'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CoreRouteImport } from './routes/core'
+import { Route as CollaborationRouteImport } from './routes/collaboration'
 import { Route as CharactersRouteImport } from './routes/characters'
 import { Route as AiRouteImport } from './routes/ai'
-import { Route as CoreRouteImport } from './routes/core'
-import { Route as DraftRouteImport } from './routes/draft'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScenesIdRouteImport } from './routes/scenes.$id'
-import { Route as SetupRouteImport } from './routes/setup'
-import { Route as ManuscriptRouteImport } from './routes/manuscript'
+import { Route as DraftSceneIdRouteImport } from './routes/draft.$sceneId'
+import { Route as CharactersNameRouteImport } from './routes/characters.$name'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
-
-const ScenesRoute = ScenesRouteImport.update({
-  id: '/scenes',
-  path: '/scenes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-
-const GraphRoute = GraphRouteImport.update({
-  id: '/graph',
-  path: '/graph',
-  getParentRoute: () => rootRouteImport,
-} as any)
-
 const TimelineRoute = TimelineRouteImport.update({
   id: '/timeline',
   path: '/timeline',
   getParentRoute: () => rootRouteImport,
 } as any)
-
-const FlagshipRoute = FlagshipRouteImport.update({
-  id: '/flagship',
-  path: '/flagship',
+const TemplatesRoute = TemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
   getParentRoute: () => rootRouteImport,
 } as any)
-
-const CharactersRoute = CharactersRouteImport.update({
-  id: '/characters',
-  path: '/characters',
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
-
-const AiRoute = AiRouteImport.update({
-  id: '/ai',
-  path: '/ai',
-  getParentRoute: () => rootRouteImport,
-} as any)
-
-const CoreRoute = CoreRouteImport.update({
-  id: '/core',
-  path: '/core',
-  getParentRoute: () => rootRouteImport,
-} as any)
-
-const DraftRoute = DraftRouteImport.update({
-  id: '/draft',
-  path: '/draft',
-  getParentRoute: () => rootRouteImport,
-} as any)
-
-const ScenesIdRoute = ScenesIdRouteImport.update({
-  id: '/scenes/$id',
-  path: '/scenes/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
   path: '/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
-
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScenesRoute = ScenesRouteImport.update({
+  id: '/scenes',
+  path: '/scenes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ManuscriptRoute = ManuscriptRouteImport.update({
   id: '/manuscript',
   path: '/manuscript',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GraphRoute = GraphRouteImport.update({
+  id: '/graph',
+  path: '/graph',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FlagshipRoute = FlagshipRouteImport.update({
+  id: '/flagship',
+  path: '/flagship',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExportRoute = ExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DraftRoute = DraftRouteImport.update({
+  id: '/draft',
+  path: '/draft',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CoreRoute = CoreRouteImport.update({
+  id: '/core',
+  path: '/core',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CollaborationRoute = CollaborationRouteImport.update({
+  id: '/collaboration',
+  path: '/collaboration',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CharactersRoute = CharactersRouteImport.update({
+  id: '/characters',
+  path: '/characters',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiRoute = AiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScenesIdRoute = ScenesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ScenesRoute,
+} as any)
+const DraftSceneIdRoute = DraftSceneIdRouteImport.update({
+  id: '/$sceneId',
+  path: '/$sceneId',
+  getParentRoute: () => DraftRoute,
+} as any)
+const CharactersNameRoute = CharactersNameRouteImport.update({
+  id: '/$name',
+  path: '/$name',
+  getParentRoute: () => CharactersRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/scenes': typeof ScenesRoute
-  '/graph': typeof GraphRoute
-  '/timeline': typeof TimelineRoute
-  '/flagship': typeof FlagshipRoute
-  '/characters': typeof CharactersRoute
   '/ai': typeof AiRoute
+  '/characters': typeof CharactersRouteWithChildren
+  '/collaboration': typeof CollaborationRoute
   '/core': typeof CoreRoute
-  '/draft': typeof DraftRoute
-  '/scenes/$id': typeof ScenesIdRoute
-  '/setup': typeof SetupRoute
+  '/dashboard': typeof DashboardRoute
+  '/draft': typeof DraftRouteWithChildren
+  '/export': typeof ExportRoute
+  '/flagship': typeof FlagshipRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/graph': typeof GraphRoute
+  '/login': typeof LoginRoute
   '/manuscript': typeof ManuscriptRoute
+  '/pricing': typeof PricingRoute
+  '/scenes': typeof ScenesRouteWithChildren
+  '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
+  '/signup': typeof SignupRoute
+  '/templates': typeof TemplatesRoute
+  '/timeline': typeof TimelineRoute
+  '/welcome': typeof WelcomeRoute
+  '/characters/$name': typeof CharactersNameRoute
+  '/draft/$sceneId': typeof DraftSceneIdRoute
+  '/scenes/$id': typeof ScenesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/scenes': typeof ScenesRoute
-  '/graph': typeof GraphRoute
-  '/timeline': typeof TimelineRoute
-  '/flagship': typeof FlagshipRoute
-  '/characters': typeof CharactersRoute
   '/ai': typeof AiRoute
+  '/characters': typeof CharactersRouteWithChildren
+  '/collaboration': typeof CollaborationRoute
   '/core': typeof CoreRoute
-  '/draft': typeof DraftRoute
-  '/scenes/$id': typeof ScenesIdRoute
-  '/setup': typeof SetupRoute
+  '/dashboard': typeof DashboardRoute
+  '/draft': typeof DraftRouteWithChildren
+  '/export': typeof ExportRoute
+  '/flagship': typeof FlagshipRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/graph': typeof GraphRoute
+  '/login': typeof LoginRoute
   '/manuscript': typeof ManuscriptRoute
+  '/pricing': typeof PricingRoute
+  '/scenes': typeof ScenesRouteWithChildren
+  '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
+  '/signup': typeof SignupRoute
+  '/templates': typeof TemplatesRoute
+  '/timeline': typeof TimelineRoute
+  '/welcome': typeof WelcomeRoute
+  '/characters/$name': typeof CharactersNameRoute
+  '/draft/$sceneId': typeof DraftSceneIdRoute
+  '/scenes/$id': typeof ScenesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/scenes': typeof ScenesRoute
-  '/graph': typeof GraphRoute
-  '/timeline': typeof TimelineRoute
-  '/flagship': typeof FlagshipRoute
-  '/characters': typeof CharactersRoute
   '/ai': typeof AiRoute
+  '/characters': typeof CharactersRouteWithChildren
+  '/collaboration': typeof CollaborationRoute
   '/core': typeof CoreRoute
-  '/draft': typeof DraftRoute
-  '/scenes/$id': typeof ScenesIdRoute
-  '/setup': typeof SetupRoute
+  '/dashboard': typeof DashboardRoute
+  '/draft': typeof DraftRouteWithChildren
+  '/export': typeof ExportRoute
+  '/flagship': typeof FlagshipRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/graph': typeof GraphRoute
+  '/login': typeof LoginRoute
   '/manuscript': typeof ManuscriptRoute
+  '/pricing': typeof PricingRoute
+  '/scenes': typeof ScenesRouteWithChildren
+  '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
+  '/signup': typeof SignupRoute
+  '/templates': typeof TemplatesRoute
+  '/timeline': typeof TimelineRoute
+  '/welcome': typeof WelcomeRoute
+  '/characters/$name': typeof CharactersNameRoute
+  '/draft/$sceneId': typeof DraftSceneIdRoute
+  '/scenes/$id': typeof ScenesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/scenes' | '/graph' | '/timeline' | '/flagship' | '/characters' | '/ai' | '/core' | '/draft' | '/scenes/$id' | '/setup' | '/manuscript'
+  fullPaths:
+    | '/'
+    | '/ai'
+    | '/characters'
+    | '/collaboration'
+    | '/core'
+    | '/dashboard'
+    | '/draft'
+    | '/export'
+    | '/flagship'
+    | '/forgot-password'
+    | '/graph'
+    | '/login'
+    | '/manuscript'
+    | '/pricing'
+    | '/scenes'
+    | '/settings'
+    | '/setup'
+    | '/signup'
+    | '/templates'
+    | '/timeline'
+    | '/welcome'
+    | '/characters/$name'
+    | '/draft/$sceneId'
+    | '/scenes/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/scenes' | '/graph' | '/timeline' | '/flagship' | '/characters' | '/ai' | '/core' | '/draft' | '/scenes/$id' | '/setup' | '/manuscript'
-  id: '__root__' | '/' | '/scenes' | '/graph' | '/timeline' | '/flagship' | '/characters' | '/ai' | '/core' | '/draft' | '/scenes/$id' | '/setup' | '/manuscript'
+  to:
+    | '/'
+    | '/ai'
+    | '/characters'
+    | '/collaboration'
+    | '/core'
+    | '/dashboard'
+    | '/draft'
+    | '/export'
+    | '/flagship'
+    | '/forgot-password'
+    | '/graph'
+    | '/login'
+    | '/manuscript'
+    | '/pricing'
+    | '/scenes'
+    | '/settings'
+    | '/setup'
+    | '/signup'
+    | '/templates'
+    | '/timeline'
+    | '/welcome'
+    | '/characters/$name'
+    | '/draft/$sceneId'
+    | '/scenes/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/ai'
+    | '/characters'
+    | '/collaboration'
+    | '/core'
+    | '/dashboard'
+    | '/draft'
+    | '/export'
+    | '/flagship'
+    | '/forgot-password'
+    | '/graph'
+    | '/login'
+    | '/manuscript'
+    | '/pricing'
+    | '/scenes'
+    | '/settings'
+    | '/setup'
+    | '/signup'
+    | '/templates'
+    | '/timeline'
+    | '/welcome'
+    | '/characters/$name'
+    | '/draft/$sceneId'
+    | '/scenes/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ScenesRoute: typeof ScenesRoute
-  GraphRoute: typeof GraphRoute
-  TimelineRoute: typeof TimelineRoute
-  FlagshipRoute: typeof FlagshipRoute
-  CharactersRoute: typeof CharactersRoute
   AiRoute: typeof AiRoute
+  CharactersRoute: typeof CharactersRouteWithChildren
+  CollaborationRoute: typeof CollaborationRoute
   CoreRoute: typeof CoreRoute
-  DraftRoute: typeof DraftRoute
-  ScenesIdRoute: typeof ScenesIdRoute
-  SetupRoute: typeof SetupRoute
+  DashboardRoute: typeof DashboardRoute
+  DraftRoute: typeof DraftRouteWithChildren
+  ExportRoute: typeof ExportRoute
+  FlagshipRoute: typeof FlagshipRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  GraphRoute: typeof GraphRoute
+  LoginRoute: typeof LoginRoute
   ManuscriptRoute: typeof ManuscriptRoute
+  PricingRoute: typeof PricingRoute
+  ScenesRoute: typeof ScenesRouteWithChildren
+  SettingsRoute: typeof SettingsRoute
+  SetupRoute: typeof SetupRoute
+  SignupRoute: typeof SignupRoute
+  TemplatesRoute: typeof TemplatesRoute
+  TimelineRoute: typeof TimelineRoute
+  WelcomeRoute: typeof WelcomeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/scenes': {
-      id: '/scenes'
-      path: '/scenes'
-      fullPath: '/scenes'
-      preLoaderRoute: typeof ScenesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/graph': {
-      id: '/graph'
-      path: '/graph'
-      fullPath: '/graph'
-      preLoaderRoute: typeof GraphRouteImport
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/timeline': {
@@ -190,11 +355,116 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TimelineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/templates': {
+      id: '/templates'
+      path: '/templates'
+      fullPath: '/templates'
+      preLoaderRoute: typeof TemplatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scenes': {
+      id: '/scenes'
+      path: '/scenes'
+      fullPath: '/scenes'
+      preLoaderRoute: typeof ScenesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manuscript': {
+      id: '/manuscript'
+      path: '/manuscript'
+      fullPath: '/manuscript'
+      preLoaderRoute: typeof ManuscriptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/graph': {
+      id: '/graph'
+      path: '/graph'
+      fullPath: '/graph'
+      preLoaderRoute: typeof GraphRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/flagship': {
       id: '/flagship'
       path: '/flagship'
       fullPath: '/flagship'
       preLoaderRoute: typeof FlagshipRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/export': {
+      id: '/export'
+      path: '/export'
+      fullPath: '/export'
+      preLoaderRoute: typeof ExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/draft': {
+      id: '/draft'
+      path: '/draft'
+      fullPath: '/draft'
+      preLoaderRoute: typeof DraftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/core': {
+      id: '/core'
+      path: '/core'
+      fullPath: '/core'
+      preLoaderRoute: typeof CoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/collaboration': {
+      id: '/collaboration'
+      path: '/collaboration'
+      fullPath: '/collaboration'
+      preLoaderRoute: typeof CollaborationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/characters': {
@@ -211,57 +481,92 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AiRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/core': {
-      id: '/core'
-      path: '/core'
-      fullPath: '/core'
-      preLoaderRoute: typeof CoreRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/draft': {
-      id: '/draft'
-      path: '/draft'
-      fullPath: '/draft'
-      preLoaderRoute: typeof DraftRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scenes/$id': {
       id: '/scenes/$id'
-      path: '/scenes/$id'
+      path: '/$id'
       fullPath: '/scenes/$id'
       preLoaderRoute: typeof ScenesIdRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof ScenesRoute
     }
-    '/setup': {
-      id: '/setup'
-      path: '/setup'
-      fullPath: '/setup'
-      preLoaderRoute: typeof SetupRouteImport
-      parentRoute: typeof rootRouteImport
+    '/draft/$sceneId': {
+      id: '/draft/$sceneId'
+      path: '/$sceneId'
+      fullPath: '/draft/$sceneId'
+      preLoaderRoute: typeof DraftSceneIdRouteImport
+      parentRoute: typeof DraftRoute
     }
-    '/manuscript': {
-      id: '/manuscript'
-      path: '/manuscript'
-      fullPath: '/manuscript'
-      preLoaderRoute: typeof ManuscriptRouteImport
-      parentRoute: typeof rootRouteImport
+    '/characters/$name': {
+      id: '/characters/$name'
+      path: '/$name'
+      fullPath: '/characters/$name'
+      preLoaderRoute: typeof CharactersNameRouteImport
+      parentRoute: typeof CharactersRoute
     }
   }
 }
 
+interface CharactersRouteChildren {
+  CharactersNameRoute: typeof CharactersNameRoute
+}
+
+const CharactersRouteChildren: CharactersRouteChildren = {
+  CharactersNameRoute: CharactersNameRoute,
+}
+
+const CharactersRouteWithChildren = CharactersRoute._addFileChildren(
+  CharactersRouteChildren,
+)
+
+interface DraftRouteChildren {
+  DraftSceneIdRoute: typeof DraftSceneIdRoute
+}
+
+const DraftRouteChildren: DraftRouteChildren = {
+  DraftSceneIdRoute: DraftSceneIdRoute,
+}
+
+const DraftRouteWithChildren = DraftRoute._addFileChildren(DraftRouteChildren)
+
+interface ScenesRouteChildren {
+  ScenesIdRoute: typeof ScenesIdRoute
+}
+
+const ScenesRouteChildren: ScenesRouteChildren = {
+  ScenesIdRoute: ScenesIdRoute,
+}
+
+const ScenesRouteWithChildren =
+  ScenesRoute._addFileChildren(ScenesRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ScenesRoute: ScenesRoute,
-  GraphRoute: GraphRoute,
-  TimelineRoute: TimelineRoute,
-  FlagshipRoute: FlagshipRoute,
-  CharactersRoute: CharactersRoute,
   AiRoute: AiRoute,
+  CharactersRoute: CharactersRouteWithChildren,
+  CollaborationRoute: CollaborationRoute,
   CoreRoute: CoreRoute,
-  DraftRoute: DraftRoute,
-  ScenesIdRoute: ScenesIdRoute,
-  SetupRoute: SetupRoute,
+  DashboardRoute: DashboardRoute,
+  DraftRoute: DraftRouteWithChildren,
+  ExportRoute: ExportRoute,
+  FlagshipRoute: FlagshipRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
+  GraphRoute: GraphRoute,
+  LoginRoute: LoginRoute,
   ManuscriptRoute: ManuscriptRoute,
+  PricingRoute: PricingRoute,
+  ScenesRoute: ScenesRouteWithChildren,
+  SettingsRoute: SettingsRoute,
+  SetupRoute: SetupRoute,
+  SignupRoute: SignupRoute,
+  TemplatesRoute: TemplatesRoute,
+  TimelineRoute: TimelineRoute,
+  WelcomeRoute: WelcomeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
