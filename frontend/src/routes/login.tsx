@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { Btn } from '../components/primitives'
+import { useStore } from '../store'
 
 const inputStyle = {
   border: '1px solid var(--ink)',
@@ -26,12 +27,16 @@ const labelStyle = {
 
 function LoginPage() {
   const navigate = useNavigate()
+  const login = useStore(s => s.login)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    navigate({ to: '/dashboard' })
+    if (email && password) {
+      login()
+      navigate({ to: '/dashboard' })
+    }
   }
 
   return (

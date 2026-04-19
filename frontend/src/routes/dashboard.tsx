@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { Btn, Tag, Label } from '../components/primitives'
+import { useStore } from '../store'
 
 const stories = [
   {
@@ -145,6 +146,8 @@ function StatusBadge({ status }: { status: 'in-progress' | 'completed' | 'not-st
 
 function DashboardPage() {
   const navigate = useNavigate()
+  const logout = useStore(s => s.logout)
+  const currentUser = useStore(s => s.currentUser)
   const [filter, setFilter] = useState<FilterStatus>('all')
   const [sort, setSort] = useState<SortMode>('recent')
 
@@ -184,7 +187,7 @@ function DashboardPage() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--ink-2)' }}>
-            Elena Marsh
+            {currentUser.name}
           </span>
           <Link
             to="/settings"
@@ -201,7 +204,7 @@ function DashboardPage() {
           </Link>
           <Btn
             variant="ghost"
-            onClick={() => navigate({ to: '/login' })}
+            onClick={() => { logout(); navigate({ to: '/login' }) }}
             style={{ padding: '4px 8px' }}
           >
             Logout

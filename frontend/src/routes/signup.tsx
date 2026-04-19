@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { Btn } from '../components/primitives'
+import { useStore } from '../store'
 
 const inputStyle = {
   border: '1px solid var(--ink)',
@@ -28,6 +29,7 @@ const genres = ['Literary', 'Mystery', 'Sci-Fi', 'Fantasy', 'Romance', 'Thriller
 
 function SignupPage() {
   const navigate = useNavigate()
+  const signup = useStore(s => s.signup)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -42,7 +44,10 @@ function SignupPage() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    navigate({ to: '/welcome' })
+    if (name && email && password && password === confirmPassword) {
+      signup(name, email)
+      navigate({ to: '/welcome' })
+    }
   }
 
   return (

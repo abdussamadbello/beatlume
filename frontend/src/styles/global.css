@@ -16,6 +16,3 @@ html, body, #root { width: 100%; height: 100%; }
 .title-serif { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; }
 .rule { border-top: 1px solid var(--ink); }
 .rule-dash { border-top: 1px dashed var(--ink-3); }
-body.no-anno .anno { display: none !important; }
-body.no-grid .grid-bg, body.no-grid .grid-bg-fine { background-image: none !important; }
-body.dense { font-size: 12px; }
