@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { Tag, Label, Btn, Placeholder } from '../components/primitives'
 import { useStore } from '../store'
 
@@ -43,14 +43,72 @@ function StepContent({ step }: { step: number }) {
     )
   }
   if (step === 4) {
+    const charCount = setupCharacters.filter(c => c.name.trim()).length
     return (
       <div>
         <Label>Step 04 of 04</Label>
         <div className="title-serif" style={{ fontSize: 38, margin: '4px 0 8px' }}>Scaffold &amp; preview</div>
         <div style={{ fontSize: 13, color: 'var(--ink-2)', maxWidth: '58ch', lineHeight: 1.6 }}>
-          Review the scaffolded workspace before you begin.
+          BeatLume will create your workspace with the following structure. You can change everything later.
         </div>
-        <Placeholder label="Preview workspace" style={{ height: 300, marginTop: 24, maxWidth: 720 }} />
+        <div style={{ marginTop: 24, maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Summary cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div style={{ border: '1px solid var(--ink)', padding: '14px 16px' }}>
+              <Label>Characters</Label>
+              <div className="title-serif" style={{ fontSize: 28, lineHeight: 1 }}>{charCount}</div>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
+                {setupCharacters.filter(c => c.name.trim()).map(c => c.name).join(', ') || 'None yet'}
+              </div>
+            </div>
+            <div style={{ border: '1px solid var(--ink)', padding: '14px 16px' }}>
+              <Label>Structure</Label>
+              <div className="title-serif" style={{ fontSize: 28, lineHeight: 1 }}>3 Acts</div>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>~40 scenes estimated</div>
+            </div>
+            <div style={{ border: '1px solid var(--ink)', padding: '14px 16px' }}>
+              <Label>Workspace</Label>
+              <div className="title-serif" style={{ fontSize: 28, lineHeight: 1 }}>Ready</div>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>Graph, Timeline, Draft</div>
+            </div>
+          </div>
+          {/* What will be created */}
+          <div style={{ border: '1px solid var(--line)', padding: '16px 20px' }}>
+            <Label>Your workspace will include</Label>
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Relationship graph</span>
+                <span style={{ color: 'var(--ink-3)' }}>{charCount} nodes, auto-edges</span>
+              </div>
+              <div style={{ borderTop: '1px dashed var(--line-2)' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Tension timeline</span>
+                <span style={{ color: 'var(--ink-3)' }}>Empty, ready to score</span>
+              </div>
+              <div style={{ borderTop: '1px dashed var(--line-2)' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Scene board</span>
+                <span style={{ color: 'var(--ink-3)' }}>3 act columns</span>
+              </div>
+              <div style={{ borderTop: '1px dashed var(--line-2)' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Draft editor</span>
+                <span style={{ color: 'var(--ink-3)' }}>Scene-locked, AI-assisted</span>
+              </div>
+              <div style={{ borderTop: '1px dashed var(--line-2)' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>AI Insights</span>
+                <span style={{ color: 'var(--ink-3)' }}>Pacing, continuity, structure</span>
+              </div>
+            </div>
+          </div>
+          <div style={{ border: '1px solid var(--blue)', background: 'var(--blue-soft)', padding: '12px 16px', fontSize: 12 }}>
+            <Label style={{ color: 'var(--blue)' }}>Nothing is locked</Label>
+            <div style={{ marginTop: 4, color: 'var(--ink-2)' }}>
+              You can add characters, change structure, and adjust everything from inside the workspace.
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -183,6 +241,7 @@ function StepContent({ step }: { step: number }) {
 }
 
 function SetupPage() {
+  const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(3)
 
   const getStepDone = (stepIndex: number) => {
@@ -196,7 +255,7 @@ function SetupPage() {
         <div style={{ fontFamily: 'var(--font-serif)', fontSize: 18, fontStyle: 'italic' }}>
           BeatLume <small style={{ fontStyle: 'normal', fontSize: 11, color: 'var(--ink-2)' }}>New story</small>
         </div>
-        <Label>Exit &middot; saves draft</Label>
+        <Link to="/dashboard" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-3)', textDecoration: 'none' }}>Exit &middot; back to dashboard</Link>
       </div>
 
       {/* Stepper + content */}
@@ -271,16 +330,25 @@ function SetupPage() {
           <div style={{ marginTop: 32, display: 'flex', justifyContent: 'space-between', maxWidth: 720 }}>
             <Btn
               variant="ghost"
-              onClick={() => setCurrentStep((s) => Math.max(1, s - 1))}
+              onClick={() => currentStep === 1 ? navigate({ to: '/dashboard' }) : setCurrentStep((s) => s - 1)}
             >
-              &larr; {currentStep > 1 ? steps[currentStep - 2][1] : 'Back'}
+              &larr; {currentStep > 1 ? steps[currentStep - 2][1] : 'Dashboard'}
             </Btn>
-            <Btn
-              variant="solid"
-              onClick={() => setCurrentStep((s) => Math.min(4, s + 1))}
-            >
-              Continue &rarr; {currentStep < 4 ? steps[currentStep][1] : 'Finish'}
-            </Btn>
+            {currentStep < 4 ? (
+              <Btn
+                variant="solid"
+                onClick={() => setCurrentStep((s) => s + 1)}
+              >
+                Continue &rarr; {steps[currentStep][1]}
+              </Btn>
+            ) : (
+              <Btn
+                variant="solid"
+                onClick={() => navigate({ to: '/' })}
+              >
+                Create Story &rarr;
+              </Btn>
+            )}
           </div>
         </div>
       </div>

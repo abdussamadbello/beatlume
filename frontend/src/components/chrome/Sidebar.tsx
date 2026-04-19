@@ -22,6 +22,11 @@ const assistantItems: NavItem[] = [
   { label: 'Manuscript', to: '/manuscript', count: '72k' },
 ];
 
+const publishItems: NavItem[] = [
+  { label: 'Export', to: '/export' },
+  { label: 'Collaboration', to: '/collaboration' },
+];
+
 const sidebar: CSSProperties = {
   width: 200,
   height: '100%',
@@ -118,11 +123,29 @@ function NavSection({ heading, items, active }: { heading: string; items: NavIte
 export function Sidebar({ active, title = 'A Stranger in the Orchard' }: { active: string; title?: string }) {
   return (
     <nav style={sidebar}>
+      <Link
+        to="/dashboard"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '10px 16px',
+          fontSize: 10,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          color: 'var(--ink-3)',
+          textDecoration: 'none',
+          borderBottom: '1px solid var(--line)',
+        }}
+      >
+        &larr; Dashboard
+      </Link>
       <div style={logoStyle}>BeatLume</div>
       <div style={storyTitle}>{title}</div>
       <div style={draftLabel}>Draft 3 &middot; Act II</div>
       <NavSection heading="Planning" items={planningItems} active={active} />
       <NavSection heading="Assistant" items={assistantItems} active={active} />
+      <NavSection heading="Publish" items={publishItems} active={active} />
       <div style={footer}>Autosaved 2 min ago</div>
     </nav>
   );
