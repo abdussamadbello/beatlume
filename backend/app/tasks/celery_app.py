@@ -23,4 +23,5 @@ celery_app.conf.task_routes = {
     "app.tasks.ai_tasks.generate_insights": {"queue": "ai_heavy"},
     "app.tasks.ai_tasks.infer_relationships": {"queue": "ai_heavy"},
     "app.tasks.ai_tasks.scaffold_story": {"queue": "ai_heavy"},
+    "app.tasks.export_tasks.run_export": {"queue": "export"},
 }
