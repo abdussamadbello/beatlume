@@ -4,10 +4,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.config import settings
 from app.deps import engine
+from app.telemetry.logging import setup_logging
+
+# Configure structured logging at import time
+setup_logging(log_level=settings.log_level, log_format=settings.log_format)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Initialize OpenTelemetry tracing and metrics
+    from app.telemetry.setup import setup_telemetry
+    setup_telemetry(app, engine, settings)
     yield
     await engine.dispose()
 
