@@ -7,7 +7,8 @@ import { EdgeLegend } from '../components/EdgeLegend'
 import { LoadingState } from '../components/LoadingState'
 import { useGraph } from '../api/graph'
 import { useStore } from '../store'
-import { sampleActs } from '../data'
+import { useTensionCurve } from '../api/analytics'
+import { useTriggerRelationships } from '../api/ai'
 import type { SceneNode } from '../types'
 
 export const Route = createFileRoute('/stories/$storyId/graph')({
@@ -17,6 +18,8 @@ export const Route = createFileRoute('/stories/$storyId/graph')({
 function GraphView() {
   const { storyId } = Route.useParams()
   const { data: graphData, isLoading } = useGraph(storyId)
+  const { data: tensionCurveData } = useTensionCurve(storyId)
+  const relationshipsMutation = useTriggerRelationships(storyId)
   const selectedNodeId = useStore(s => s.selectedNodeId)
   const selectNode = useStore(s => s.selectNode)
 
@@ -31,6 +34,7 @@ function GraphView() {
 
   const nodes = graphData?.nodes ?? []
   const edges = graphData?.edges ?? []
+  const sampleActs = tensionCurveData?.acts ?? []
 
   const scaledNodes: SceneNode[] = useMemo(() =>
     nodes.map((n) => ({
@@ -65,6 +69,24 @@ function GraphView() {
         <div style={{ display: 'flex', gap: 8 }}>
           <span style={{ padding: '6px 10px', border: '1px solid var(--ink-3)', background: 'transparent', color: 'var(--ink-2)', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: 'pointer' }}>Cluster: Subplot {'\u25BE'}</span>
           <span style={{ padding: '6px 10px', border: '1px solid var(--ink-3)', background: 'transparent', color: 'var(--ink-2)', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: 'pointer' }}>Layout: Force {'\u25BE'}</span>
+          <span
+            onClick={() => relationshipsMutation.mutate()}
+            style={{
+              padding: '6px 10px',
+              border: '1px solid var(--ink)',
+              background: relationshipsMutation.isPending ? 'var(--paper-2)' : 'var(--ink)',
+              color: relationshipsMutation.isPending ? 'var(--ink-3)' : 'var(--paper)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              cursor: relationshipsMutation.isPending ? 'wait' : 'pointer',
+              pointerEvents: relationshipsMutation.isPending ? 'none' : 'auto',
+            }}
+          >
+            {relationshipsMutation.isPending ? 'Running...' : 'Suggest Relationships'}
+          </span>
+          {relationshipsMutation.isError && (
+            <span style={{ fontSize: 10, color: 'var(--red, #c00)', alignSelf: 'center' }}>Failed</span>
+          )}
           <span style={{ padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: 'pointer' }}>Export SVG</span>
         </div>
       </div>

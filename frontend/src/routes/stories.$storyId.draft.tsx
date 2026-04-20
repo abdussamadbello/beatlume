@@ -1,12 +1,11 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Tag, Label } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { useScenes } from '../api/scenes'
 import { useCharacters } from '../api/characters'
+import { useTriggerProseContinue } from '../api/ai'
 import { useStore } from '../store'
-
-const mockParagraph = 'She stood for a long time after he left, listening to the truck turn over twice before it caught. The sound carried across the empty field and came back to her changed, the way all sounds did here — smaller, and sadder, and more honest than they had any right to be.'
 
 function DraftPage() {
   const { storyId } = Route.useParams()
@@ -15,8 +14,8 @@ function DraftPage() {
   const activeSceneN = useStore(s => s.activeSceneN)
   const setActiveSceneN = useStore(s => s.setActiveSceneN)
 
-  const [isGenerating, setIsGenerating] = useState(false)
   const [draftContent, setDraftContentState] = useState<Record<number, string>>({})
+  const continueMutation = useTriggerProseContinue(storyId)
 
   if (scenesLoading || charsLoading) return <LoadingState />
 
@@ -32,14 +31,8 @@ function DraftPage() {
     : null
 
   const handleAiContinue = () => {
-    setIsGenerating(true)
-    setTimeout(() => {
-      setDraftContentState(prev => ({
-        ...prev,
-        [activeSceneN]: (prev[activeSceneN] || '') + '\n\n' + mockParagraph,
-      }))
-      setIsGenerating(false)
-    }, 300)
+    if (!activeScene) return
+    continueMutation.mutate(activeScene.id)
   }
 
   const handleContentChange = (value: string) => {
@@ -103,11 +96,14 @@ function DraftPage() {
             <button
               className="btn"
               onClick={handleAiContinue}
-              disabled={isGenerating}
-              style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', cursor: isGenerating ? 'wait' : 'pointer' }}
+              disabled={continueMutation.isPending}
+              style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', cursor: continueMutation.isPending ? 'wait' : 'pointer' }}
             >
-              {isGenerating ? 'Generating...' : 'AI continue'}
+              {continueMutation.isPending ? 'Running...' : 'AI continue'}
             </button>
+            {continueMutation.isError && (
+              <span style={{ fontSize: 10, color: 'var(--red, #c00)' }}>Failed</span>
+            )}
           </div>
         </div>
         <textarea

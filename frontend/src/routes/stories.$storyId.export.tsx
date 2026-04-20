@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { Btn, Label, Panel, PanelHead } from '../components/primitives'
+import { useTriggerExport } from '../api/export'
 
 export const Route = createFileRoute('/stories/$storyId/export')({
   component: ExportPage,
@@ -18,6 +19,7 @@ const labelStyle = {
 
 function ExportPage() {
   const { storyId } = Route.useParams()
+  const exportMutation = useTriggerExport(storyId)
   const [format, setFormat] = useState('pdf')
   const [includeTitlePage, setIncludeTitlePage] = useState(true)
   const [includeChapterHeaders, setIncludeChapterHeaders] = useState(true)
@@ -126,9 +128,34 @@ function ExportPage() {
               </div>
             </div>
 
-            <Btn variant="solid" style={{ width: '100%', justifyContent: 'center' }}>
-              Export as {formats.find((f) => f.value === format)?.label}
+            <Btn
+              variant="solid"
+              style={{ width: '100%', justifyContent: 'center' }}
+              onClick={() => exportMutation.mutate({
+                format,
+                options: {
+                  include_title_page: includeTitlePage,
+                  include_chapter_headers: includeChapterHeaders,
+                  include_scene_breaks: includeSceneBreaks,
+                  include_author_bio: includeAuthorBio,
+                },
+              })}
+              disabled={exportMutation.isPending}
+            >
+              {exportMutation.isPending
+                ? 'Exporting...'
+                : `Export as ${formats.find((f) => f.value === format)?.label}`}
             </Btn>
+            {exportMutation.isError && (
+              <div style={{ fontSize: 10, color: 'var(--red, #c00)', marginTop: 6, textAlign: 'center' }}>
+                Export failed. Please try again.
+              </div>
+            )}
+            {exportMutation.isSuccess && (
+              <div style={{ fontSize: 10, color: 'var(--blue, #06c)', marginTop: 6, textAlign: 'center' }}>
+                Export started. You will be notified when ready.
+              </div>
+            )}
           </div>
         </Panel>
 

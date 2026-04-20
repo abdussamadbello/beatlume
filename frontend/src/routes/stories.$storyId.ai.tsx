@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Tag, Btn, Label } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { useInsights, useDismissInsight } from '../api/insights'
+import { useTriggerInsights } from '../api/ai'
 
 export const Route = createFileRoute('/stories/$storyId/ai')({
   component: AIPage,
@@ -13,6 +14,7 @@ function AIPage() {
   const [activeCategory, setActiveCategory] = useState('All')
   const { data, isLoading } = useInsights(storyId)
   const dismissMutation = useDismissInsight(storyId)
+  const generateMutation = useTriggerInsights(storyId)
   const navigate = useNavigate()
 
   if (isLoading) return <LoadingState />
@@ -69,8 +71,17 @@ function AIPage() {
           <Label>AI Insights</Label>
           <div className="title-serif" style={{ fontSize: 22 }}>{insights.length} recommendations &middot; explainable</div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Btn variant="ghost">Run again</Btn>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Btn
+            variant="ghost"
+            onClick={() => generateMutation.mutate()}
+            disabled={generateMutation.isPending}
+          >
+            {generateMutation.isPending ? 'Running...' : 'Generate Insights'}
+          </Btn>
+          {generateMutation.isError && (
+            <span style={{ fontSize: 10, color: 'var(--red, #c00)' }}>Failed to generate</span>
+          )}
           <Btn>Settings</Btn>
         </div>
       </div>
