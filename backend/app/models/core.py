@@ -19,7 +19,7 @@ class CoreConfigNode(Base, OrgScopedMixin):
     __tablename__ = "core_config_nodes"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    story_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("stories.id"))
+    story_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("stories.id", ondelete="CASCADE"))
     depth: Mapped[int] = mapped_column(default=0)
     label: Mapped[str] = mapped_column(String(255))
     kind: Mapped[CoreKind] = mapped_column()
@@ -32,7 +32,7 @@ class CoreSetting(Base, OrgScopedMixin):
     __table_args__ = (UniqueConstraint("story_id", "key", name="uq_core_setting"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    story_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("stories.id"))
+    story_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("stories.id", ondelete="CASCADE"))
     key: Mapped[str] = mapped_column(String(100))
     value: Mapped[str] = mapped_column(String(1000))
     source: Mapped[str] = mapped_column(String(100), default="")

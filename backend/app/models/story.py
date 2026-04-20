@@ -1,7 +1,7 @@
 import enum
 import uuid
 
-from sqlalchemy import ARRAY, String
+from sqlalchemy import ARRAY, CheckConstraint, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, OrgScopedMixin, TimestampMixin
@@ -15,6 +15,10 @@ class StoryStatus(str, enum.Enum):
 
 class Story(Base, OrgScopedMixin, TimestampMixin):
     __tablename__ = "stories"
+    __table_args__ = (
+        CheckConstraint("target_words > 0", name="ck_story_target_words"),
+        CheckConstraint("draft_number >= 0", name="ck_story_draft_number"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     title: Mapped[str] = mapped_column(String(500))

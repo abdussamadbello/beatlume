@@ -1,7 +1,7 @@
 import enum
 import uuid
 
-from sqlalchemy import Float, ForeignKey, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, Float, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,8 +33,8 @@ class CharacterNode(Base, OrgScopedMixin):
     __tablename__ = "character_nodes"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    story_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("stories.id"))
-    character_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("characters.id"))
+    story_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("stories.id", ondelete="CASCADE"))
+    character_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"))
     x: Mapped[float] = mapped_column(Float, default=0.0)
     y: Mapped[float] = mapped_column(Float, default=0.0)
     label: Mapped[str] = mapped_column(String(255))
@@ -47,12 +47,13 @@ class CharacterEdge(Base, OrgScopedMixin):
     __tablename__ = "character_edges"
     __table_args__ = (
         UniqueConstraint("story_id", "source_node_id", "target_node_id", name="uq_edge"),
+        CheckConstraint("weight >= 0 AND weight <= 1", name="ck_edge_weight"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    story_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("stories.id"))
-    source_node_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("character_nodes.id"))
-    target_node_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("character_nodes.id"))
+    story_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("stories.id", ondelete="CASCADE"))
+    source_node_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("character_nodes.id", ondelete="CASCADE"))
+    target_node_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("character_nodes.id", ondelete="CASCADE"))
     kind: Mapped[EdgeKind] = mapped_column()
     weight: Mapped[float] = mapped_column(Float, default=0.5)
     provenance: Mapped[EdgeProvenance] = mapped_column(default=EdgeProvenance.author)

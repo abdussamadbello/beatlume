@@ -10,7 +10,7 @@ class ManuscriptChapter(Base, OrgScopedMixin):
     __tablename__ = "manuscript_chapters"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    story_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("stories.id"))
+    story_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("stories.id", ondelete="CASCADE"))
     num: Mapped[int] = mapped_column()
     title: Mapped[str] = mapped_column(String(500))
     content: Mapped[str] = mapped_column(Text, default="")

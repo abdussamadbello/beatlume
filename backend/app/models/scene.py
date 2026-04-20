@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, OrgScopedMixin, TimestampMixin
@@ -8,10 +8,14 @@ from app.models.base import Base, OrgScopedMixin, TimestampMixin
 
 class Scene(Base, OrgScopedMixin, TimestampMixin):
     __tablename__ = "scenes"
-    __table_args__ = (UniqueConstraint("story_id", "n", name="uq_scene_number"),)
+    __table_args__ = (
+        UniqueConstraint("story_id", "n", name="uq_scene_number"),
+        CheckConstraint("tension >= 1 AND tension <= 10", name="ck_scene_tension"),
+        CheckConstraint("act >= 1", name="ck_scene_act"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    story_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("stories.id"))
+    story_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("stories.id", ondelete="CASCADE"))
     n: Mapped[int] = mapped_column()
     title: Mapped[str] = mapped_column(String(500))
     pov: Mapped[str] = mapped_column(String(255))

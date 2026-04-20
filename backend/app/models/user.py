@@ -43,7 +43,7 @@ class User(Base, TimestampMixin):
     oauth_provider: Mapped[str | None] = mapped_column(String, nullable=True)
     oauth_id: Mapped[str | None] = mapped_column(String, nullable=True)
     active_org_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("organizations.id"), nullable=True
+        ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True
     )
 
     memberships: Mapped[list["Membership"]] = relationship(back_populates="user")
@@ -55,8 +55,8 @@ class Membership(Base):
     __table_args__ = (UniqueConstraint("user_id", "org_id", name="uq_membership"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
-    org_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    org_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
     role: Mapped[MembershipRole] = mapped_column(default=MembershipRole.viewer)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
