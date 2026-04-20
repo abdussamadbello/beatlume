@@ -3,6 +3,7 @@ import { AppShell, Sidebar } from '../components/chrome'
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/ErrorState'
 import { useStory } from '../api/stories'
+import { useSSE } from '../hooks/useSSE'
 
 export const Route = createFileRoute('/stories/$storyId')({
   component: StoryLayout,
@@ -12,6 +13,7 @@ function StoryLayout() {
   const { storyId } = Route.useParams()
   const location = useLocation()
   const { data: story, isLoading, error, refetch } = useStory(storyId)
+  useSSE(storyId)
 
   if (isLoading) {
     return (
