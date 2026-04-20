@@ -22,14 +22,23 @@ export function Btn({
   children,
   style,
   onClick,
+  type,
+  disabled,
 }: {
   variant?: BtnVariant;
   children: ReactNode;
   style?: CSSProperties;
   onClick?: MouseEventHandler<HTMLButtonElement>;
+  type?: 'button' | 'submit' | 'reset';
+  disabled?: boolean;
 }) {
   return (
-    <button style={{ ...base, ...variantStyles[variant], ...style }} onClick={onClick}>
+    <button
+      style={{ ...base, ...variantStyles[variant], ...style, ...(disabled ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }}
+      onClick={onClick}
+      type={type}
+      disabled={disabled}
+    >
       {children}
     </button>
   );

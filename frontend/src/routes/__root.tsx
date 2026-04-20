@@ -3,19 +3,19 @@ import { useStore } from '../store'
 import { useEffect } from 'react'
 
 function RootComponent() {
-  const isLoggedIn = useStore(s => s.isLoggedIn)
+  const accessToken = useStore(s => s.accessToken)
   const navigate = useNavigate()
 
   useEffect(() => {
-    const publicRoutes = ['/login', '/signup', '/forgot-password']
+    const publicRoutes = ['/login', '/signup', '/forgot-password', '/welcome']
     const currentPath = window.location.pathname
 
-    if (!isLoggedIn && !publicRoutes.includes(currentPath)) {
+    if (!accessToken && !publicRoutes.includes(currentPath)) {
       navigate({ to: '/login' })
-    } else if (isLoggedIn && publicRoutes.includes(currentPath)) {
+    } else if (accessToken && publicRoutes.includes(currentPath)) {
       navigate({ to: '/dashboard' })
     }
-  }, [isLoggedIn, navigate])
+  }, [accessToken, navigate])
 
   return <Outlet />
 }

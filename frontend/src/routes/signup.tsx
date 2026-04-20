@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { Btn } from '../components/primitives'
-import { useStore } from '../store'
+import { signup } from '../api/auth'
 
 const inputStyle = {
   border: '1px solid var(--ink)',
@@ -29,12 +29,13 @@ const genres = ['Literary', 'Mystery', 'Sci-Fi', 'Fantasy', 'Romance', 'Thriller
 
 function SignupPage() {
   const navigate = useNavigate()
-  const signup = useStore(s => s.signup)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const toggleGenre = (genre: string) => {
     setSelectedGenres((prev) =>
@@ -42,11 +43,22 @@ function SignupPage() {
     )
   }
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (name && email && password && password === confirmPassword) {
-      signup(name, email)
+    if (!name || !email || !password) return
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      await signup(name, email, password)
       navigate({ to: '/welcome' })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Signup failed')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -187,11 +199,19 @@ function SignupPage() {
           <Btn
             variant="solid"
             style={{ width: '100%', justifyContent: 'center', padding: '10px 12px' }}
-            onClick={() => handleSubmit(new Event('submit') as unknown as FormEvent)}
+            type="submit"
+            disabled={loading}
           >
-            Create account
+            {loading ? 'Creating account...' : 'Create account'}
           </Btn>
         </form>
+
+        {/* Error */}
+        {error && (
+          <div style={{ color: 'var(--red)', fontSize: 12, textAlign: 'center', marginTop: 12 }}>
+            {error}
+          </div>
+        )}
 
         {/* Divider */}
         <div

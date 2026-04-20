@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { Btn } from '../components/primitives'
-import { useStore } from '../store'
+import { login } from '../api/auth'
 
 const inputStyle = {
   border: '1px solid var(--ink)',
@@ -27,15 +27,23 @@ const labelStyle = {
 
 function LoginPage() {
   const navigate = useNavigate()
-  const login = useStore(s => s.login)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (email && password) {
-      login()
+    if (!email || !password) return
+    setLoading(true)
+    setError('')
+    try {
+      await login(email, password)
       navigate({ to: '/dashboard' })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -115,11 +123,19 @@ function LoginPage() {
           <Btn
             variant="solid"
             style={{ width: '100%', justifyContent: 'center', padding: '10px 12px' }}
-            onClick={() => handleSubmit(new Event('submit') as unknown as FormEvent)}
+            type="submit"
+            disabled={loading}
           >
-            Log in
+            {loading ? 'Logging in...' : 'Log in'}
           </Btn>
         </form>
+
+        {/* Error */}
+        {error && (
+          <div style={{ color: 'var(--red)', fontSize: 12, textAlign: 'center', marginTop: 12 }}>
+            {error}
+          </div>
+        )}
 
         {/* Forgot password */}
         <div style={{ textAlign: 'center', marginTop: 16 }}>
