@@ -7,25 +7,31 @@ interface NavItem {
   count?: string;
 }
 
-const planningItems: NavItem[] = [
-  { label: 'Overview', to: '/', count: '12' },
-  { label: 'Scene Board', to: '/scenes', count: '47' },
-  { label: 'Graph', to: '/graph' },
-  { label: 'Timeline', to: '/timeline' },
-  { label: 'Characters', to: '/characters', count: '14' },
-  { label: 'Narrative Core', to: '/core' },
-];
+function planningItems(storyId: string): NavItem[] {
+  return [
+    { label: 'Overview', to: `/stories/${storyId}`, count: '12' },
+    { label: 'Scene Board', to: `/stories/${storyId}/scenes`, count: '47' },
+    { label: 'Graph', to: `/stories/${storyId}/graph` },
+    { label: 'Timeline', to: `/stories/${storyId}/timeline` },
+    { label: 'Characters', to: `/stories/${storyId}/characters`, count: '14' },
+    { label: 'Narrative Core', to: `/stories/${storyId}/core` },
+  ];
+}
 
-const assistantItems: NavItem[] = [
-  { label: 'AI Insights', to: '/ai', count: '3' },
-  { label: 'Draft', to: '/draft', count: '18k' },
-  { label: 'Manuscript', to: '/manuscript', count: '72k' },
-];
+function assistantItems(storyId: string): NavItem[] {
+  return [
+    { label: 'AI Insights', to: `/stories/${storyId}/ai`, count: '3' },
+    { label: 'Draft', to: `/stories/${storyId}/draft`, count: '18k' },
+    { label: 'Manuscript', to: `/stories/${storyId}/manuscript`, count: '72k' },
+  ];
+}
 
-const publishItems: NavItem[] = [
-  { label: 'Export', to: '/export' },
-  { label: 'Collaboration', to: '/collaboration' },
-];
+function publishItems(storyId: string): NavItem[] {
+  return [
+    { label: 'Export', to: `/stories/${storyId}/export` },
+    { label: 'Collaboration', to: `/stories/${storyId}/collaboration` },
+  ];
+}
 
 const sidebar: CSSProperties = {
   width: 200,
@@ -120,7 +126,7 @@ function NavSection({ heading, items, active }: { heading: string; items: NavIte
   );
 }
 
-export function Sidebar({ active, title = 'A Stranger in the Orchard' }: { active: string; title?: string }) {
+export function Sidebar({ storyId, active, title = 'A Stranger in the Orchard' }: { storyId: string; active: string; title?: string }) {
   return (
     <nav style={sidebar}>
       <Link
@@ -143,9 +149,9 @@ export function Sidebar({ active, title = 'A Stranger in the Orchard' }: { activ
       <div style={logoStyle}>BeatLume</div>
       <div style={storyTitle}>{title}</div>
       <div style={draftLabel}>Draft 3 &middot; Act II</div>
-      <NavSection heading="Planning" items={planningItems} active={active} />
-      <NavSection heading="Assistant" items={assistantItems} active={active} />
-      <NavSection heading="Publish" items={publishItems} active={active} />
+      <NavSection heading="Planning" items={planningItems(storyId)} active={active} />
+      <NavSection heading="Assistant" items={assistantItems(storyId)} active={active} />
+      <NavSection heading="Publish" items={publishItems(storyId)} active={active} />
       <div style={footer}>Autosaved 2 min ago</div>
     </nav>
   );

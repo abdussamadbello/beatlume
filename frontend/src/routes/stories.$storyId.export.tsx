@@ -2,14 +2,9 @@ import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Btn, Label, Panel, PanelHead } from '../components/primitives'
 
-const headerStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '12px 28px',
-  borderBottom: '1.5px solid var(--ink)',
-  background: 'var(--paper)',
-}
+export const Route = createFileRoute('/stories/$storyId/export')({
+  component: ExportPage,
+})
 
 const labelStyle = {
   fontFamily: 'var(--font-mono)',
@@ -22,6 +17,7 @@ const labelStyle = {
 }
 
 function ExportPage() {
+  const { storyId } = Route.useParams()
   const [format, setFormat] = useState('pdf')
   const [includeTitlePage, setIncludeTitlePage] = useState(true)
   const [includeChapterHeaders, setIncludeChapterHeaders] = useState(true)
@@ -48,54 +44,14 @@ function ExportPage() {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--paper)' }}>
-      {/* Header */}
-      <div style={headerStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link
-            to="/dashboard"
-            style={{
-              fontFamily: 'var(--font-serif)',
-              fontSize: 22,
-              fontStyle: 'italic',
-              textDecoration: 'none',
-              color: 'var(--ink)',
-            }}
-          >
-            BeatLume
-          </Link>
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 10,
-              letterSpacing: '0.04em',
-              color: 'var(--ink-3)',
-            }}
-          >
-            / Export &amp; Share
-          </span>
-        </div>
-        <Link
-          to="/dashboard"
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 10,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            color: 'var(--ink-3)',
-            textDecoration: 'none',
-          }}
-        >
-          &larr; Back to dashboard
-        </Link>
+    <div style={{ padding: '32px 36px', overflow: 'auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+        <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 26, margin: 0 }}>Export &amp; Share</h1>
       </div>
 
-      {/* Content */}
       <div
         style={{
           maxWidth: 1100,
-          margin: '0 auto',
-          padding: '32px 36px',
           display: 'grid',
           gridTemplateColumns: '1fr 1fr 320px',
           gap: 24,
@@ -260,7 +216,6 @@ function ExportPage() {
         <Panel>
           <PanelHead left="Preview" />
           <div style={{ padding: '20px' }}>
-            {/* Mini manuscript preview */}
             <div
               style={{
                 border: '1px solid var(--line)',
@@ -377,7 +332,3 @@ function ExportPage() {
     </div>
   )
 }
-
-export const Route = createFileRoute('/export')({
-  component: ExportPage,
-})

@@ -10,38 +10,35 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
-import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ScenesRouteImport } from './routes/scenes'
 import { Route as PricingRouteImport } from './routes/pricing'
-import { Route as ManuscriptRouteImport } from './routes/manuscript'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as GraphRouteImport } from './routes/graph'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as FlagshipRouteImport } from './routes/flagship'
-import { Route as ExportRouteImport } from './routes/export'
-import { Route as DraftRouteImport } from './routes/draft'
 import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as CoreRouteImport } from './routes/core'
-import { Route as CollaborationRouteImport } from './routes/collaboration'
-import { Route as CharactersRouteImport } from './routes/characters'
-import { Route as AiRouteImport } from './routes/ai'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ScenesIdRouteImport } from './routes/scenes.$id'
-import { Route as DraftSceneIdRouteImport } from './routes/draft.$sceneId'
-import { Route as CharactersNameRouteImport } from './routes/characters.$name'
+import { Route as StoriesStoryIdRouteImport } from './routes/stories.$storyId'
+import { Route as StoriesStoryIdIndexRouteImport } from './routes/stories.$storyId.index'
+import { Route as StoriesStoryIdTimelineRouteImport } from './routes/stories.$storyId.timeline'
+import { Route as StoriesStoryIdScenesRouteImport } from './routes/stories.$storyId.scenes'
+import { Route as StoriesStoryIdManuscriptRouteImport } from './routes/stories.$storyId.manuscript'
+import { Route as StoriesStoryIdGraphRouteImport } from './routes/stories.$storyId.graph'
+import { Route as StoriesStoryIdFlagshipRouteImport } from './routes/stories.$storyId.flagship'
+import { Route as StoriesStoryIdExportRouteImport } from './routes/stories.$storyId.export'
+import { Route as StoriesStoryIdDraftRouteImport } from './routes/stories.$storyId.draft'
+import { Route as StoriesStoryIdCoreRouteImport } from './routes/stories.$storyId.core'
+import { Route as StoriesStoryIdCollaborationRouteImport } from './routes/stories.$storyId.collaboration'
+import { Route as StoriesStoryIdCharactersRouteImport } from './routes/stories.$storyId.characters'
+import { Route as StoriesStoryIdAiRouteImport } from './routes/stories.$storyId.ai'
+import { Route as StoriesStoryIdScenesIdRouteImport } from './routes/stories.$storyId.scenes.$id'
+import { Route as StoriesStoryIdDraftSceneIdRouteImport } from './routes/stories.$storyId.draft.$sceneId'
+import { Route as StoriesStoryIdCharactersIdRouteImport } from './routes/stories.$storyId.characters.$id'
 
 const WelcomeRoute = WelcomeRouteImport.update({
   id: '/welcome',
   path: '/welcome',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TimelineRoute = TimelineRouteImport.update({
-  id: '/timeline',
-  path: '/timeline',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TemplatesRoute = TemplatesRouteImport.update({
@@ -64,19 +61,9 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ScenesRoute = ScenesRouteImport.update({
-  id: '/scenes',
-  path: '/scenes',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ManuscriptRoute = ManuscriptRouteImport.update({
-  id: '/manuscript',
-  path: '/manuscript',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -84,29 +71,9 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const GraphRoute = GraphRouteImport.update({
-  id: '/graph',
-  path: '/graph',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FlagshipRoute = FlagshipRouteImport.update({
-  id: '/flagship',
-  path: '/flagship',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ExportRoute = ExportRouteImport.update({
-  id: '/export',
-  path: '/export',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DraftRoute = DraftRouteImport.update({
-  id: '/draft',
-  path: '/draft',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -114,229 +81,279 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CoreRoute = CoreRouteImport.update({
-  id: '/core',
-  path: '/core',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CollaborationRoute = CollaborationRouteImport.update({
-  id: '/collaboration',
-  path: '/collaboration',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CharactersRoute = CharactersRouteImport.update({
-  id: '/characters',
-  path: '/characters',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AiRoute = AiRouteImport.update({
-  id: '/ai',
-  path: '/ai',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ScenesIdRoute = ScenesIdRouteImport.update({
+const StoriesStoryIdRoute = StoriesStoryIdRouteImport.update({
+  id: '/stories/$storyId',
+  path: '/stories/$storyId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoriesStoryIdIndexRoute = StoriesStoryIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => StoriesStoryIdRoute,
+} as any)
+const StoriesStoryIdTimelineRoute = StoriesStoryIdTimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
+  getParentRoute: () => StoriesStoryIdRoute,
+} as any)
+const StoriesStoryIdScenesRoute = StoriesStoryIdScenesRouteImport.update({
+  id: '/scenes',
+  path: '/scenes',
+  getParentRoute: () => StoriesStoryIdRoute,
+} as any)
+const StoriesStoryIdManuscriptRoute =
+  StoriesStoryIdManuscriptRouteImport.update({
+    id: '/manuscript',
+    path: '/manuscript',
+    getParentRoute: () => StoriesStoryIdRoute,
+  } as any)
+const StoriesStoryIdGraphRoute = StoriesStoryIdGraphRouteImport.update({
+  id: '/graph',
+  path: '/graph',
+  getParentRoute: () => StoriesStoryIdRoute,
+} as any)
+const StoriesStoryIdFlagshipRoute = StoriesStoryIdFlagshipRouteImport.update({
+  id: '/flagship',
+  path: '/flagship',
+  getParentRoute: () => StoriesStoryIdRoute,
+} as any)
+const StoriesStoryIdExportRoute = StoriesStoryIdExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => StoriesStoryIdRoute,
+} as any)
+const StoriesStoryIdDraftRoute = StoriesStoryIdDraftRouteImport.update({
+  id: '/draft',
+  path: '/draft',
+  getParentRoute: () => StoriesStoryIdRoute,
+} as any)
+const StoriesStoryIdCoreRoute = StoriesStoryIdCoreRouteImport.update({
+  id: '/core',
+  path: '/core',
+  getParentRoute: () => StoriesStoryIdRoute,
+} as any)
+const StoriesStoryIdCollaborationRoute =
+  StoriesStoryIdCollaborationRouteImport.update({
+    id: '/collaboration',
+    path: '/collaboration',
+    getParentRoute: () => StoriesStoryIdRoute,
+  } as any)
+const StoriesStoryIdCharactersRoute =
+  StoriesStoryIdCharactersRouteImport.update({
+    id: '/characters',
+    path: '/characters',
+    getParentRoute: () => StoriesStoryIdRoute,
+  } as any)
+const StoriesStoryIdAiRoute = StoriesStoryIdAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => StoriesStoryIdRoute,
+} as any)
+const StoriesStoryIdScenesIdRoute = StoriesStoryIdScenesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => ScenesRoute,
+  getParentRoute: () => StoriesStoryIdScenesRoute,
 } as any)
-const DraftSceneIdRoute = DraftSceneIdRouteImport.update({
-  id: '/$sceneId',
-  path: '/$sceneId',
-  getParentRoute: () => DraftRoute,
-} as any)
-const CharactersNameRoute = CharactersNameRouteImport.update({
-  id: '/$name',
-  path: '/$name',
-  getParentRoute: () => CharactersRoute,
-} as any)
+const StoriesStoryIdDraftSceneIdRoute =
+  StoriesStoryIdDraftSceneIdRouteImport.update({
+    id: '/$sceneId',
+    path: '/$sceneId',
+    getParentRoute: () => StoriesStoryIdDraftRoute,
+  } as any)
+const StoriesStoryIdCharactersIdRoute =
+  StoriesStoryIdCharactersIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => StoriesStoryIdCharactersRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/ai': typeof AiRoute
-  '/characters': typeof CharactersRouteWithChildren
-  '/collaboration': typeof CollaborationRoute
-  '/core': typeof CoreRoute
   '/dashboard': typeof DashboardRoute
-  '/draft': typeof DraftRouteWithChildren
-  '/export': typeof ExportRoute
-  '/flagship': typeof FlagshipRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/graph': typeof GraphRoute
   '/login': typeof LoginRoute
-  '/manuscript': typeof ManuscriptRoute
   '/pricing': typeof PricingRoute
-  '/scenes': typeof ScenesRouteWithChildren
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
   '/templates': typeof TemplatesRoute
-  '/timeline': typeof TimelineRoute
   '/welcome': typeof WelcomeRoute
-  '/characters/$name': typeof CharactersNameRoute
-  '/draft/$sceneId': typeof DraftSceneIdRoute
-  '/scenes/$id': typeof ScenesIdRoute
+  '/stories/$storyId': typeof StoriesStoryIdRouteWithChildren
+  '/stories/$storyId/ai': typeof StoriesStoryIdAiRoute
+  '/stories/$storyId/characters': typeof StoriesStoryIdCharactersRouteWithChildren
+  '/stories/$storyId/collaboration': typeof StoriesStoryIdCollaborationRoute
+  '/stories/$storyId/core': typeof StoriesStoryIdCoreRoute
+  '/stories/$storyId/draft': typeof StoriesStoryIdDraftRouteWithChildren
+  '/stories/$storyId/export': typeof StoriesStoryIdExportRoute
+  '/stories/$storyId/flagship': typeof StoriesStoryIdFlagshipRoute
+  '/stories/$storyId/graph': typeof StoriesStoryIdGraphRoute
+  '/stories/$storyId/manuscript': typeof StoriesStoryIdManuscriptRoute
+  '/stories/$storyId/scenes': typeof StoriesStoryIdScenesRouteWithChildren
+  '/stories/$storyId/timeline': typeof StoriesStoryIdTimelineRoute
+  '/stories/$storyId/': typeof StoriesStoryIdIndexRoute
+  '/stories/$storyId/characters/$id': typeof StoriesStoryIdCharactersIdRoute
+  '/stories/$storyId/draft/$sceneId': typeof StoriesStoryIdDraftSceneIdRoute
+  '/stories/$storyId/scenes/$id': typeof StoriesStoryIdScenesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/ai': typeof AiRoute
-  '/characters': typeof CharactersRouteWithChildren
-  '/collaboration': typeof CollaborationRoute
-  '/core': typeof CoreRoute
   '/dashboard': typeof DashboardRoute
-  '/draft': typeof DraftRouteWithChildren
-  '/export': typeof ExportRoute
-  '/flagship': typeof FlagshipRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/graph': typeof GraphRoute
   '/login': typeof LoginRoute
-  '/manuscript': typeof ManuscriptRoute
   '/pricing': typeof PricingRoute
-  '/scenes': typeof ScenesRouteWithChildren
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
   '/templates': typeof TemplatesRoute
-  '/timeline': typeof TimelineRoute
   '/welcome': typeof WelcomeRoute
-  '/characters/$name': typeof CharactersNameRoute
-  '/draft/$sceneId': typeof DraftSceneIdRoute
-  '/scenes/$id': typeof ScenesIdRoute
+  '/stories/$storyId/ai': typeof StoriesStoryIdAiRoute
+  '/stories/$storyId/characters': typeof StoriesStoryIdCharactersRouteWithChildren
+  '/stories/$storyId/collaboration': typeof StoriesStoryIdCollaborationRoute
+  '/stories/$storyId/core': typeof StoriesStoryIdCoreRoute
+  '/stories/$storyId/draft': typeof StoriesStoryIdDraftRouteWithChildren
+  '/stories/$storyId/export': typeof StoriesStoryIdExportRoute
+  '/stories/$storyId/flagship': typeof StoriesStoryIdFlagshipRoute
+  '/stories/$storyId/graph': typeof StoriesStoryIdGraphRoute
+  '/stories/$storyId/manuscript': typeof StoriesStoryIdManuscriptRoute
+  '/stories/$storyId/scenes': typeof StoriesStoryIdScenesRouteWithChildren
+  '/stories/$storyId/timeline': typeof StoriesStoryIdTimelineRoute
+  '/stories/$storyId': typeof StoriesStoryIdIndexRoute
+  '/stories/$storyId/characters/$id': typeof StoriesStoryIdCharactersIdRoute
+  '/stories/$storyId/draft/$sceneId': typeof StoriesStoryIdDraftSceneIdRoute
+  '/stories/$storyId/scenes/$id': typeof StoriesStoryIdScenesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/ai': typeof AiRoute
-  '/characters': typeof CharactersRouteWithChildren
-  '/collaboration': typeof CollaborationRoute
-  '/core': typeof CoreRoute
   '/dashboard': typeof DashboardRoute
-  '/draft': typeof DraftRouteWithChildren
-  '/export': typeof ExportRoute
-  '/flagship': typeof FlagshipRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/graph': typeof GraphRoute
   '/login': typeof LoginRoute
-  '/manuscript': typeof ManuscriptRoute
   '/pricing': typeof PricingRoute
-  '/scenes': typeof ScenesRouteWithChildren
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
   '/templates': typeof TemplatesRoute
-  '/timeline': typeof TimelineRoute
   '/welcome': typeof WelcomeRoute
-  '/characters/$name': typeof CharactersNameRoute
-  '/draft/$sceneId': typeof DraftSceneIdRoute
-  '/scenes/$id': typeof ScenesIdRoute
+  '/stories/$storyId': typeof StoriesStoryIdRouteWithChildren
+  '/stories/$storyId/ai': typeof StoriesStoryIdAiRoute
+  '/stories/$storyId/characters': typeof StoriesStoryIdCharactersRouteWithChildren
+  '/stories/$storyId/collaboration': typeof StoriesStoryIdCollaborationRoute
+  '/stories/$storyId/core': typeof StoriesStoryIdCoreRoute
+  '/stories/$storyId/draft': typeof StoriesStoryIdDraftRouteWithChildren
+  '/stories/$storyId/export': typeof StoriesStoryIdExportRoute
+  '/stories/$storyId/flagship': typeof StoriesStoryIdFlagshipRoute
+  '/stories/$storyId/graph': typeof StoriesStoryIdGraphRoute
+  '/stories/$storyId/manuscript': typeof StoriesStoryIdManuscriptRoute
+  '/stories/$storyId/scenes': typeof StoriesStoryIdScenesRouteWithChildren
+  '/stories/$storyId/timeline': typeof StoriesStoryIdTimelineRoute
+  '/stories/$storyId/': typeof StoriesStoryIdIndexRoute
+  '/stories/$storyId/characters/$id': typeof StoriesStoryIdCharactersIdRoute
+  '/stories/$storyId/draft/$sceneId': typeof StoriesStoryIdDraftSceneIdRoute
+  '/stories/$storyId/scenes/$id': typeof StoriesStoryIdScenesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/ai'
-    | '/characters'
-    | '/collaboration'
-    | '/core'
     | '/dashboard'
-    | '/draft'
-    | '/export'
-    | '/flagship'
     | '/forgot-password'
-    | '/graph'
     | '/login'
-    | '/manuscript'
     | '/pricing'
-    | '/scenes'
     | '/settings'
     | '/setup'
     | '/signup'
     | '/templates'
-    | '/timeline'
     | '/welcome'
-    | '/characters/$name'
-    | '/draft/$sceneId'
-    | '/scenes/$id'
+    | '/stories/$storyId'
+    | '/stories/$storyId/ai'
+    | '/stories/$storyId/characters'
+    | '/stories/$storyId/collaboration'
+    | '/stories/$storyId/core'
+    | '/stories/$storyId/draft'
+    | '/stories/$storyId/export'
+    | '/stories/$storyId/flagship'
+    | '/stories/$storyId/graph'
+    | '/stories/$storyId/manuscript'
+    | '/stories/$storyId/scenes'
+    | '/stories/$storyId/timeline'
+    | '/stories/$storyId/'
+    | '/stories/$storyId/characters/$id'
+    | '/stories/$storyId/draft/$sceneId'
+    | '/stories/$storyId/scenes/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/ai'
-    | '/characters'
-    | '/collaboration'
-    | '/core'
     | '/dashboard'
-    | '/draft'
-    | '/export'
-    | '/flagship'
     | '/forgot-password'
-    | '/graph'
     | '/login'
-    | '/manuscript'
     | '/pricing'
-    | '/scenes'
     | '/settings'
     | '/setup'
     | '/signup'
     | '/templates'
-    | '/timeline'
     | '/welcome'
-    | '/characters/$name'
-    | '/draft/$sceneId'
-    | '/scenes/$id'
+    | '/stories/$storyId/ai'
+    | '/stories/$storyId/characters'
+    | '/stories/$storyId/collaboration'
+    | '/stories/$storyId/core'
+    | '/stories/$storyId/draft'
+    | '/stories/$storyId/export'
+    | '/stories/$storyId/flagship'
+    | '/stories/$storyId/graph'
+    | '/stories/$storyId/manuscript'
+    | '/stories/$storyId/scenes'
+    | '/stories/$storyId/timeline'
+    | '/stories/$storyId'
+    | '/stories/$storyId/characters/$id'
+    | '/stories/$storyId/draft/$sceneId'
+    | '/stories/$storyId/scenes/$id'
   id:
     | '__root__'
     | '/'
-    | '/ai'
-    | '/characters'
-    | '/collaboration'
-    | '/core'
     | '/dashboard'
-    | '/draft'
-    | '/export'
-    | '/flagship'
     | '/forgot-password'
-    | '/graph'
     | '/login'
-    | '/manuscript'
     | '/pricing'
-    | '/scenes'
     | '/settings'
     | '/setup'
     | '/signup'
     | '/templates'
-    | '/timeline'
     | '/welcome'
-    | '/characters/$name'
-    | '/draft/$sceneId'
-    | '/scenes/$id'
+    | '/stories/$storyId'
+    | '/stories/$storyId/ai'
+    | '/stories/$storyId/characters'
+    | '/stories/$storyId/collaboration'
+    | '/stories/$storyId/core'
+    | '/stories/$storyId/draft'
+    | '/stories/$storyId/export'
+    | '/stories/$storyId/flagship'
+    | '/stories/$storyId/graph'
+    | '/stories/$storyId/manuscript'
+    | '/stories/$storyId/scenes'
+    | '/stories/$storyId/timeline'
+    | '/stories/$storyId/'
+    | '/stories/$storyId/characters/$id'
+    | '/stories/$storyId/draft/$sceneId'
+    | '/stories/$storyId/scenes/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AiRoute: typeof AiRoute
-  CharactersRoute: typeof CharactersRouteWithChildren
-  CollaborationRoute: typeof CollaborationRoute
-  CoreRoute: typeof CoreRoute
   DashboardRoute: typeof DashboardRoute
-  DraftRoute: typeof DraftRouteWithChildren
-  ExportRoute: typeof ExportRoute
-  FlagshipRoute: typeof FlagshipRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
-  GraphRoute: typeof GraphRoute
   LoginRoute: typeof LoginRoute
-  ManuscriptRoute: typeof ManuscriptRoute
   PricingRoute: typeof PricingRoute
-  ScenesRoute: typeof ScenesRouteWithChildren
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
   SignupRoute: typeof SignupRoute
   TemplatesRoute: typeof TemplatesRoute
-  TimelineRoute: typeof TimelineRoute
   WelcomeRoute: typeof WelcomeRoute
+  StoriesStoryIdRoute: typeof StoriesStoryIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -346,13 +363,6 @@ declare module '@tanstack/react-router' {
       path: '/welcome'
       fullPath: '/welcome'
       preLoaderRoute: typeof WelcomeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/timeline': {
-      id: '/timeline'
-      path: '/timeline'
-      fullPath: '/timeline'
-      preLoaderRoute: typeof TimelineRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/templates': {
@@ -383,25 +393,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/scenes': {
-      id: '/scenes'
-      path: '/scenes'
-      fullPath: '/scenes'
-      preLoaderRoute: typeof ScenesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/pricing': {
       id: '/pricing'
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/manuscript': {
-      id: '/manuscript'
-      path: '/manuscript'
-      fullPath: '/manuscript'
-      preLoaderRoute: typeof ManuscriptRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -411,39 +407,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/graph': {
-      id: '/graph'
-      path: '/graph'
-      fullPath: '/graph'
-      preLoaderRoute: typeof GraphRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/forgot-password': {
       id: '/forgot-password'
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/flagship': {
-      id: '/flagship'
-      path: '/flagship'
-      fullPath: '/flagship'
-      preLoaderRoute: typeof FlagshipRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/export': {
-      id: '/export'
-      path: '/export'
-      fullPath: '/export'
-      preLoaderRoute: typeof ExportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/draft': {
-      id: '/draft'
-      path: '/draft'
-      fullPath: '/draft'
-      preLoaderRoute: typeof DraftRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -453,34 +421,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/core': {
-      id: '/core'
-      path: '/core'
-      fullPath: '/core'
-      preLoaderRoute: typeof CoreRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/collaboration': {
-      id: '/collaboration'
-      path: '/collaboration'
-      fullPath: '/collaboration'
-      preLoaderRoute: typeof CollaborationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/characters': {
-      id: '/characters'
-      path: '/characters'
-      fullPath: '/characters'
-      preLoaderRoute: typeof CharactersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ai': {
-      id: '/ai'
-      path: '/ai'
-      fullPath: '/ai'
-      preLoaderRoute: typeof AiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -488,85 +428,203 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/scenes/$id': {
-      id: '/scenes/$id'
+    '/stories/$storyId': {
+      id: '/stories/$storyId'
+      path: '/stories/$storyId'
+      fullPath: '/stories/$storyId'
+      preLoaderRoute: typeof StoriesStoryIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stories/$storyId/': {
+      id: '/stories/$storyId/'
+      path: '/'
+      fullPath: '/stories/$storyId/'
+      preLoaderRoute: typeof StoriesStoryIdIndexRouteImport
+      parentRoute: typeof StoriesStoryIdRoute
+    }
+    '/stories/$storyId/timeline': {
+      id: '/stories/$storyId/timeline'
+      path: '/timeline'
+      fullPath: '/stories/$storyId/timeline'
+      preLoaderRoute: typeof StoriesStoryIdTimelineRouteImport
+      parentRoute: typeof StoriesStoryIdRoute
+    }
+    '/stories/$storyId/scenes': {
+      id: '/stories/$storyId/scenes'
+      path: '/scenes'
+      fullPath: '/stories/$storyId/scenes'
+      preLoaderRoute: typeof StoriesStoryIdScenesRouteImport
+      parentRoute: typeof StoriesStoryIdRoute
+    }
+    '/stories/$storyId/manuscript': {
+      id: '/stories/$storyId/manuscript'
+      path: '/manuscript'
+      fullPath: '/stories/$storyId/manuscript'
+      preLoaderRoute: typeof StoriesStoryIdManuscriptRouteImport
+      parentRoute: typeof StoriesStoryIdRoute
+    }
+    '/stories/$storyId/graph': {
+      id: '/stories/$storyId/graph'
+      path: '/graph'
+      fullPath: '/stories/$storyId/graph'
+      preLoaderRoute: typeof StoriesStoryIdGraphRouteImport
+      parentRoute: typeof StoriesStoryIdRoute
+    }
+    '/stories/$storyId/flagship': {
+      id: '/stories/$storyId/flagship'
+      path: '/flagship'
+      fullPath: '/stories/$storyId/flagship'
+      preLoaderRoute: typeof StoriesStoryIdFlagshipRouteImport
+      parentRoute: typeof StoriesStoryIdRoute
+    }
+    '/stories/$storyId/export': {
+      id: '/stories/$storyId/export'
+      path: '/export'
+      fullPath: '/stories/$storyId/export'
+      preLoaderRoute: typeof StoriesStoryIdExportRouteImport
+      parentRoute: typeof StoriesStoryIdRoute
+    }
+    '/stories/$storyId/draft': {
+      id: '/stories/$storyId/draft'
+      path: '/draft'
+      fullPath: '/stories/$storyId/draft'
+      preLoaderRoute: typeof StoriesStoryIdDraftRouteImport
+      parentRoute: typeof StoriesStoryIdRoute
+    }
+    '/stories/$storyId/core': {
+      id: '/stories/$storyId/core'
+      path: '/core'
+      fullPath: '/stories/$storyId/core'
+      preLoaderRoute: typeof StoriesStoryIdCoreRouteImport
+      parentRoute: typeof StoriesStoryIdRoute
+    }
+    '/stories/$storyId/collaboration': {
+      id: '/stories/$storyId/collaboration'
+      path: '/collaboration'
+      fullPath: '/stories/$storyId/collaboration'
+      preLoaderRoute: typeof StoriesStoryIdCollaborationRouteImport
+      parentRoute: typeof StoriesStoryIdRoute
+    }
+    '/stories/$storyId/characters': {
+      id: '/stories/$storyId/characters'
+      path: '/characters'
+      fullPath: '/stories/$storyId/characters'
+      preLoaderRoute: typeof StoriesStoryIdCharactersRouteImport
+      parentRoute: typeof StoriesStoryIdRoute
+    }
+    '/stories/$storyId/ai': {
+      id: '/stories/$storyId/ai'
+      path: '/ai'
+      fullPath: '/stories/$storyId/ai'
+      preLoaderRoute: typeof StoriesStoryIdAiRouteImport
+      parentRoute: typeof StoriesStoryIdRoute
+    }
+    '/stories/$storyId/scenes/$id': {
+      id: '/stories/$storyId/scenes/$id'
       path: '/$id'
-      fullPath: '/scenes/$id'
-      preLoaderRoute: typeof ScenesIdRouteImport
-      parentRoute: typeof ScenesRoute
+      fullPath: '/stories/$storyId/scenes/$id'
+      preLoaderRoute: typeof StoriesStoryIdScenesIdRouteImport
+      parentRoute: typeof StoriesStoryIdScenesRoute
     }
-    '/draft/$sceneId': {
-      id: '/draft/$sceneId'
+    '/stories/$storyId/draft/$sceneId': {
+      id: '/stories/$storyId/draft/$sceneId'
       path: '/$sceneId'
-      fullPath: '/draft/$sceneId'
-      preLoaderRoute: typeof DraftSceneIdRouteImport
-      parentRoute: typeof DraftRoute
+      fullPath: '/stories/$storyId/draft/$sceneId'
+      preLoaderRoute: typeof StoriesStoryIdDraftSceneIdRouteImport
+      parentRoute: typeof StoriesStoryIdDraftRoute
     }
-    '/characters/$name': {
-      id: '/characters/$name'
-      path: '/$name'
-      fullPath: '/characters/$name'
-      preLoaderRoute: typeof CharactersNameRouteImport
-      parentRoute: typeof CharactersRoute
+    '/stories/$storyId/characters/$id': {
+      id: '/stories/$storyId/characters/$id'
+      path: '/$id'
+      fullPath: '/stories/$storyId/characters/$id'
+      preLoaderRoute: typeof StoriesStoryIdCharactersIdRouteImport
+      parentRoute: typeof StoriesStoryIdCharactersRoute
     }
   }
 }
 
-interface CharactersRouteChildren {
-  CharactersNameRoute: typeof CharactersNameRoute
+interface StoriesStoryIdCharactersRouteChildren {
+  StoriesStoryIdCharactersIdRoute: typeof StoriesStoryIdCharactersIdRoute
 }
 
-const CharactersRouteChildren: CharactersRouteChildren = {
-  CharactersNameRoute: CharactersNameRoute,
+const StoriesStoryIdCharactersRouteChildren: StoriesStoryIdCharactersRouteChildren =
+  {
+    StoriesStoryIdCharactersIdRoute: StoriesStoryIdCharactersIdRoute,
+  }
+
+const StoriesStoryIdCharactersRouteWithChildren =
+  StoriesStoryIdCharactersRoute._addFileChildren(
+    StoriesStoryIdCharactersRouteChildren,
+  )
+
+interface StoriesStoryIdDraftRouteChildren {
+  StoriesStoryIdDraftSceneIdRoute: typeof StoriesStoryIdDraftSceneIdRoute
 }
 
-const CharactersRouteWithChildren = CharactersRoute._addFileChildren(
-  CharactersRouteChildren,
+const StoriesStoryIdDraftRouteChildren: StoriesStoryIdDraftRouteChildren = {
+  StoriesStoryIdDraftSceneIdRoute: StoriesStoryIdDraftSceneIdRoute,
+}
+
+const StoriesStoryIdDraftRouteWithChildren =
+  StoriesStoryIdDraftRoute._addFileChildren(StoriesStoryIdDraftRouteChildren)
+
+interface StoriesStoryIdScenesRouteChildren {
+  StoriesStoryIdScenesIdRoute: typeof StoriesStoryIdScenesIdRoute
+}
+
+const StoriesStoryIdScenesRouteChildren: StoriesStoryIdScenesRouteChildren = {
+  StoriesStoryIdScenesIdRoute: StoriesStoryIdScenesIdRoute,
+}
+
+const StoriesStoryIdScenesRouteWithChildren =
+  StoriesStoryIdScenesRoute._addFileChildren(StoriesStoryIdScenesRouteChildren)
+
+interface StoriesStoryIdRouteChildren {
+  StoriesStoryIdAiRoute: typeof StoriesStoryIdAiRoute
+  StoriesStoryIdCharactersRoute: typeof StoriesStoryIdCharactersRouteWithChildren
+  StoriesStoryIdCollaborationRoute: typeof StoriesStoryIdCollaborationRoute
+  StoriesStoryIdCoreRoute: typeof StoriesStoryIdCoreRoute
+  StoriesStoryIdDraftRoute: typeof StoriesStoryIdDraftRouteWithChildren
+  StoriesStoryIdExportRoute: typeof StoriesStoryIdExportRoute
+  StoriesStoryIdFlagshipRoute: typeof StoriesStoryIdFlagshipRoute
+  StoriesStoryIdGraphRoute: typeof StoriesStoryIdGraphRoute
+  StoriesStoryIdManuscriptRoute: typeof StoriesStoryIdManuscriptRoute
+  StoriesStoryIdScenesRoute: typeof StoriesStoryIdScenesRouteWithChildren
+  StoriesStoryIdTimelineRoute: typeof StoriesStoryIdTimelineRoute
+  StoriesStoryIdIndexRoute: typeof StoriesStoryIdIndexRoute
+}
+
+const StoriesStoryIdRouteChildren: StoriesStoryIdRouteChildren = {
+  StoriesStoryIdAiRoute: StoriesStoryIdAiRoute,
+  StoriesStoryIdCharactersRoute: StoriesStoryIdCharactersRouteWithChildren,
+  StoriesStoryIdCollaborationRoute: StoriesStoryIdCollaborationRoute,
+  StoriesStoryIdCoreRoute: StoriesStoryIdCoreRoute,
+  StoriesStoryIdDraftRoute: StoriesStoryIdDraftRouteWithChildren,
+  StoriesStoryIdExportRoute: StoriesStoryIdExportRoute,
+  StoriesStoryIdFlagshipRoute: StoriesStoryIdFlagshipRoute,
+  StoriesStoryIdGraphRoute: StoriesStoryIdGraphRoute,
+  StoriesStoryIdManuscriptRoute: StoriesStoryIdManuscriptRoute,
+  StoriesStoryIdScenesRoute: StoriesStoryIdScenesRouteWithChildren,
+  StoriesStoryIdTimelineRoute: StoriesStoryIdTimelineRoute,
+  StoriesStoryIdIndexRoute: StoriesStoryIdIndexRoute,
+}
+
+const StoriesStoryIdRouteWithChildren = StoriesStoryIdRoute._addFileChildren(
+  StoriesStoryIdRouteChildren,
 )
-
-interface DraftRouteChildren {
-  DraftSceneIdRoute: typeof DraftSceneIdRoute
-}
-
-const DraftRouteChildren: DraftRouteChildren = {
-  DraftSceneIdRoute: DraftSceneIdRoute,
-}
-
-const DraftRouteWithChildren = DraftRoute._addFileChildren(DraftRouteChildren)
-
-interface ScenesRouteChildren {
-  ScenesIdRoute: typeof ScenesIdRoute
-}
-
-const ScenesRouteChildren: ScenesRouteChildren = {
-  ScenesIdRoute: ScenesIdRoute,
-}
-
-const ScenesRouteWithChildren =
-  ScenesRoute._addFileChildren(ScenesRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AiRoute: AiRoute,
-  CharactersRoute: CharactersRouteWithChildren,
-  CollaborationRoute: CollaborationRoute,
-  CoreRoute: CoreRoute,
   DashboardRoute: DashboardRoute,
-  DraftRoute: DraftRouteWithChildren,
-  ExportRoute: ExportRoute,
-  FlagshipRoute: FlagshipRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
-  GraphRoute: GraphRoute,
   LoginRoute: LoginRoute,
-  ManuscriptRoute: ManuscriptRoute,
   PricingRoute: PricingRoute,
-  ScenesRoute: ScenesRouteWithChildren,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
   SignupRoute: SignupRoute,
   TemplatesRoute: TemplatesRoute,
-  TimelineRoute: TimelineRoute,
   WelcomeRoute: WelcomeRoute,
+  StoriesStoryIdRoute: StoriesStoryIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

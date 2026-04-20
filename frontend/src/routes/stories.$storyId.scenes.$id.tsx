@@ -2,18 +2,19 @@ import { Fragment } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { GraphRenderer } from '../components/charts'
 import { Tag, Btn, Label, TensionBar } from '../components/primitives'
-import { useStore } from '../store'
+import { LoadingState } from '../components/LoadingState'
+import { useScenes, useScene } from '../api/scenes'
 import type { SceneNode, GraphEdge } from '../types'
 
 const graphNodes: SceneNode[] = [
-  { id: 'iris', x: 180, y: 100, label: 'Iris', initials: 'IR', type: 'hub' },
-  { id: 'jon', x: 290, y: 70, label: 'Jon', initials: 'JN' },
-  { id: 'fen', x: 90, y: 140, label: 'Fen', initials: 'FN' },
+  { id: 'iris', character_id: 'iris', x: 180, y: 100, label: 'Iris', initials: 'IR', node_type: 'hub', first_appearance_scene: 1 },
+  { id: 'jon', character_id: 'jon', x: 290, y: 70, label: 'Jon', initials: 'JN', first_appearance_scene: 1 },
+  { id: 'fen', character_id: 'fen', x: 90, y: 140, label: 'Fen', initials: 'FN', first_appearance_scene: 2 },
 ]
 
 const graphEdges: GraphEdge[] = [
-  { a: 'iris', b: 'jon', kind: 'alliance', weight: 3 },
-  { a: 'iris', b: 'fen', kind: 'secret', weight: 2 },
+  { id: 'e1', source_node_id: 'iris', target_node_id: 'jon', kind: 'alliance', weight: 3, provenance: 'author', evidence: [], first_evidenced_scene: 1 },
+  { id: 'e2', source_node_id: 'iris', target_node_id: 'fen', kind: 'secret', weight: 2, provenance: 'author', evidence: [], first_evidenced_scene: 2 },
 ]
 
 const beats = [
@@ -24,30 +25,41 @@ const beats = [
 
 function SceneDetailPage() {
   const navigate = useNavigate()
-  const { id } = Route.useParams()
-  const sceneId = Number(id)
-  const scenes = useStore(s => s.scenes)
-  const updateScene = useStore(s => s.updateScene)
+  const { storyId, id } = Route.useParams()
+  const { data: sceneData, isLoading: sceneLoading } = useScene(storyId, id)
+  const { data: scenesData, isLoading: scenesLoading } = useScenes(storyId)
 
-  const scene = scenes.find(s => s.n === sceneId)
+  if (sceneLoading || scenesLoading) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(26,29,36,0.35)', backdropFilter: 'blur(0.5px)' }} />
+        <div style={{ position: 'relative', background: 'var(--paper)', border: '2px solid var(--ink)', boxShadow: '8px 8px 0 var(--ink)', padding: '40px 60px' }}>
+          <LoadingState />
+        </div>
+      </div>
+    )
+  }
+
+  const scene = sceneData
+  const scenes = scenesData?.items ?? []
 
   if (!scene) {
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div
           style={{ position: 'absolute', inset: 0, background: 'rgba(26,29,36,0.35)', backdropFilter: 'blur(0.5px)' }}
-          onClick={() => navigate({ to: '/scenes' })}
+          onClick={() => navigate({ to: '/stories/$storyId/scenes', params: { storyId } })}
         />
         <div style={{ position: 'relative', background: 'var(--paper)', border: '2px solid var(--ink)', boxShadow: '8px 8px 0 var(--ink)', padding: '40px 60px', textAlign: 'center' }}>
           <div className="title-serif" style={{ fontSize: 24, marginBottom: 12 }}>Scene not found</div>
-          <Btn onClick={() => navigate({ to: '/scenes' })}>Back to scenes</Btn>
+          <Btn onClick={() => navigate({ to: '/stories/$storyId/scenes', params: { storyId } })}>Back to scenes</Btn>
         </div>
       </div>
     )
   }
 
   const sorted = [...scenes].sort((a, b) => a.n - b.n)
-  const currentIdx = sorted.findIndex(s => s.n === sceneId)
+  const currentIdx = sorted.findIndex(s => s.id === id)
   const prevScene = currentIdx > 0 ? sorted[currentIdx - 1] : null
   const nextScene = currentIdx < sorted.length - 1 ? sorted[currentIdx + 1] : null
 
@@ -82,7 +94,7 @@ function SceneDetailPage() {
           background: 'rgba(26,29,36,0.35)',
           backdropFilter: 'blur(0.5px)',
         }}
-        onClick={() => navigate({ to: '/scenes' })}
+        onClick={() => navigate({ to: '/stories/$storyId/scenes', params: { storyId } })}
       />
 
       {/* Modal dialog */}
@@ -124,16 +136,16 @@ function SceneDetailPage() {
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {prevScene && (
-                <Btn variant="ghost" onClick={() => navigate({ to: '/scenes/$id', params: { id: String(prevScene.n) } })}>
+                <Btn variant="ghost" onClick={() => navigate({ to: '/stories/$storyId/scenes/$id', params: { storyId, id: prevScene.id } })}>
                   &laquo; S{String(prevScene.n).padStart(2, '0')}
                 </Btn>
               )}
               {nextScene && (
-                <Btn variant="ghost" onClick={() => navigate({ to: '/scenes/$id', params: { id: String(nextScene.n) } })}>
+                <Btn variant="ghost" onClick={() => navigate({ to: '/stories/$storyId/scenes/$id', params: { storyId, id: nextScene.id } })}>
                   S{String(nextScene.n).padStart(2, '0')} &raquo;
                 </Btn>
               )}
-              <Btn variant="ghost" onClick={() => navigate({ to: '/scenes' })}>&#x2715;</Btn>
+              <Btn variant="ghost" onClick={() => navigate({ to: '/stories/$storyId/scenes', params: { storyId } })}>&#x2715;</Btn>
             </div>
           </div>
 
@@ -208,7 +220,6 @@ function SceneDetailPage() {
                           max={10}
                           height={8}
                           color={color}
-                          onClick={label === 'Tension' ? (v) => updateScene(scene.n, { tension: v }) : undefined}
                         />
                       </div>
                     </div>
@@ -239,8 +250,8 @@ function SceneDetailPage() {
             }}
           >
             <div style={{ display: 'flex', gap: 8 }}>
-              <Btn onClick={() => navigate({ to: '/draft' })}>Open in Draft</Btn>
-              <Btn variant="ghost" onClick={() => navigate({ to: '/ai' })}>Linked AI</Btn>
+              <Btn onClick={() => navigate({ to: '/stories/$storyId/draft', params: { storyId } })}>Open in Draft</Btn>
+              <Btn variant="ghost" onClick={() => navigate({ to: '/stories/$storyId/ai', params: { storyId } })}>Linked AI</Btn>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <Btn variant="ghost">Delete</Btn>
@@ -253,6 +264,6 @@ function SceneDetailPage() {
   )
 }
 
-export const Route = createFileRoute('/scenes/$id')({
+export const Route = createFileRoute('/stories/$storyId/scenes/$id')({
   component: SceneDetailPage,
 })

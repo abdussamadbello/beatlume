@@ -2,12 +2,12 @@ import { useEffect } from 'react'
 import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { useStore } from '../store'
 
-export const Route = createFileRoute('/draft/$sceneId')({
+export const Route = createFileRoute('/stories/$storyId/draft/$sceneId')({
   component: DraftScenePage,
 })
 
 function DraftScenePage() {
-  const { sceneId } = Route.useParams()
+  const { storyId, sceneId } = Route.useParams()
   const setActiveSceneN = useStore((s) => s.setActiveSceneN)
 
   useEffect(() => {
@@ -17,5 +17,5 @@ function DraftScenePage() {
     }
   }, [sceneId, setActiveSceneN])
 
-  return <Navigate to="/draft" />
+  return <Navigate to="/stories/$storyId/draft" params={{ storyId }} />
 }

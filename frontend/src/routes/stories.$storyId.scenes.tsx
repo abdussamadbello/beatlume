@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { AppShell, Sidebar } from '../components/chrome'
 import { Btn, Label } from '../components/primitives'
-import { useStore } from '../store'
+import { LoadingState } from '../components/LoadingState'
+import { useScenes } from '../api/scenes'
 
-export const Route = createFileRoute('/scenes')({
+export const Route = createFileRoute('/stories/$storyId/scenes')({
   component: SceneBoard,
 })
 
@@ -22,11 +22,14 @@ const filterCycle: (string | null)[] = [null, 'Iris', 'Jon', 'Cole', 'Fen'];
 const sortCycle: ('order' | 'tension' | 'pov')[] = ['order', 'tension', 'pov'];
 
 function SceneBoard() {
-  const scenes = useStore(s => s.scenes)
-  const addScene = useStore(s => s.addScene)
+  const { storyId } = Route.useParams()
+  const { data, isLoading } = useScenes(storyId)
   const navigate = useNavigate()
   const [filterPov, setFilterPov] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<'order' | 'tension' | 'pov'>('order')
+
+  if (isLoading) return <LoadingState />
+  const scenes = data?.items ?? []
 
   const cycleFilter = () => {
     const idx = filterCycle.indexOf(filterPov)
@@ -59,8 +62,8 @@ function SceneBoard() {
         <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
           {items.map((s) => (
             <div
-              key={s.n}
-              onClick={() => navigate({ to: '/scenes/$id', params: { id: String(s.n) } })}
+              key={s.id}
+              onClick={() => navigate({ to: '/stories/$storyId/scenes/$id', params: { storyId, id: s.id } })}
               style={{ border: '1px solid var(--ink)', background: 'var(--paper)', padding: 10, position: 'relative', cursor: 'pointer' }}
             >
               <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: povColor(s.pov) }} />
@@ -77,7 +80,6 @@ function SceneBoard() {
             </div>
           ))}
           <div
-            onClick={() => addScene(act)}
             style={{ border: '1px dashed var(--ink-3)', padding: 10, textAlign: 'center', color: 'var(--ink-3)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
           >
             + New scene
@@ -88,29 +90,27 @@ function SceneBoard() {
   }
 
   return (
-    <AppShell sidebar={<Sidebar active="/scenes" />}>
-      <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid var(--ink)' }}>
-          <div>
-            <Label>Scene Board</Label>
-            <div className="title-serif" style={{ fontSize: 26 }}>{scenes.length} scenes {'\u00B7'} drag to reorder</div>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn variant="ghost" onClick={cycleFilter}>Filter: {filterPov || 'All'} {'\u25BE'}</Btn>
-            <Btn variant="ghost">Group: Act {'\u25BE'}</Btn>
-            <Btn variant="ghost" onClick={cycleSort}>Sort: {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)} {'\u25BE'}</Btn>
-            <Btn variant="solid" onClick={() => addScene(1)}>+ Scene</Btn>
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid var(--ink)' }}>
+        <div>
+          <Label>Scene Board</Label>
+          <div className="title-serif" style={{ fontSize: 26 }}>{scenes.length} scenes {'\u00B7'} drag to reorder</div>
         </div>
-
-        {/* Kanban columns */}
-        <div style={{ flex: 1, padding: 16, display: 'flex', gap: 12, overflow: 'hidden' }}>
-          <ActColumn act={1} label="I" />
-          <ActColumn act={2} label="II" />
-          <ActColumn act={3} label="III" />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Btn variant="ghost" onClick={cycleFilter}>Filter: {filterPov || 'All'} {'\u25BE'}</Btn>
+          <Btn variant="ghost">Group: Act {'\u25BE'}</Btn>
+          <Btn variant="ghost" onClick={cycleSort}>Sort: {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)} {'\u25BE'}</Btn>
+          <Btn variant="solid">+ Scene</Btn>
         </div>
       </div>
-    </AppShell>
+
+      {/* Kanban columns */}
+      <div style={{ flex: 1, padding: 16, display: 'flex', gap: 12, overflow: 'hidden' }}>
+        <ActColumn act={1} label="I" />
+        <ActColumn act={2} label="II" />
+        <ActColumn act={3} label="III" />
+      </div>
+    </div>
   )
 }

@@ -1,84 +1,12 @@
 import { useState } from 'react'
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { Btn, Tag, Label } from '../components/primitives'
+import { LoadingState } from '../components/LoadingState'
 import { useStore } from '../store'
+import { useStories } from '../api/stories'
+import { logout } from '../api/auth'
 
-const stories = [
-  {
-    id: '1',
-    title: 'A Stranger in the Orchard',
-    genres: ['Literary', 'Mystery'],
-    wordCount: 72340,
-    targetWords: 90000,
-    sceneCount: 47,
-    draftNumber: 3,
-    lastEdited: 'Today',
-    status: 'in-progress' as const,
-    tensionPreview: [2, 3, 5, 4, 7, 6, 8, 9, 7, 8, 6, 9],
-  },
-  {
-    id: '2',
-    title: "The Lighthouse Keeper's Daughter",
-    genres: ['Gothic', 'Romance'],
-    wordCount: 45200,
-    targetWords: 80000,
-    sceneCount: 28,
-    draftNumber: 1,
-    lastEdited: '3 days ago',
-    status: 'in-progress' as const,
-    tensionPreview: [1, 2, 4, 3, 5, 6, 4, 7, 5, 8],
-  },
-  {
-    id: '3',
-    title: 'Signal Loss',
-    genres: ['Sci-Fi', 'Thriller'],
-    wordCount: 89100,
-    targetWords: 100000,
-    sceneCount: 62,
-    draftNumber: 2,
-    lastEdited: '1 week ago',
-    status: 'in-progress' as const,
-    tensionPreview: [3, 5, 4, 6, 8, 7, 9, 8, 7, 9, 10, 8],
-  },
-  {
-    id: '4',
-    title: 'Parish of Small Mercies',
-    genres: ['Literary Fiction'],
-    wordCount: 34000,
-    targetWords: 75000,
-    sceneCount: 19,
-    draftNumber: 1,
-    lastEdited: '2 weeks ago',
-    status: 'in-progress' as const,
-    tensionPreview: [1, 2, 3, 2, 4, 3, 5, 4],
-  },
-  {
-    id: '5',
-    title: 'Untitled Project',
-    genres: [],
-    wordCount: 0,
-    targetWords: 80000,
-    sceneCount: 0,
-    draftNumber: 0,
-    lastEdited: 'Yesterday',
-    status: 'not-started' as const,
-    tensionPreview: [],
-  },
-  {
-    id: '6',
-    title: "The Cartographer's Error",
-    genres: ['Historical', 'Adventure'],
-    wordCount: 58400,
-    targetWords: 60000,
-    sceneCount: 41,
-    draftNumber: 4,
-    lastEdited: '1 month ago',
-    status: 'completed' as const,
-    tensionPreview: [2, 4, 3, 6, 5, 7, 8, 6, 9, 7, 8, 10],
-  },
-]
-
-type FilterStatus = 'all' | 'in-progress' | 'completed' | 'not-started'
+type FilterStatus = 'all' | 'in_progress' | 'completed' | 'not_started'
 type SortMode = 'recent' | 'alphabetical' | 'wordcount'
 
 const headerStyle = {
@@ -113,43 +41,28 @@ const filterBtnStyle = (active: boolean) => ({
   cursor: 'pointer',
 })
 
-function TensionSparkline({ data }: { data: number[] }) {
-  if (data.length < 2) return null
-  const w = 120
-  const h = 28
-  const max = Math.max(...data, 1)
-  const points = data
-    .map((v, i) => {
-      const x = (i / (data.length - 1)) * w
-      const y = h - (v / max) * h
-      return `${x},${y}`
-    })
-    .join(' ')
-
-  return (
-    <svg width={w} height={h} style={{ display: 'block' }}>
-      <polyline
-        points={points}
-        fill="none"
-        stroke="var(--ink-3)"
-        strokeWidth="1.5"
-      />
-    </svg>
-  )
-}
-
-function StatusBadge({ status }: { status: 'in-progress' | 'completed' | 'not-started' }) {
+function StatusBadge({ status }: { status: string }) {
   if (status === 'completed') return <Tag variant="solid" style={{ background: 'var(--green)', borderColor: 'var(--green)', color: 'var(--paper)' }}>Completed</Tag>
-  if (status === 'in-progress') return <Tag variant="blue">In Progress</Tag>
+  if (status === 'in_progress') return <Tag variant="blue">In Progress</Tag>
   return <Tag>Not Started</Tag>
 }
 
 function DashboardPage() {
   const navigate = useNavigate()
-  const logout = useStore(s => s.logout)
   const currentUser = useStore(s => s.currentUser)
+  const { data, isLoading } = useStories()
   const [filter, setFilter] = useState<FilterStatus>('all')
   const [sort, setSort] = useState<SortMode>('recent')
+
+  if (isLoading) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--paper)' }}>
+        <LoadingState label="Loading stories..." />
+      </div>
+    )
+  }
+
+  const stories = data?.items ?? []
 
   const filtered = stories.filter((s) => {
     if (filter === 'all') return true
@@ -158,7 +71,7 @@ function DashboardPage() {
 
   const sorted = [...filtered].sort((a, b) => {
     if (sort === 'alphabetical') return a.title.localeCompare(b.title)
-    if (sort === 'wordcount') return b.wordCount - a.wordCount
+    if (sort === 'wordcount') return b.target_words - a.target_words
     return 0 // 'recent' keeps original order
   })
 
@@ -187,7 +100,7 @@ function DashboardPage() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--ink-2)' }}>
-            {currentUser.name}
+            {currentUser?.name ?? 'User'}
           </span>
           <Link
             to="/settings"
@@ -204,7 +117,7 @@ function DashboardPage() {
           </Link>
           <Btn
             variant="ghost"
-            onClick={() => { logout(); navigate({ to: '/login' }) }}
+            onClick={async () => { await logout(); navigate({ to: '/login' }) }}
             style={{ padding: '4px 8px' }}
           >
             Logout
@@ -242,9 +155,9 @@ function DashboardPage() {
             {(
               [
                 ['all', 'All'],
-                ['in-progress', 'In Progress'],
+                ['in_progress', 'In Progress'],
                 ['completed', 'Completed'],
-                ['not-started', 'Not Started'],
+                ['not_started', 'Not Started'],
               ] as const
             ).map(([key, label]) => (
               <button
@@ -285,17 +198,13 @@ function DashboardPage() {
           }}
         >
           {sorted.map((story) => {
-            const progress = story.targetWords > 0 ? story.wordCount / story.targetWords : 0
+            const progress = story.target_words > 0 ? 0 / story.target_words : 0
 
             return (
               <div
                 key={story.id}
                 onClick={() => {
-                  if (story.id === '1') {
-                    navigate({ to: '/' })
-                  } else {
-                    alert('Coming soon')
-                  }
+                  navigate({ to: '/stories/$storyId', params: { storyId: story.id } })
                 }}
                 style={{
                   border: '1.5px solid var(--ink)',
@@ -350,13 +259,12 @@ function DashboardPage() {
                     marginBottom: 8,
                   }}
                 >
-                  {story.wordCount.toLocaleString()} words &middot; {story.sceneCount} scenes
+                  Target: {story.target_words.toLocaleString()} words
                 </div>
 
                 {/* Draft + last edited */}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
-                  {story.draftNumber > 0 && <Label>Draft {story.draftNumber}</Label>}
-                  <Label>{story.lastEdited}</Label>
+                  {story.draft_number > 0 && <Label>Draft {story.draft_number}</Label>}
                 </div>
 
                 {/* Status badge */}
@@ -381,8 +289,7 @@ function DashboardPage() {
                   />
                 </div>
 
-                {/* Tension sparkline */}
-                <TensionSparkline data={story.tensionPreview} />
+                {/* Tension sparkline placeholder */}
               </div>
             )
           })}

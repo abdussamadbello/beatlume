@@ -38,8 +38,8 @@ export function GraphRenderer({
 
       {/* Edges */}
       {edges.map((edge, i) => {
-        const from = nodeMap.get(edge.a);
-        const to = nodeMap.get(edge.b);
+        const from = nodeMap.get(edge.source_node_id);
+        const to = nodeMap.get(edge.target_node_id);
         if (!from || !to) return null;
         const style = edgeStyles[edge.kind];
         return (
@@ -58,10 +58,10 @@ export function GraphRenderer({
 
       {/* Nodes */}
       {nodes.map((node) => {
-        const r = node.type === 'hub' ? 22 : node.type === 'minor' ? 12 : 17;
-        const filled = node.type === 'hub';
+        const r = node.node_type === 'hub' ? 22 : node.node_type === 'minor' ? 12 : 17;
+        const filled = node.node_type === 'hub';
         const isSelected = node.id === selectedId;
-        const strokeColor = isSelected ? 'var(--blue)' : node.type === 'minor' ? 'var(--ink-3)' : 'var(--ink)';
+        const strokeColor = isSelected ? 'var(--blue)' : node.node_type === 'minor' ? 'var(--ink-3)' : 'var(--ink)';
         const strokeW = isSelected ? 2.5 : filled ? 0 : 1.5;
         return (
           <g key={node.id} style={{ cursor: onNodeClick ? 'pointer' : 'default' }} onClick={() => onNodeClick?.(node.id)}>
