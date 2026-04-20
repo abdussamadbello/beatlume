@@ -6,10 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.story import Story
 
 
-async def list_stories(db: AsyncSession, org_id: uuid.UUID) -> tuple[list[Story], int]:
-    result = await db.execute(select(Story).where(Story.org_id == org_id))
+async def list_stories(db: AsyncSession, org_id: uuid.UUID, offset: int = 0, limit: int = 50) -> tuple[list[Story], int]:
+    result = await db.execute(
+        select(Story).where(Story.org_id == org_id).offset(offset).limit(limit)
+    )
     stories = result.scalars().all()
-    count_result = await db.execute(select(func.count()).select_from(Story).where(Story.org_id == org_id))
+    count_result = await db.execute(
+        select(func.count()).select_from(Story).where(Story.org_id == org_id)
+    )
     total = count_result.scalar()
     return list(stories), total
 

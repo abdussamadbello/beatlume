@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_org, get_db, get_story
@@ -14,8 +14,13 @@ router = APIRouter(prefix="/api/stories/{story_id}/characters", tags=["character
 
 
 @router.get("", response_model=PaginatedResponse[CharacterRead])
-async def list_characters(story: Story = Depends(get_story), db: AsyncSession = Depends(get_db)):
-    chars, total = await character_service.list_characters(db, story.id)
+async def list_characters(
+    story: Story = Depends(get_story),
+    db: AsyncSession = Depends(get_db),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+):
+    chars, total = await character_service.list_characters(db, story.id, offset=offset, limit=limit)
     return PaginatedResponse(items=chars, total=total)
 
 

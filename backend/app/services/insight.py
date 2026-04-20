@@ -7,7 +7,12 @@ from app.models.insight import Insight
 
 
 async def list_insights(
-    db: AsyncSession, story_id: uuid.UUID, category: str | None = None, severity: str | None = None
+    db: AsyncSession,
+    story_id: uuid.UUID,
+    category: str | None = None,
+    severity: str | None = None,
+    offset: int = 0,
+    limit: int = 50,
 ) -> tuple[list[Insight], int]:
     query = select(Insight).where(Insight.story_id == story_id, Insight.dismissed == False)  # noqa: E712
     count_q = select(func.count()).select_from(Insight).where(Insight.story_id == story_id, Insight.dismissed == False)  # noqa: E712
@@ -17,6 +22,7 @@ async def list_insights(
     if severity:
         query = query.where(Insight.severity == severity)
         count_q = count_q.where(Insight.severity == severity)
+    query = query.offset(offset).limit(limit)
     result = await db.execute(query)
     total = (await db.execute(count_q)).scalar()
     return list(result.scalars().all()), total

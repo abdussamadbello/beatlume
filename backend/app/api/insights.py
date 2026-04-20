@@ -18,8 +18,12 @@ async def list_insights(
     db: AsyncSession = Depends(get_db),
     category: str | None = Query(None),
     severity: str | None = Query(None),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
 ):
-    insights, total = await insight_service.list_insights(db, story.id, category, severity)
+    insights, total = await insight_service.list_insights(
+        db, story.id, category, severity, offset=offset, limit=limit,
+    )
     return PaginatedResponse(items=insights, total=total)
 
 

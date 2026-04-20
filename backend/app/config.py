@@ -2,14 +2,14 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Database
+    # Database — required
     database_url: str = "postgresql+asyncpg://beatlume:beatlume_dev@localhost:5432/beatlume"
     database_url_sync: str = "postgresql://beatlume:beatlume_dev@localhost:5432/beatlume"
 
-    # Redis
+    # Redis — required
     redis_url: str = "redis://localhost:6379/0"
 
-    # S3 / MinIO
+    # S3 — keep defaults for dev
     s3_endpoint_url: str = "http://localhost:9000"
     s3_access_key: str = "beatlume"
     s3_secret_key: str = "beatlume_dev"
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     s3_bucket_assets: str = "beatlume-assets"
     s3_presigned_expiry: int = 3600
 
-    # JWT
+    # Auth — JWT secret MUST be set via env var in production
     jwt_secret_key: str = "dev-secret-change-in-production"
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 7

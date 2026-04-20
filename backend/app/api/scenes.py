@@ -20,8 +20,12 @@ async def list_scenes(
     act: int | None = Query(None),
     pov: str | None = Query(None),
     sort: str | None = Query(None),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
 ):
-    scenes, total = await scene_service.list_scenes(db, story.id, act=act, pov=pov, sort=sort)
+    scenes, total = await scene_service.list_scenes(
+        db, story.id, act=act, pov=pov, sort=sort, offset=offset, limit=limit,
+    )
     return PaginatedResponse(items=scenes, total=total)
 
 

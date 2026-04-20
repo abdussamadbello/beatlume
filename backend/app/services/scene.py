@@ -12,6 +12,8 @@ async def list_scenes(
     act: int | None = None,
     pov: str | None = None,
     sort: str | None = None,
+    offset: int = 0,
+    limit: int = 50,
 ) -> tuple[list[Scene], int]:
     query = select(Scene).where(Scene.story_id == story_id)
     count_query = select(func.count()).select_from(Scene).where(Scene.story_id == story_id)
@@ -29,6 +31,8 @@ async def list_scenes(
         query = query.order_by(Scene.pov, Scene.n)
     else:
         query = query.order_by(Scene.n)
+
+    query = query.offset(offset).limit(limit)
 
     result = await db.execute(query)
     scenes = list(result.scalars().all())

@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_org, get_db, get_story
@@ -17,8 +17,10 @@ router = APIRouter(prefix="/api/stories", tags=["stories"])
 async def list_stories(
     org: Organization = Depends(get_current_org),
     db: AsyncSession = Depends(get_db),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
 ):
-    stories, total = await story_service.list_stories(db, org.id)
+    stories, total = await story_service.list_stories(db, org.id, offset=offset, limit=limit)
     return PaginatedResponse(items=stories, total=total)
 
 
