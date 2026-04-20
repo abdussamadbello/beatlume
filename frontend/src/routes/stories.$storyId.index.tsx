@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { TensionCurve } from '../components/charts'
 import { Panel, PanelHead, Tag, Label, PresenceStrip } from '../components/primitives'
-import { tensionData, sampleActs, samplePeaks } from '../data'
 import { LoadingState } from '../components/LoadingState'
 import { useScenes } from '../api/scenes'
 import { useCharacters } from '../api/characters'
 import { useInsights } from '../api/insights'
+import { useTensionCurve } from '../api/analytics'
 
 export const Route = createFileRoute('/stories/$storyId/')({
   component: Overview,
@@ -17,12 +17,17 @@ function Overview() {
   const { data: scenesData, isLoading: scenesLoading } = useScenes(storyId)
   const { data: charsData, isLoading: charsLoading } = useCharacters(storyId)
   const { data: insightsData, isLoading: insightsLoading } = useInsights(storyId)
+  const { data: tensionCurveData } = useTensionCurve(storyId)
 
   if (scenesLoading || charsLoading || insightsLoading) return <LoadingState />
 
   const scenes = scenesData?.items ?? []
   const characters = charsData?.items ?? []
   const insights = insightsData?.items ?? []
+
+  const tensionData: number[] = tensionCurveData?.data ?? []
+  const sampleActs = tensionCurveData?.acts ?? []
+  const samplePeaks = tensionCurveData?.peaks ?? []
 
   const firstInsight = insights.length > 0 ? insights[0] : null
 

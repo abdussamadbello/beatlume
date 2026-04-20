@@ -166,7 +166,7 @@ interface CoreSetting {
 
 ## 3. Views
 
-All 12 views implement Variation A (sidebar layout) as the default. The design system supports Variation B (top-nav) but it is not the primary layout.
+All 12 views implement Variation A (sidebar layout) only. Variation B is not built in this pass.
 
 ### 3.1 Overview (`/`)
 - Story title, logline, genre tags, word count target

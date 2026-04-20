@@ -7,7 +7,7 @@ import { EdgeLegend } from '../components/EdgeLegend'
 import { LoadingState } from '../components/LoadingState'
 import { useGraph } from '../api/graph'
 import { useStore } from '../store'
-import { tensionData, sampleActs, samplePeaks } from '../data'
+import { useTensionCurve } from '../api/analytics'
 import type { SceneNode } from '../types'
 
 export const Route = createFileRoute('/stories/$storyId/flagship')({
@@ -25,9 +25,11 @@ const edgeAppearances = [1, 2, 6, 14, 17, 21, 23, 26, 32, 37];
 
 function FlagshipView() {
   const { storyId } = Route.useParams()
-  const { data: graphData, isLoading } = useGraph(storyId)
+  const { data: graphData, isLoading: graphLoading } = useGraph(storyId)
+  const { data: tensionCurveData, isLoading: tensionLoading } = useTensionCurve(storyId)
   const selectedNodeId = useStore(s => s.selectedNodeId)
   const selectNode = useStore(s => s.selectNode)
+  const isLoading = graphLoading || tensionLoading
 
   const [scrubberPosition, setScrubberPosition] = useState(22)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -35,6 +37,10 @@ function FlagshipView() {
 
   const nodes = graphData?.nodes ?? []
   const edges = graphData?.edges ?? []
+
+  const tensionData: number[] = tensionCurveData?.data ?? []
+  const sampleActs = tensionCurveData?.acts ?? []
+  const samplePeaks = tensionCurveData?.peaks ?? []
 
   const scaledNodes: SceneNode[] = nodes.map((n) => ({
     ...n,

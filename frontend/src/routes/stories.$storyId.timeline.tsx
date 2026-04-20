@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { TensionCurve } from '../components/charts'
 import { Anno, SegmentedControl } from '../components/primitives'
-import { tensionData, sampleActs, samplePeaks } from '../data'
+import { LoadingState } from '../components/LoadingState'
+import { useTensionCurve } from '../api/analytics'
 
 export const Route = createFileRoute('/stories/$storyId/timeline')({
   component: TimelineView,
@@ -26,14 +27,19 @@ const inferredMarkers = [
   { scene: 'S40', label: 'Resolution' },
 ] as const;
 
-const emotionalData = tensionData.map((v, i) => {
-  const raw = v + Math.sin(i * 0.8) * 2 + 1;
-  return Math.round(raw * 10) / 10;
-});
-
 function TimelineView() {
   const { storyId } = Route.useParams()
   const navigate = useNavigate()
+  const { data: tensionCurveData, isLoading } = useTensionCurve(storyId)
+
+  const tensionData: number[] = tensionCurveData?.data ?? []
+  const sampleActs = tensionCurveData?.acts ?? []
+  const samplePeaks = tensionCurveData?.peaks ?? []
+
+  const emotionalData = tensionData.map((v: number, i: number) => {
+    const raw = v + Math.sin(i * 0.8) * 2 + 1;
+    return Math.round(raw * 10) / 10;
+  });
   const [sourceMode, setSourceMode] = useState('Hybrid')
   const [visibleMetrics, setVisibleMetrics] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {}
@@ -43,6 +49,19 @@ function TimelineView() {
 
   const toggleMetric = (label: string) => {
     setVisibleMetrics(prev => ({ ...prev, [label]: !prev[label] }))
+  }
+
+  if (isLoading) return <LoadingState />
+
+  if (tensionData.length === 0) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 64 }}>
+        <div style={{ textAlign: 'center', color: 'var(--ink-3)' }}>
+          <div className="title-serif" style={{ fontSize: 22, marginBottom: 8 }}>No timeline data yet</div>
+          <div style={{ fontSize: 12 }}>Add scenes and tension scores to see the timeline chart.</div>
+        </div>
+      </div>
+    )
   }
 
   return (
