@@ -58,7 +58,10 @@ async def get_current_org(
         )
 
     # Set RLS context for this request
-    await db.execute(text(f"SET app.current_org_id = '{user.active_org_id}'"))
+    await db.execute(
+        text("SELECT set_config('app.current_org_id', :org_id, true)"),
+        {"org_id": str(user.active_org_id)},
+    )
 
     result = await db.execute(
         select(Organization).where(Organization.id == user.active_org_id)

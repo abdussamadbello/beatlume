@@ -34,6 +34,12 @@ def app(db_session):
         yield db_session
 
     application.dependency_overrides[get_db] = override_get_db
+
+    # Disable rate limiting in tests
+    from app.api.auth import limiter as auth_limiter
+    auth_limiter.enabled = False
+    application.state.limiter.enabled = False
+
     return application
 
 

@@ -3,7 +3,7 @@ import pytest
 
 async def get_auth_token(client) -> str:
     resp = await client.post("/auth/signup", json={
-        "name": "Writer", "email": "writer@example.com", "password": "pass123",
+        "name": "Writer", "email": "writer@example.com", "password": "pass1234",
     })
     return resp.json()["access_token"]
 

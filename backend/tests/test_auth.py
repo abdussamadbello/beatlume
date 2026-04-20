@@ -17,10 +17,10 @@ async def test_signup_creates_user(client):
 @pytest.mark.asyncio
 async def test_signup_duplicate_email(client):
     await client.post("/auth/signup", json={
-        "name": "Ada", "email": "dup@example.com", "password": "pass123",
+        "name": "Ada", "email": "dup@example.com", "password": "pass1234",
     })
     resp = await client.post("/auth/signup", json={
-        "name": "Ada2", "email": "dup@example.com", "password": "pass456",
+        "name": "Ada2", "email": "dup@example.com", "password": "pass4567",
     })
     assert resp.status_code == 409
 
@@ -28,10 +28,10 @@ async def test_signup_duplicate_email(client):
 @pytest.mark.asyncio
 async def test_login_valid(client):
     await client.post("/auth/signup", json={
-        "name": "Ada", "email": "login@example.com", "password": "pass123",
+        "name": "Ada", "email": "login@example.com", "password": "pass1234",
     })
     resp = await client.post("/auth/login", json={
-        "email": "login@example.com", "password": "pass123",
+        "email": "login@example.com", "password": "pass1234",
     })
     assert resp.status_code == 200
     assert "access_token" in resp.json()
@@ -40,7 +40,7 @@ async def test_login_valid(client):
 @pytest.mark.asyncio
 async def test_login_wrong_password(client):
     await client.post("/auth/signup", json={
-        "name": "Ada", "email": "wrong@example.com", "password": "pass123",
+        "name": "Ada", "email": "wrong@example.com", "password": "pass1234",
     })
     resp = await client.post("/auth/login", json={
         "email": "wrong@example.com", "password": "wrongpass",
@@ -51,7 +51,7 @@ async def test_login_wrong_password(client):
 @pytest.mark.asyncio
 async def test_login_nonexistent_email(client):
     resp = await client.post("/auth/login", json={
-        "email": "nobody@example.com", "password": "pass123",
+        "email": "nobody@example.com", "password": "pass1234",
     })
     assert resp.status_code == 401
 
@@ -59,7 +59,7 @@ async def test_login_nonexistent_email(client):
 @pytest.mark.asyncio
 async def test_get_me_authenticated(client):
     signup = await client.post("/auth/signup", json={
-        "name": "Ada", "email": "me@example.com", "password": "pass123",
+        "name": "Ada", "email": "me@example.com", "password": "pass1234",
     })
     token = signup.json()["access_token"]
     resp = await client.get("/api/users/me", headers={"Authorization": f"Bearer {token}"})
@@ -79,7 +79,7 @@ async def test_get_me_unauthenticated(client):
 @pytest.mark.asyncio
 async def test_update_me(client):
     signup = await client.post("/auth/signup", json={
-        "name": "Ada", "email": "update@example.com", "password": "pass123",
+        "name": "Ada", "email": "update@example.com", "password": "pass1234",
     })
     token = signup.json()["access_token"]
     resp = await client.put(
@@ -94,7 +94,7 @@ async def test_update_me(client):
 @pytest.mark.asyncio
 async def test_get_my_organizations(client):
     signup = await client.post("/auth/signup", json={
-        "name": "Ada", "email": "orgs@example.com", "password": "pass123",
+        "name": "Ada", "email": "orgs@example.com", "password": "pass1234",
     })
     token = signup.json()["access_token"]
     resp = await client.get(

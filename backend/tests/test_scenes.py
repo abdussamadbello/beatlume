@@ -4,7 +4,7 @@ import pytest
 async def setup_story(client) -> tuple[str, str]:
     """Create user + story, return (token, story_id)."""
     signup = await client.post("/auth/signup", json={
-        "name": "Writer", "email": "scenes@example.com", "password": "pass123",
+        "name": "Writer", "email": "scenes@example.com", "password": "pass1234",
     })
     token = signup.json()["access_token"]
     story = await client.post("/api/stories", json={"title": "Test Story"}, headers={"Authorization": f"Bearer {token}"})

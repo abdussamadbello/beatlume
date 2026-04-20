@@ -2,8 +2,11 @@ import uuid
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
 from app.config import settings
 from app.deps import get_db
@@ -25,11 +28,13 @@ from app.services.auth import (
     hash_password,
 )
 
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def signup(body: SignupRequest, response: Response, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def signup(request: Request, body: SignupRequest, response: Response, db: AsyncSession = Depends(get_db)):
     # Check if email already exists
     result = await db.execute(select(User).where(User.email == body.email))
     if result.scalar_one_or_none():
@@ -42,7 +47,7 @@ async def signup(body: SignupRequest, response: Response, db: AsyncSession = Dep
         key="refresh_token",
         value=refresh,
         httponly=True,
-        secure=False,  # True in production
+        secure=settings.environment != "development",
         samesite="lax",
         max_age=settings.jwt_refresh_token_expire_days * 86400,
     )
@@ -50,7 +55,8 @@ async def signup(body: SignupRequest, response: Response, db: AsyncSession = Dep
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def login(request: Request, body: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
     user = await authenticate_user(db, body.email, body.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
@@ -63,7 +69,7 @@ async def login(body: LoginRequest, response: Response, db: AsyncSession = Depen
         key="refresh_token",
         value=refresh,
         httponly=True,
-        secure=False,
+        secure=settings.environment != "development",
         samesite="lax",
         max_age=settings.jwt_refresh_token_expire_days * 86400,
     )
@@ -100,7 +106,7 @@ async def refresh_token(
         key="refresh_token",
         value=new_refresh,
         httponly=True,
-        secure=False,
+        secure=settings.environment != "development",
         samesite="lax",
         max_age=settings.jwt_refresh_token_expire_days * 86400,
     )
@@ -215,7 +221,7 @@ async def oauth_callback(
         key="refresh_token",
         value=refresh,
         httponly=True,
-        secure=False,
+        secure=settings.environment != "development",
         samesite="lax",
         max_age=settings.jwt_refresh_token_expire_days * 86400,
     )
