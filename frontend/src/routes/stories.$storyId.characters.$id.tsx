@@ -151,10 +151,10 @@ function CharacterDetailPage() {
   const deleteChar = useDeleteCharacter(storyId)
   const [editOpen, setEditOpen] = useState(false)
 
-  const characters = charsData?.items ?? []
-  const nodes = graphData?.nodes ?? []
-  const edges = graphData?.edges ?? []
-  const scenes = scenesData?.items ?? []
+  const characters = useMemo(() => charsData?.items ?? [], [charsData?.items])
+  const nodes = useMemo(() => graphData?.nodes ?? [], [graphData?.nodes])
+  const edges = useMemo(() => graphData?.edges ?? [], [graphData?.edges])
+  const scenes = useMemo(() => scenesData?.items ?? [], [scenesData?.items])
 
   const char = useMemo(() => characters.find((c) => c.id === id), [characters, id])
   const charIndex = useMemo(() => characters.findIndex((c) => c.id === id), [characters, id])

@@ -42,7 +42,7 @@ function ExportPage() {
     { value: 'pdf', label: 'PDF' },
     { value: 'docx', label: 'DOCX' },
     { value: 'epub', label: 'ePub' },
-    { value: 'txt', label: 'Plain Text' },
+    { value: 'plaintext', label: 'Plain Text' },
   ]
 
   return (

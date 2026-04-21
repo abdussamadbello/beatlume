@@ -82,7 +82,9 @@ const itemBase: CSSProperties = {
   textDecoration: 'none',
   color: 'var(--ink-2)',
   fontSize: 11,
-  borderLeft: '2px solid transparent',
+  borderLeftWidth: 2,
+  borderLeftStyle: 'solid',
+  borderLeftColor: 'transparent',
 };
 
 const activeItem: CSSProperties = {

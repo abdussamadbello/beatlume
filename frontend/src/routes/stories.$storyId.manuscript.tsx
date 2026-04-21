@@ -3,12 +3,14 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Btn, Label } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { useChapters } from '../api/manuscript'
+import { useTriggerExport } from '../api/export'
 import { useStore } from '../store'
 
 function ManuscriptPage() {
   const { storyId } = Route.useParams()
   const { chapter: chapterParam } = Route.useSearch()
   const { data: chaptersData, isLoading } = useChapters(storyId)
+  const exportMutation = useTriggerExport(storyId)
   const editMode = useStore(s => s.editMode)
   const toggleEditMode = useStore(s => s.toggleEditMode)
 
@@ -103,8 +105,20 @@ function ManuscriptPage() {
           <span>72,340 words</span>
           <span>47 scenes &middot; {chapters.length} chapters</span>
           <span>Reading time &asymp; 4h 50m</span>
-          <Btn variant="ghost">Export &middot; PDF</Btn>
-          <Btn variant="ghost">Export &middot; DOCX</Btn>
+          <Btn
+            variant="ghost"
+            onClick={() => exportMutation.mutate({ format: 'pdf' })}
+            disabled={exportMutation.isPending}
+          >
+            Export &middot; PDF
+          </Btn>
+          <Btn
+            variant="ghost"
+            onClick={() => exportMutation.mutate({ format: 'docx' })}
+            disabled={exportMutation.isPending}
+          >
+            Export &middot; DOCX
+          </Btn>
           <Btn onClick={() => toggleEditMode()}>
             {editMode ? 'Read mode' : 'Edit mode'}
           </Btn>

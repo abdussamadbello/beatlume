@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { GraphRenderer } from '../components/charts'
 import { SegmentedControl } from '../components/primitives'
@@ -20,6 +20,7 @@ function GraphView() {
   const { data: graphData, isLoading } = useGraph(storyId)
   const { data: tensionCurveData } = useTensionCurve(storyId)
   const relationshipsMutation = useTriggerRelationships(storyId)
+  const graphWrapRef = useRef<HTMLDivElement | null>(null)
   const selectedNodeId = useStore(s => s.selectedNodeId)
   const selectNode = useStore(s => s.selectNode)
 
@@ -34,8 +35,8 @@ function GraphView() {
   // slices hide edges/nodes by first_evidenced / first_appearance until that scene).
   const [scrubberPosition, setScrubberPosition] = useState(46)
 
-  const nodes = graphData?.nodes ?? []
-  const edges = graphData?.edges ?? []
+  const nodes = useMemo(() => graphData?.nodes ?? [], [graphData?.nodes])
+  const edges = useMemo(() => graphData?.edges ?? [], [graphData?.edges])
   const sampleActs = tensionCurveData?.acts ?? []
 
   const visibleNodes: SceneNode[] = useMemo(
@@ -47,6 +48,21 @@ function GraphView() {
   const selectedEdges = selectedNodeId
     ? edges.filter(e => e.source_node_id === selectedNodeId || e.target_node_id === selectedNodeId)
     : []
+
+  const exportSvg = () => {
+    const svg = graphWrapRef.current?.querySelector('svg')
+    if (!svg) return
+    const clone = svg.cloneNode(true) as SVGSVGElement
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    const source = new XMLSerializer().serializeToString(clone)
+    const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'beatlume-graph.svg'
+    link.click()
+    URL.revokeObjectURL(url)
+  }
 
   if (isLoading) return <LoadingState />
 
@@ -80,13 +96,18 @@ function GraphView() {
           {relationshipsMutation.isError && (
             <span style={{ fontSize: 10, color: 'var(--red, #c00)', alignSelf: 'center' }}>Failed</span>
           )}
-          <span style={{ padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: 'pointer' }}>Export SVG</span>
+          <span
+            onClick={exportSvg}
+            style={{ padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: 'pointer' }}
+          >
+            Export SVG
+          </span>
         </div>
       </div>
 
       {/* Main content: graph + right panel */}
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 240px', overflow: 'hidden' }}>
-        <div style={{ position: 'relative' }} className="grid-bg-fine">
+        <div ref={graphWrapRef} style={{ position: 'relative' }} className="grid-bg-fine">
           <GraphRenderer
             width={920}
             height={560}

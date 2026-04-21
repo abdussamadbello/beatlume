@@ -100,7 +100,9 @@ function AIPage() {
                   display: 'flex',
                   justifyContent: 'space-between',
                   padding: '7px 10px',
-                  borderLeft: `2px solid ${isActive ? 'var(--blue)' : 'transparent'}`,
+                  borderLeftWidth: 2,
+                  borderLeftStyle: 'solid',
+                  borderLeftColor: isActive ? 'var(--blue)' : 'transparent',
                   background: isActive ? 'var(--paper-2)' : 'transparent',
                   cursor: 'pointer',
                 }}

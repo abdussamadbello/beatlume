@@ -28,7 +28,12 @@ export function useCreateScene(storyId: string) {
   return useMutation({
     mutationFn: (data: { title: string; pov?: string; tension?: number; act?: number; location?: string; tag?: string }) =>
       api.post<Scene>(`/api/stories/${storyId}/scenes`, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['stories', storyId, 'scenes'] }),
+    onSuccess: () => qc.invalidateQueries({
+      predicate: (query) => {
+        const key = query.queryKey
+        return key[0] === 'stories' && key[1] === storyId && key[2] === 'scenes' && typeof key[3] !== 'string'
+      },
+    }),
   })
 }
 
@@ -45,6 +50,11 @@ export function useDeleteScene(storyId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (sceneId: string) => api.delete(`/api/stories/${storyId}/scenes/${sceneId}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['stories', storyId, 'scenes'] }),
+    onSuccess: () => qc.invalidateQueries({
+      predicate: (query) => {
+        const key = query.queryKey
+        return key[0] === 'stories' && key[1] === storyId && key[2] === 'scenes' && typeof key[3] !== 'string'
+      },
+    }),
   })
 }

@@ -1,14 +1,15 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { api } from './client'
 
-interface TaskResponse {
-  task_id: string
+interface ExportResponse {
+  job_id: string
+  status: string
 }
 
 export function useTriggerExport(storyId: string) {
   return useMutation({
     mutationFn: (data: { format: string; options?: object }) =>
-      api.post<TaskResponse>(`/api/stories/${storyId}/export`, data),
+      api.post<ExportResponse>(`/api/stories/${storyId}/export`, data),
   })
 }
 

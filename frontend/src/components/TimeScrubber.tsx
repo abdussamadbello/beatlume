@@ -67,7 +67,7 @@ export function TimeScrubber({
           const divPct = max > 0 ? (act.at / max) * 100 : 0
           return (
             <div
-              key={act.label}
+              key={`${act.label}-${act.at}`}
               style={{
                 position: 'absolute',
                 left: `${divPct}%`,

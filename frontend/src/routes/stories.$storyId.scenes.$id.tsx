@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { GraphRenderer } from '../components/charts'
 import { Tag, Btn, Label, TensionBar } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
-import { useScenes, useScene } from '../api/scenes'
+import { useDeleteScene, useScenes, useScene } from '../api/scenes'
 import type { SceneNode, GraphEdge } from '../types'
 
 const graphNodes: SceneNode[] = [
@@ -28,6 +28,7 @@ function SceneDetailPage() {
   const { storyId, id } = Route.useParams()
   const { data: sceneData, isLoading: sceneLoading } = useScene(storyId, id)
   const { data: scenesData, isLoading: scenesLoading } = useScenes(storyId)
+  const deleteScene = useDeleteScene(storyId)
 
   if (sceneLoading || scenesLoading) {
     return (
@@ -83,6 +84,12 @@ function SceneDetailPage() {
     ['Danger', scene.tension, 'var(--red)'],
     ['Hope', Math.max(1, 10 - scene.tension), 'var(--green)'],
   ]
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete scene ${scene.n}: ${scene.title}? This cannot be undone.`)) return
+    await deleteScene.mutateAsync(scene.id)
+    navigate({ to: '/stories/$storyId/scenes', params: { storyId } })
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 999 }}>
@@ -254,8 +261,10 @@ function SceneDetailPage() {
               <Btn variant="ghost" onClick={() => navigate({ to: '/stories/$storyId/ai', params: { storyId } })}>Linked AI</Btn>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <Btn variant="ghost">Delete</Btn>
-              <Btn variant="solid">Save</Btn>
+              <Btn variant="ghost" onClick={handleDelete} disabled={deleteScene.isPending}>
+                {deleteScene.isPending ? 'Deleting...' : 'Delete'}
+              </Btn>
+              <Btn variant="solid" disabled>Saved</Btn>
             </div>
           </div>
         </div>

@@ -266,7 +266,7 @@ function CharactersView() {
   const [roleFilter, setRoleFilter] = useState<Set<string>>(new Set())
   const [hideMinor, setHideMinor] = useState(false)
 
-  const characters = data?.items ?? []
+  const characters = useMemo(() => data?.items ?? [], [data?.items])
 
   const allRoles = useMemo(
     () =>
