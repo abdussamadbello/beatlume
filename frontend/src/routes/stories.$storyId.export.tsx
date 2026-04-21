@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { Btn, Label, Panel, PanelHead } from '../components/primitives'
+import { Btn, Panel, PanelHead } from '../components/primitives'
 import { useTriggerExport } from '../api/export'
 
 export const Route = createFileRoute('/stories/$storyId/export')({

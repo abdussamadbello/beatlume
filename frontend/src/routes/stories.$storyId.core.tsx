@@ -64,7 +64,7 @@ function CorePage() {
   const chapters = chaptersData ?? []
   const isStoryLevel = !activeNode || activeNode.kind === 'story'
 
-  function handleNodeClick(node: CoreConfigNode, index: number) {
+  function handleNodeClick(_node: CoreConfigNode, index: number) {
     setActiveCoreIndex(index)
     // Tree selection always updates local state; we do NOT auto-navigate
     // anymore because the whole point now is that clicking a node changes
@@ -94,7 +94,7 @@ function CorePage() {
           navigate({
             to: '/stories/$storyId/manuscript',
             params: { storyId },
-            search: { chapter: num } as Record<string, string>,
+            search: { chapter: num },
           })
         }
       }
