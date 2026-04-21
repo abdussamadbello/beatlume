@@ -15,11 +15,14 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models.base import Base
 from app.models.character import Character
+from app.models.core import CoreConfigNode, CoreKind, CoreSetting
 from app.models.draft import DraftContent
 from app.models.insight import Insight, InsightSeverity
+from app.models.manuscript import ManuscriptChapter
 from app.models.scene import Scene
 from app.models.story import Story, StoryStatus
 from app.models.user import Membership, MembershipRole, Organization, User
+from app.services.core import populate_default_core_sync
 
 # ---------------------------------------------------------------------------
 # Connection
@@ -51,16 +54,127 @@ SCENES = [
 ]
 
 CHARACTERS = [
-    {"name": "Iris", "role": "Protagonist", "desire": "Save the orchard and preserve her family legacy", "flaw": "Cannot let go of the past", "scene_count": 40, "longest_gap": 0},
-    {"name": "Wren", "role": "Foil", "desire": "Redemption for abandoning the family", "flaw": "Avoids confrontation until it is too late", "scene_count": 24, "longest_gap": 3},
-    {"name": "Cole", "role": "Antagonist", "desire": "Control the land and its future", "flaw": "Believes ownership equals power", "scene_count": 22, "longest_gap": 5},
-    {"name": "Jon", "role": "Mirror", "desire": "Understand his own place in the valley", "flaw": "Watches instead of acting", "scene_count": 18, "longest_gap": 4},
-    {"name": "Mara", "role": "Family", "desire": "Protect Iris from the truth", "flaw": "Keeps secrets that corrode trust", "scene_count": 12, "longest_gap": 9},
-    {"name": "Kai", "role": "Mentor", "desire": "Guide Iris without imposing his will", "flaw": "Carries guilt from a past failure", "scene_count": 9, "longest_gap": 8},
-    {"name": "Fen", "role": "Ward", "desire": "Escape the valley and start fresh", "flaw": "Lies reflexively when cornered", "scene_count": 8, "longest_gap": 12},
-    {"name": "Doc", "role": "Witness", "desire": "Record the truth before it vanishes", "flaw": "Trusts paper more than people", "scene_count": 6, "longest_gap": 15},
-    {"name": "Sib", "role": "Pawn", "desire": "Please whoever holds power", "flaw": "Cannot distinguish loyalty from submission", "scene_count": 6, "longest_gap": 11},
-    {"name": "Old Man", "role": "Ghost", "desire": "Be remembered as he was, not as he became", "flaw": "Left no instructions for the living", "scene_count": 4, "longest_gap": 18},
+    {
+        "name": "Iris",
+        "role": "Protagonist",
+        "description": "A widow returning to her family's failing orchard.",
+        "bio": (
+            "Iris Holloway is thirty-eight, recently widowed, and the last Holloway still answering to that name. "
+            "She left the orchard at nineteen and built a life in the city as a botanical illustrator. When her mother dies, "
+            "she returns to find the trees diseased, the books mortgaged, and a stranger asking too many questions about her sister."
+        ),
+        "desire": "Save the orchard and preserve her family legacy",
+        "flaw": "Cannot let go of the past",
+        "scene_count": 40, "longest_gap": 0,
+    },
+    {
+        "name": "Wren",
+        "role": "Foil",
+        "description": "Iris's estranged half-brother, returning after twenty years.",
+        "bio": (
+            "Wren disappeared the summer their father died and surfaces now driving a borrowed truck and carrying a debt no one will name. "
+            "He works the harvest beside Iris with the easy competence of someone who never wanted to leave, and the watchfulness of someone who knows why he had to."
+        ),
+        "desire": "Redemption for abandoning the family",
+        "flaw": "Avoids confrontation until it is too late",
+        "scene_count": 24, "longest_gap": 3,
+    },
+    {
+        "name": "Cole",
+        "role": "Antagonist",
+        "description": "A neighboring landowner with plans for the valley.",
+        "bio": (
+            "Cole Maddox runs the largest commercial orchard in the county and has spent a decade quietly buying out the smaller ones. "
+            "He believes Iris's grief is a temporary obstacle and her land is already, in every way that matters, his."
+        ),
+        "desire": "Control the land and its future",
+        "flaw": "Believes ownership equals power",
+        "scene_count": 22, "longest_gap": 5,
+    },
+    {
+        "name": "Jon",
+        "role": "Mirror",
+        "description": "A field hand who has worked the orchard since childhood.",
+        "bio": (
+            "Jon grew up in the cottage at the edge of the property and stayed on after Iris's mother died, paid in room and board and silence. "
+            "He sees everything that happens at the orchard and reports almost none of it."
+        ),
+        "desire": "Understand his own place in the valley",
+        "flaw": "Watches instead of acting",
+        "scene_count": 18, "longest_gap": 4,
+    },
+    {
+        "name": "Mara",
+        "role": "Family",
+        "description": "Iris's aunt; the one who stayed.",
+        "bio": (
+            "Mara raised Iris's sister after the accident and has run the orchard accounts ever since. "
+            "She loves Iris with a fierce, conditional clarity and has been waiting two decades to tell her exactly one thing."
+        ),
+        "desire": "Protect Iris from the truth",
+        "flaw": "Keeps secrets that corrode trust",
+        "scene_count": 12, "longest_gap": 9,
+    },
+    {
+        "name": "Kai",
+        "role": "Mentor",
+        "description": "A retired arborist and old friend of Iris's father.",
+        "bio": (
+            "Kai diagnosed the blight in the orchard's heritage trees three years before anyone else would listen. "
+            "He keeps a notebook of everything he failed to save and offers Iris counsel only when she stops asking for it."
+        ),
+        "desire": "Guide Iris without imposing his will",
+        "flaw": "Carries guilt from a past failure",
+        "scene_count": 9, "longest_gap": 8,
+    },
+    {
+        "name": "Fen",
+        "role": "Ward",
+        "description": "A teenage runaway Iris finds sleeping in the barn.",
+        "bio": (
+            "Fen is sixteen, evasive about everything, and useful with a ladder. "
+            "Iris cannot tell whether the boy is hiding from the law, from family, or from something he saw at Cole's place."
+        ),
+        "desire": "Escape the valley and start fresh",
+        "flaw": "Lies reflexively when cornered",
+        "scene_count": 8, "longest_gap": 12,
+    },
+    {
+        "name": "Doc",
+        "role": "Witness",
+        "description": "The county's part-time medical examiner and full-time historian.",
+        "bio": (
+            "Doc kept the records on every accident and unexplained death in the valley for forty years. "
+            "He is the only person left who remembers the night Iris's sister disappeared, and the only one with the paperwork to prove it."
+        ),
+        "desire": "Record the truth before it vanishes",
+        "flaw": "Trusts paper more than people",
+        "scene_count": 6, "longest_gap": 15,
+    },
+    {
+        "name": "Sib",
+        "role": "Pawn",
+        "description": "Cole's bookkeeper; soft-spoken and exhaustively loyal.",
+        "bio": (
+            "Sib has worked for Cole since she was twenty-two and has never once asked what the off-ledger payments were for. "
+            "Her loyalty is mistaken by everyone, including herself, for character."
+        ),
+        "desire": "Please whoever holds power",
+        "flaw": "Cannot distinguish loyalty from submission",
+        "scene_count": 6, "longest_gap": 11,
+    },
+    {
+        "name": "Old Man",
+        "role": "Ghost",
+        "description": "Iris's late father, present in memory and letters.",
+        "bio": (
+            "Henry Holloway built the orchard with his own hands and lost it slowly, in transactions he never explained to his daughters. "
+            "His handwriting appears throughout the story in margins, ledgers, and a final letter Iris finds three months too late."
+        ),
+        "desire": "Be remembered as he was, not as he became",
+        "flaw": "Left no instructions for the living",
+        "scene_count": 4, "longest_gap": 18,
+    },
 ]
 
 PROSE: dict[int, str] = {
@@ -141,6 +255,112 @@ PROSE: dict[int, str] = {
     ),
 }
 
+CORE_NODES: list[dict] = [
+    {"depth": 0, "label": "A Stranger in the Orchard", "kind": CoreKind.story, "active": True},
+    {"depth": 1, "label": "Part One \u2014 Roots", "kind": CoreKind.part, "active": False},
+    {"depth": 2, "label": "Ch 1 \u2014 The Orchard at First Light", "kind": CoreKind.chap, "active": False},
+    {"depth": 3, "label": "S01 \u2014 Orchard at dawn", "kind": CoreKind.scene, "active": True},
+    {"depth": 3, "label": "S02 \u2014 The letter from Col.", "kind": CoreKind.scene, "active": False},
+    {"depth": 2, "label": "Ch 2 \u2014 Wren", "kind": CoreKind.chap, "active": False},
+    {"depth": 3, "label": "S03 \u2014 Wren returns uninvited", "kind": CoreKind.scene, "active": False},
+    {"depth": 1, "label": "Part Two \u2014 Fire", "kind": CoreKind.part, "active": False},
+    {"depth": 2, "label": "Ch 5 \u2014 The Ridge", "kind": CoreKind.chap, "active": False},
+    {"depth": 3, "label": "S05 \u2014 Jon watches from the ridge", "kind": CoreKind.scene, "active": False},
+    {"depth": 3, "label": "S06 \u2014 Kai's warning", "kind": CoreKind.scene, "active": False},
+    {"depth": 1, "label": "Part Three \u2014 Ash", "kind": CoreKind.part, "active": False},
+    {"depth": 2, "label": "Ch 12 \u2014 Confession", "kind": CoreKind.chap, "active": False},
+]
+
+CORE_SETTINGS: list[dict] = [
+    {"key": "Title", "value": "A Stranger in the Orchard", "source": "user", "tag": None},
+    {"key": "Author", "value": "Elena Marsh", "source": "user", "tag": None},
+    {"key": "Genre", "value": "Literary fiction", "source": "user", "tag": "primary"},
+    {"key": "POV", "value": "Third-person limited", "source": "user", "tag": None},
+    {"key": "Tense", "value": "Past", "source": "user", "tag": None},
+    {"key": "Draft", "value": "3", "source": "system", "tag": None},
+    {"key": "Word count", "value": "72,340", "source": "system", "tag": None},
+    {"key": "Scene count", "value": "47", "source": "system", "tag": None},
+    {"key": "Chapter count", "value": "18", "source": "system", "tag": None},
+    {"key": "Act structure", "value": "3-act", "source": "user", "tag": None},
+    {"key": "Time span", "value": "14 months", "source": "AI", "tag": "inferred"},
+    {"key": "Primary location", "value": "Montana orchard", "source": "AI", "tag": "inferred"},
+    {"key": "Protagonist", "value": "Iris", "source": "AI", "tag": "inferred"},
+    {"key": "Central conflict", "value": "Land ownership vs. family loyalty", "source": "AI", "tag": "inferred"},
+]
+
+
+# Per-node overrides: key is the node's label, value is a list of settings that
+# override the story-level defaults for that specific node (and, by inheritance,
+# all its descendants until another override overrides it).
+CORE_OVERRIDES: dict[str, list[dict]] = {
+    "Ch 2 \u2014 Wren": [
+        # This chapter tightens the POV close to Wren and shifts the location.
+        {"key": "POV", "value": "Third-person close (Wren)", "source": "user", "tag": None},
+        {"key": "Primary location", "value": "Kitchen, Orchard house", "source": "AI", "tag": "inferred"},
+    ],
+    "Ch 5 \u2014 The Ridge": [
+        # POV shift to Jon for the ridge sequence.
+        {"key": "POV", "value": "Third-person close (Jon)", "source": "user", "tag": None},
+        {"key": "Primary location", "value": "North ridge", "source": "AI", "tag": "inferred"},
+    ],
+    "S05 \u2014 Jon watches from the ridge": [
+        # One-scene tense experiment — the ridge scene plays in present tense.
+        {"key": "Tense", "value": "Present", "source": "user", "tag": None},
+    ],
+    "Ch 12 \u2014 Confession": [
+        {"key": "Primary location", "value": "Kitchen, Orchard house", "source": "AI", "tag": "inferred"},
+    ],
+}
+
+CHAPTERS: list[dict] = [
+    {
+        "num": 1,
+        "title": "The Letter",
+        "scenes": [1, 2],
+    },
+    {
+        "num": 2,
+        "title": "The Return",
+        "scenes": [3, 4],
+    },
+    {
+        "num": 3,
+        "title": "Whispers on the Ridge",
+        "scenes": [5, 6],
+    },
+    {
+        "num": 4,
+        "title": "A Lie Well Told",
+        "scenes": [7],
+    },
+    {
+        "num": 5,
+        "title": "Fire and Ash",
+        "scenes": [8, 9],
+    },
+    {
+        "num": 6,
+        "title": "The Court",
+        "scenes": [10],
+    },
+    {
+        "num": 7,
+        "title": "The Deed",
+        "scenes": [11],
+    },
+    {
+        "num": 8,
+        "title": "Confession",
+        "scenes": [12],
+    },
+    {
+        "num": 9,
+        "title": "The Orchard Emptied",
+        "scenes": [13],
+    },
+]
+
+
 INSIGHTS = [
     {
         "severity": InsightSeverity.red,
@@ -183,14 +403,165 @@ INSIGHTS = [
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+def _seed_manuscript(db: Session, story: Story) -> None:
+    """Insert manuscript chapters assembled from seeded scene prose.
+
+    Idempotent — skips chapters that already exist for the story.
+    """
+    existing_nums = {
+        row[0]
+        for row in db.execute(
+            select(ManuscriptChapter.num).where(ManuscriptChapter.story_id == story.id)
+        ).all()
+    }
+    if len(existing_nums) >= len(CHAPTERS):
+        return
+
+    for i, ch in enumerate(CHAPTERS):
+        if ch["num"] in existing_nums:
+            continue
+        body = "\n\n".join(PROSE[n] for n in ch["scenes"] if n in PROSE)
+        db.add(
+            ManuscriptChapter(
+                id=uuid.uuid4(),
+                org_id=story.org_id,
+                story_id=story.id,
+                num=ch["num"],
+                title=ch["title"],
+                content=body,
+                sort_order=i,
+            )
+        )
+
+
+def _seed_core(db: Session, story: Story) -> None:
+    """Insert the rich sample narrative-core tree + settings if not present.
+
+    Idempotent — checks existence per row so the seed can be re-run to
+    backfill data on already-seeded databases.
+    """
+    existing_node_count = db.execute(
+        select(Story).where(Story.id == story.id)
+    ).scalar_one_or_none()
+    if existing_node_count is None:
+        return
+
+    has_any_node = db.execute(
+        select(CoreConfigNode).where(CoreConfigNode.story_id == story.id).limit(1)
+    ).scalar_one_or_none()
+    if has_any_node is None:
+        # Track the most recent node at each depth so we can assign parent_id
+        # without relying on a post-hoc backfill query.
+        depth_stack: dict[int, uuid.UUID] = {}
+        for i, n in enumerate(CORE_NODES):
+            node_id = uuid.uuid4()
+            parent_id = depth_stack.get(n["depth"] - 1)
+            db.add(
+                CoreConfigNode(
+                    id=node_id,
+                    org_id=story.org_id,
+                    story_id=story.id,
+                    parent_id=parent_id,
+                    depth=n["depth"],
+                    label=n["label"],
+                    kind=n["kind"],
+                    active=n.get("active", False),
+                    sort_order=i,
+                )
+            )
+            depth_stack[n["depth"]] = node_id
+            # Any stale entries for deeper levels are no longer valid parents
+            # for later nodes, so forget them.
+            for d in list(depth_stack.keys()):
+                if d > n["depth"]:
+                    del depth_stack[d]
+        db.flush()
+
+    # Story-level defaults (config_node_id IS NULL)
+    existing_root_keys = {
+        row[0]
+        for row in db.execute(
+            select(CoreSetting.key).where(
+                CoreSetting.story_id == story.id, CoreSetting.config_node_id.is_(None)
+            )
+        ).all()
+    }
+    for s in CORE_SETTINGS:
+        if s["key"] in existing_root_keys:
+            continue
+        db.add(
+            CoreSetting(
+                id=uuid.uuid4(),
+                org_id=story.org_id,
+                story_id=story.id,
+                config_node_id=None,
+                key=s["key"],
+                value=s["value"],
+                source=s["source"],
+                tag=s["tag"],
+            )
+        )
+    db.flush()
+
+    # Per-node overrides
+    if CORE_OVERRIDES:
+        nodes_by_label = {
+            n.label: n
+            for n in db.execute(
+                select(CoreConfigNode).where(CoreConfigNode.story_id == story.id)
+            )
+            .scalars()
+            .all()
+        }
+        for label, overrides in CORE_OVERRIDES.items():
+            node = nodes_by_label.get(label)
+            if node is None:
+                continue
+            existing_node_keys = {
+                row[0]
+                for row in db.execute(
+                    select(CoreSetting.key).where(
+                        CoreSetting.story_id == story.id,
+                        CoreSetting.config_node_id == node.id,
+                    )
+                ).all()
+            }
+            for s in overrides:
+                if s["key"] in existing_node_keys:
+                    continue
+                db.add(
+                    CoreSetting(
+                        id=uuid.uuid4(),
+                        org_id=story.org_id,
+                        story_id=story.id,
+                        config_node_id=node.id,
+                        key=s["key"],
+                        value=s["value"],
+                        source=s["source"],
+                        tag=s["tag"],
+                    )
+                )
+
+
 def seed() -> None:
     with Session(engine) as db:
-        # Check idempotency
-        existing = db.execute(
+        existing_user = db.execute(
             select(User).where(User.email == "elena@beatlume.io")
         ).scalar_one_or_none()
-        if existing is not None:
-            print("Seed data already exists (elena@beatlume.io found). Skipping.")
+        if existing_user is not None:
+            existing_story = db.execute(
+                select(Story).where(Story.org_id == existing_user.active_org_id)
+            ).scalar_one_or_none()
+            if existing_story is not None:
+                _seed_core(db, existing_story)
+                _seed_manuscript(db, existing_story)
+                db.commit()
+                print(
+                    "Seed data already exists (elena@beatlume.io found). "
+                    "Backfilled narrative-core nodes/settings and manuscript chapters if missing."
+                )
+            else:
+                print("Seed data already exists (elena@beatlume.io found). Skipping.")
             return
 
         # 1. Organization
@@ -265,6 +636,8 @@ def seed() -> None:
                 story_id=story.id,
                 name=c["name"],
                 role=c["role"],
+                description=c.get("description", ""),
+                bio=c.get("bio", ""),
                 desire=c["desire"],
                 flaw=c["flaw"],
                 scene_count=c["scene_count"],
@@ -287,7 +660,13 @@ def seed() -> None:
             db.add(draft)
         db.flush()
 
-        # 8. Insights
+        # 8. Narrative core (config tree + settings)
+        _seed_core(db, story)
+
+        # 9. Manuscript chapters (assembled from scene prose)
+        _seed_manuscript(db, story)
+
+        # 10. Insights
         for ins in INSIGHTS:
             insight = Insight(
                 id=uuid.uuid4(),
@@ -309,6 +688,8 @@ def seed() -> None:
         print(f"  Story: {story.id} — A Stranger in the Orchard")
         print(f"  Scenes: {len(SCENES)}, Characters: {len(CHARACTERS)}")
         print(f"  Draft content: {len(PROSE)} scenes with prose")
+        print(f"  Core nodes: {len(CORE_NODES)}, Core settings: {len(CORE_SETTINGS)}")
+        print(f"  Manuscript chapters: {len(CHAPTERS)}")
         print(f"  Insights: {len(INSIGHTS)}")
 
 

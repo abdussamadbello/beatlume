@@ -1,8 +1,8 @@
-"""initial tables
+"""initial_schema_from_models
 
-Revision ID: 11b87dffe2ac
+Revision ID: 2b2c323bea26
 Revises: 
-Create Date: 2026-04-19 15:21:14.156441
+Create Date: 2026-04-21 14:49:19.078682
 
 """
 from typing import Sequence, Union
@@ -12,10 +12,48 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '11b87dffe2ac'
+revision: str = '2b2c323bea26'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+
+# Tables with org_id — RLS policies (not represented on SQLAlchemy models)
+ORG_SCOPED_TABLES = [
+    "stories",
+    "scenes",
+    "characters",
+    "character_nodes",
+    "character_edges",
+    "insights",
+    "draft_contents",
+    "core_config_nodes",
+    "core_settings",
+    "manuscript_chapters",
+    "collaborators",
+    "comments",
+    "activity_events",
+    "export_jobs",
+]
+
+
+def _enable_org_rls() -> None:
+    for table in ORG_SCOPED_TABLES:
+        op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
+        op.execute(
+            f"CREATE POLICY org_isolation ON {table} "
+            f"USING (org_id = current_setting('app.current_org_id')::uuid)"
+        )
+        op.execute(
+            f"CREATE POLICY org_isolation_insert ON {table} "
+            f"FOR INSERT WITH CHECK (org_id = current_setting('app.current_org_id')::uuid)"
+        )
+
+
+def _disable_org_rls() -> None:
+    for table in ORG_SCOPED_TABLES:
+        op.execute(f"DROP POLICY IF EXISTS org_isolation_insert ON {table}")
+        op.execute(f"DROP POLICY IF EXISTS org_isolation ON {table}")
+        op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY")
 
 
 def upgrade() -> None:
@@ -40,6 +78,8 @@ def upgrade() -> None:
     sa.Column('org_id', sa.Uuid(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint('draft_number >= 0', name='ck_story_draft_number'),
+    sa.CheckConstraint('target_words > 0', name='ck_story_target_words'),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -56,7 +96,7 @@ def upgrade() -> None:
     sa.Column('active_org_id', sa.Uuid(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.ForeignKeyConstraint(['active_org_id'], ['organizations.id'], ),
+    sa.ForeignKeyConstraint(['active_org_id'], ['organizations.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email')
     )
@@ -69,8 +109,8 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('org_id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_activity_events_org_id'), 'activity_events', ['org_id'], unique=False)
@@ -79,6 +119,8 @@ def upgrade() -> None:
     sa.Column('story_id', sa.Uuid(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('role', sa.String(length=100), nullable=False),
+    sa.Column('description', sa.String(length=500), server_default='', nullable=False),
+    sa.Column('bio', sa.Text(), server_default='', nullable=False),
     sa.Column('desire', sa.Text(), nullable=False),
     sa.Column('flaw', sa.Text(), nullable=False),
     sa.Column('scene_count', sa.Integer(), nullable=False),
@@ -86,8 +128,10 @@ def upgrade() -> None:
     sa.Column('org_id', sa.Uuid(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint('longest_gap >= 0', name='ck_character_longest_gap'),
+    sa.CheckConstraint('scene_count >= 0', name='ck_character_scene_count'),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ),
+    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_characters_org_id'), 'characters', ['org_id'], unique=False)
@@ -100,8 +144,8 @@ def upgrade() -> None:
     sa.Column('accepted_at', sa.DateTime(), nullable=True),
     sa.Column('org_id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_collaborators_org_id'), 'collaborators', ['org_id'], unique=False)
@@ -115,7 +159,7 @@ def upgrade() -> None:
     sa.Column('sort_order', sa.Integer(), nullable=False),
     sa.Column('org_id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ),
+    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_core_config_nodes_org_id'), 'core_config_nodes', ['org_id'], unique=False)
@@ -128,7 +172,7 @@ def upgrade() -> None:
     sa.Column('tag', sa.String(length=100), nullable=True),
     sa.Column('org_id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ),
+    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('story_id', 'key', name='uq_core_setting')
     )
@@ -145,7 +189,7 @@ def upgrade() -> None:
     sa.Column('completed_at', sa.DateTime(), nullable=True),
     sa.Column('org_id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ),
+    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_export_jobs_org_id'), 'export_jobs', ['org_id'], unique=False)
@@ -162,7 +206,7 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('org_id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ),
+    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_insights_org_id'), 'insights', ['org_id'], unique=False)
@@ -175,7 +219,7 @@ def upgrade() -> None:
     sa.Column('sort_order', sa.Integer(), nullable=False),
     sa.Column('org_id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ),
+    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_manuscript_chapters_org_id'), 'manuscript_chapters', ['org_id'], unique=False)
@@ -185,8 +229,8 @@ def upgrade() -> None:
     sa.Column('org_id', sa.Uuid(), nullable=False),
     sa.Column('role', sa.Enum('owner', 'admin', 'editor', 'viewer', name='membershiprole'), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id', 'org_id', name='uq_membership')
     )
@@ -204,8 +248,10 @@ def upgrade() -> None:
     sa.Column('org_id', sa.Uuid(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint('act >= 1', name='ck_scene_act'),
+    sa.CheckConstraint('tension >= 1 AND tension <= 10', name='ck_scene_tension'),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ),
+    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('story_id', 'n', name='uq_scene_number')
     )
@@ -221,9 +267,9 @@ def upgrade() -> None:
     sa.Column('node_type', sa.Enum('hub', 'minor', name='nodetype'), nullable=True),
     sa.Column('first_appearance_scene', sa.Integer(), nullable=False),
     sa.Column('org_id', sa.Uuid(), nullable=False),
-    sa.ForeignKeyConstraint(['character_id'], ['characters.id'], ),
+    sa.ForeignKeyConstraint(['character_id'], ['characters.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ),
+    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_character_nodes_org_id'), 'character_nodes', ['org_id'], unique=False)
@@ -236,9 +282,9 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('org_id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['scene_id'], ['scenes.id'], ),
-    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['scene_id'], ['scenes.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_comments_org_id'), 'comments', ['org_id'], unique=False)
@@ -251,8 +297,8 @@ def upgrade() -> None:
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('org_id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['scene_id'], ['scenes.id'], ),
-    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ),
+    sa.ForeignKeyConstraint(['scene_id'], ['scenes.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_draft_contents_org_id'), 'draft_contents', ['org_id'], unique=False)
@@ -267,18 +313,21 @@ def upgrade() -> None:
     sa.Column('evidence', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
     sa.Column('first_evidenced_scene', sa.Integer(), nullable=False),
     sa.Column('org_id', sa.Uuid(), nullable=False),
+    sa.CheckConstraint('weight >= 0 AND weight <= 1', name='ck_edge_weight'),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['source_node_id'], ['character_nodes.id'], ),
-    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ),
-    sa.ForeignKeyConstraint(['target_node_id'], ['character_nodes.id'], ),
+    sa.ForeignKeyConstraint(['source_node_id'], ['character_nodes.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['story_id'], ['stories.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['target_node_id'], ['character_nodes.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('story_id', 'source_node_id', 'target_node_id', name='uq_edge')
     )
     op.create_index(op.f('ix_character_edges_org_id'), 'character_edges', ['org_id'], unique=False)
+    _enable_org_rls()
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
+    _disable_org_rls()
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_index(op.f('ix_character_edges_org_id'), table_name='character_edges')
     op.drop_table('character_edges')

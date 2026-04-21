@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.story import Story
+from app.services.core import populate_default_core
 
 
 async def list_stories(db: AsyncSession, org_id: uuid.UUID, offset: int = 0, limit: int = 50) -> tuple[list[Story], int]:
@@ -32,6 +33,8 @@ async def create_story(db: AsyncSession, org_id: uuid.UUID, title: str, genres: 
         structure_type=structure_type,
     )
     db.add(story)
+    await db.flush()
+    await populate_default_core(db, story)
     await db.commit()
     await db.refresh(story)
     return story

@@ -187,3 +187,104 @@ def test_word_count():
         {"content": "four five"},
     ]
     assert exp._count_words(chapters) == 5
+
+
+def test_get_setting_case_insensitive():
+    exp = PlainTextExporter()
+    settings = [
+        {"key": "Title", "value": "Seeded Title"},
+        {"key": "Author", "value": "Elena Marsh"},
+    ]
+    assert exp._get_setting(settings, "title") == "Seeded Title"
+    assert exp._get_setting(settings, "AUTHOR") == "Elena Marsh"
+    assert exp._get_setting(settings, "missing", "fallback") == "fallback"
+
+
+def test_plaintext_title_from_core_settings():
+    exporter = PlainTextExporter()
+    result = exporter.export(
+        story={"title": "story-dict fallback", "id": "1"},
+        chapters=[{"num": 1, "title": "Ch1", "content": "text."}],
+        settings=[
+            {"key": "Title", "value": "Canonical Title"},
+            {"key": "Author", "value": "Elena Marsh"},
+            {"key": "Genre", "value": "Literary fiction"},
+        ],
+        options=ExportOptions(),
+    )
+    body = result.file_bytes
+    assert b"CANONICAL TITLE" in body
+    assert b"by Elena Marsh" in body
+    assert b"Literary fiction" in body
+
+
+def test_pdf_title_from_core_settings():
+    from app.export.pdf import PDFExporter
+
+    exporter = PDFExporter()
+    result = exporter.export(
+        story={"title": "Fallback", "id": "1"},
+        chapters=[{"num": 1, "title": "Ch1", "content": "Prose."}],
+        settings=[
+            {"key": "Title", "value": "Canonical Title"},
+            {"key": "Author", "value": "Elena Marsh"},
+            {"key": "Genre", "value": "Literary"},
+        ],
+        options=ExportOptions(),
+    )
+    assert result.file_bytes[:4] == b"%PDF"
+    assert result.filename == "canonical-title.pdf"
+
+
+def test_docx_title_from_core_settings():
+    import zipfile
+    import io
+
+    from app.export.docx_export import DOCXExporter
+
+    exporter = DOCXExporter()
+    result = exporter.export(
+        story={"title": "Fallback", "id": "1"},
+        chapters=[{"num": 1, "title": "Ch1", "content": "Prose."}],
+        settings=[
+            {"key": "Title", "value": "Canonical Title"},
+            {"key": "Author", "value": "Writer"},
+            {"key": "Genre", "value": "Mystery"},
+        ],
+        options=ExportOptions(),
+    )
+    # DOCX is a ZIP with document.xml inside; grep that for the title + author + genre
+    with zipfile.ZipFile(io.BytesIO(result.file_bytes)) as zf:
+        doc_xml = zf.read("word/document.xml").decode("utf-8")
+    assert "Canonical Title" in doc_xml
+    assert "Writer" in doc_xml
+    assert "Mystery" in doc_xml
+
+
+def test_epub_title_from_core_settings():
+    import zipfile
+    import io
+
+    from app.export.epub_export import EPUBExporter
+
+    exporter = EPUBExporter()
+    result = exporter.export(
+        story={"title": "Fallback", "id": "1"},
+        chapters=[{"num": 1, "title": "Ch1", "content": "Prose."}],
+        settings=[
+            {"key": "Title", "value": "Canonical Title"},
+            {"key": "Author", "value": "Writer"},
+            {"key": "Genre", "value": "Literary"},
+        ],
+        options=ExportOptions(),
+    )
+    assert result.filename == "canonical-title.epub"
+    # Grep the metadata OPF for the title + author + subject
+    with zipfile.ZipFile(io.BytesIO(result.file_bytes)) as zf:
+        names = zf.namelist()
+        opf = next((n for n in names if n.endswith(".opf")), None)
+        assert opf is not None
+        content = zf.read(opf).decode("utf-8")
+    assert "Canonical Title" in content
+    assert "Writer" in content
+    assert "Literary" in content

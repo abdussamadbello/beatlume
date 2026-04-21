@@ -13,7 +13,14 @@ export function useCharacters(storyId: string) {
 export function useCreateCharacter(storyId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { name: string; role?: string; desire?: string; flaw?: string }) =>
+    mutationFn: (data: {
+      name: string
+      role?: string
+      description?: string
+      bio?: string
+      desire?: string
+      flaw?: string
+    }) =>
       api.post<Character>(`/api/stories/${storyId}/characters`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['stories', storyId, 'characters'] }),
   })

@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Tag, Label } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { useScenes } from '../api/scenes'
 import { useCharacters } from '../api/characters'
+import { useDraft, useUpdateDraft } from '../api/draft'
 import { useTriggerProseContinue } from '../api/ai'
 import { useStore } from '../store'
 
@@ -14,18 +15,54 @@ function DraftPage() {
   const activeSceneN = useStore(s => s.activeSceneN)
   const setActiveSceneN = useStore(s => s.setActiveSceneN)
 
-  const [draftContent, setDraftContentState] = useState<Record<number, string>>({})
+  const scenes = scenesData?.items ?? []
+  const characters = charsData?.items ?? []
+  const activeScene = scenes.find(s => s.n === activeSceneN)
+
+  const { data: draftData, isLoading: draftLoading, isFetching: draftFetching } =
+    useDraft(storyId, activeScene?.id)
+  const updateDraft = useUpdateDraft(storyId)
   const continueMutation = useTriggerProseContinue(storyId)
+
+  const [draftContent, setDraftContent] = useState('')
+  const [savedAt, setSavedAt] = useState<string | null>(null)
+
+  // Sync textarea from server whenever the active scene or its fetched draft changes.
+  const hydratedForSceneId = useRef<string | null>(null)
+  useEffect(() => {
+    if (!activeScene) return
+    if (draftLoading) return
+    if (hydratedForSceneId.current === activeScene.id) return
+    setDraftContent(draftData?.content ?? '')
+    hydratedForSceneId.current = activeScene.id
+  }, [activeScene, draftData, draftLoading])
+
+  // Debounced auto-save.
+  const saveTimer = useRef<number | null>(null)
+  useEffect(() => {
+    if (!activeScene) return
+    if (hydratedForSceneId.current !== activeScene.id) return
+    if (draftContent === (draftData?.content ?? '')) return
+    if (saveTimer.current) window.clearTimeout(saveTimer.current)
+    saveTimer.current = window.setTimeout(() => {
+      updateDraft.mutate(
+        { sceneId: activeScene.id, content: draftContent },
+        {
+          onSuccess: () => {
+            const now = new Date()
+            setSavedAt(now.toTimeString().slice(0, 5))
+          },
+        },
+      )
+    }, 800)
+    return () => {
+      if (saveTimer.current) window.clearTimeout(saveTimer.current)
+    }
+  }, [draftContent, activeScene, draftData, updateDraft])
 
   if (scenesLoading || charsLoading) return <LoadingState />
 
-  const scenes = scenesData?.items ?? []
-  const characters = charsData?.items ?? []
-
-  const activeScene = scenes.find(s => s.n === activeSceneN)
-  const currentContent = draftContent[activeSceneN] || ''
-  const wordCount = currentContent.split(/\s+/).filter(Boolean).length
-
+  const wordCount = draftContent.split(/\s+/).filter(Boolean).length
   const povCharacter = activeScene
     ? characters.find(c => c.name === activeScene.pov)
     : null
@@ -35,14 +72,18 @@ function DraftPage() {
     continueMutation.mutate(activeScene.id)
   }
 
-  const handleContentChange = (value: string) => {
-    setDraftContentState(prev => ({ ...prev, [activeSceneN]: value }))
-  }
-
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr 300px', overflow: 'hidden' }}>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '240px 1fr 300px',
+        height: '100%',
+        minHeight: 0,
+        overflow: 'hidden',
+      }}
+    >
       {/* Scene rail */}
-      <div style={{ borderRight: '1px solid var(--line)', overflow: 'auto' }}>
+      <div style={{ borderRight: '1px solid var(--line)', overflow: 'auto', minHeight: 0 }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between' }}>
           <Label>Scenes &middot; {scenes.length}</Label>
           <Label>Draft 3</Label>
@@ -54,15 +95,17 @@ function DraftPage() {
               key={s.id}
               onClick={() => setActiveSceneN(s.n)}
               style={{
-                padding: '10px 16px',
+                paddingTop: 10,
+                paddingRight: 16,
+                paddingBottom: 10,
+                paddingLeft: 14,
                 borderBottom: '1px dashed var(--line-2)',
+                borderLeft: `2px solid ${isActive ? 'var(--blue)' : 'transparent'}`,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 cursor: 'pointer',
-                ...(isActive
-                  ? { background: 'var(--paper-2)', borderLeft: '2px solid var(--blue)', paddingLeft: 14 }
-                  : {}),
+                background: isActive ? 'var(--paper-2)' : 'transparent',
               }}
             >
               <div>
@@ -76,7 +119,7 @@ function DraftPage() {
       </div>
 
       {/* Editor */}
-      <div style={{ overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div style={{ padding: '16px 36px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             {activeScene ? (
@@ -96,7 +139,7 @@ function DraftPage() {
             <button
               className="btn"
               onClick={handleAiContinue}
-              disabled={continueMutation.isPending}
+              disabled={continueMutation.isPending || !activeScene}
               style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', cursor: continueMutation.isPending ? 'wait' : 'pointer' }}
             >
               {continueMutation.isPending ? 'Running...' : 'AI continue'}
@@ -106,27 +149,40 @@ function DraftPage() {
             )}
           </div>
         </div>
-        <textarea
-          value={currentContent}
-          onChange={(e) => handleContentChange(e.target.value)}
-          style={{
-            flex: 1,
-            padding: '24px 36px',
-            fontFamily: "'Instrument Serif', serif",
-            fontSize: 17,
-            lineHeight: 1.75,
-            color: 'var(--ink)',
-            maxWidth: 720,
-            border: 'none',
-            outline: 'none',
-            resize: 'none',
-            background: 'transparent',
-            width: '100%',
-          }}
-        />
+        {activeScene ? (
+          <textarea
+            value={draftContent}
+            onChange={(e) => setDraftContent(e.target.value)}
+            placeholder={draftLoading ? 'Loading…' : 'Begin writing this scene…'}
+            style={{
+              flex: 1,
+              padding: '24px 36px',
+              fontFamily: "'Instrument Serif', serif",
+              fontSize: 17,
+              lineHeight: 1.75,
+              color: 'var(--ink)',
+              border: 'none',
+              outline: 'none',
+              resize: 'none',
+              background: 'transparent',
+              width: '100%',
+              minHeight: 0,
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              flex: 1,
+              padding: '24px 36px',
+              color: 'var(--ink-3)',
+              fontSize: 13,
+            }}
+          >
+            Select a scene from the left to begin drafting.
+          </div>
+        )}
         <div
           style={{
-            marginTop: 'auto',
             padding: '10px 36px',
             borderTop: '1px solid var(--line)',
             display: 'flex',
@@ -137,7 +193,17 @@ function DraftPage() {
             textTransform: 'uppercase',
           }}
         >
-          <span>{wordCount} words &middot; autosaved 14:02</span>
+          <span>
+            {wordCount} words
+            {' '}&middot;{' '}
+            {updateDraft.isPending
+              ? 'saving…'
+              : draftFetching
+                ? 'loading…'
+                : savedAt
+                  ? `autosaved ${savedAt}`
+                  : 'not saved yet'}
+          </span>
           <span>Target: 1,200&ndash;1,800</span>
         </div>
       </div>
@@ -148,6 +214,7 @@ function DraftPage() {
           borderLeft: '1px solid var(--line)',
           padding: '14px 16px',
           overflow: 'auto',
+          minHeight: 0,
           background: 'var(--paper-2)',
         }}
       >

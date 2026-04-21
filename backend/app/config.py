@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # Environment
     environment: str = "development"
 
+    # Dev — uvicorn port (BACKEND_PORT in .env; Makefile uses same name)
+    backend_port: int = 8000
+
     model_config = {"env_file": ".env", "case_sensitive": False}
 
 

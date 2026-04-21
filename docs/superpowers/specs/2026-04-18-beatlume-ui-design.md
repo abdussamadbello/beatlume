@@ -205,9 +205,18 @@ All 12 views implement Variation A (sidebar layout) only. Variation B is not bui
 - 10 character rows
 
 ### 3.7 Narrative Core (`/core`)
-- Header: "Configuration hierarchy" + expand all / + override buttons
-- Left panel (330px): indented tree with icons (diamond, grid, square, dot) — 13 nodes from Story down to Beat level, active node highlighted with blue left border
-- Right panel: resolution header showing selected node's path, settings table with columns: Setting, Resolved, Defined at (tag: Story/Chapter/Scene), inherit/override indicator
+- Header: "Configuration hierarchy" + `Reset` / `+ Setting` / `+ Override` buttons (the add button label depends on the selected node: `+ Setting` at the story root, `+ Override` anywhere else).
+- Left panel (330px): structural tree — indented nodes with icons (diamond, grid, square, dot) for Story → Part → Chapter → Scene → Beat. Selecting a node drives what the right panel shows. Scene and chapter nodes also expose an `Open` button that navigates to the Scene Detail view or scrolls the Manuscript to that chapter.
+- Right panel: resolved-settings editor for the selected node. Columns: Setting, Resolved value, Source (`USER` / `SYSTEM` / `AI` colored tag plus optional `tag` label like `inferred`/`primary`), **Defined at** (either `Story`, the ancestor node label like `Ch 5 — The Ridge`, or an `override` pill when defined on the current node), and a per-row actions column.
+- Inheritance: every ancestor value cascades downward. A child node overrides by defining its own row — the resolver walks from the selected node up through parents and picks the nearest-defined value per key. Story-root rows (`config_node_id IS NULL`) are the final fallback.
+- Editing an inherited value on a descendant node creates an override on that node. Editing a row that is already defined on the current node updates it in place.
+- `Revert` on an override deletes just that override so the node re-inherits from its ancestor chain.
+- `Accept` on an AI row flips `source → user` and clears the inferred tag — codifying the "author is always right; AI suggestions are proposals" principle. System-derived story-level rows are read-only; node-level system copies can be freely removed.
+- Empty-state copy (story level): "No settings yet. Click **+ Setting** to add one." / (node level): "No settings yet. Click **+ Override** to add one."
+
+**Data model.** `core_settings.config_node_id` is a nullable FK to `core_config_nodes`. Uniqueness is enforced by two partial indexes (one for `config_node_id IS NULL`, one for non-null) so a key can appear once per node plus once at story root. Node parentage is explicit via `core_config_nodes.parent_id` (self-referential FK, `ON DELETE CASCADE`). See `backend/app/models/core.py` and migration `3c7a4e91d2a1_core_per_node_overrides.py`.
+
+**AI integration.** When the context assembler builds prose-continuation prompts, it resolves settings at the scene's config node — so a chapter-level POV override or a scene-level tense override is what the LLM sees. See `backend/app/ai/context/retrievers.py::get_resolved_settings_for_scene`.
 
 ### 3.8 AI Insights (`/ai`)
 - Left nav (220px): category filter list (All 12, Pacing 3, Relationships 4, Characters 2, Subplots 2, Climax 1) + status summary (Flags/Suggestions/Resolved)

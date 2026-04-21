@@ -8,7 +8,6 @@ import { LoadingState } from '../components/LoadingState'
 import { useGraph } from '../api/graph'
 import { useStore } from '../store'
 import { useTensionCurve } from '../api/analytics'
-import type { SceneNode } from '../types'
 
 export const Route = createFileRoute('/stories/$storyId/flagship')({
   component: FlagshipView,
@@ -41,12 +40,6 @@ function FlagshipView() {
   const tensionData: number[] = tensionCurveData?.data ?? []
   const sampleActs = tensionCurveData?.acts ?? []
   const samplePeaks = tensionCurveData?.peaks ?? []
-
-  const scaledNodes: SceneNode[] = nodes.map((n) => ({
-    ...n,
-    x: n.x * 1.4 + 40,
-    y: n.y * 0.95,
-  }))
 
   const selectedNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null
   const selectedEdges = selectedNodeId
@@ -122,8 +115,9 @@ function FlagshipView() {
           <GraphRenderer
             width={920}
             height={430}
-            nodes={scaledNodes}
+            nodes={nodes}
             edges={edges}
+            timeSlice={scrubberPosition + 1}
             onNodeClick={(id) => selectNode(id)}
             selectedId={selectedNodeId ?? undefined}
           />

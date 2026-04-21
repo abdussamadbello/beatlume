@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { GraphRenderer } from '../components/charts'
-import { Anno, SegmentedControl } from '../components/primitives'
+import { SegmentedControl } from '../components/primitives'
 import { TimeScrubber } from '../components/TimeScrubber'
 import { EdgeLegend } from '../components/EdgeLegend'
 import { LoadingState } from '../components/LoadingState'
@@ -30,24 +30,17 @@ function GraphView() {
     allActs: true,
     allPov: true,
   })
-  const [scrubberPosition, setScrubberPosition] = useState(22)
+  // Default to final scene so relationship lines are visible on first load (earlier
+  // slices hide edges/nodes by first_evidenced / first_appearance until that scene).
+  const [scrubberPosition, setScrubberPosition] = useState(46)
 
   const nodes = graphData?.nodes ?? []
   const edges = graphData?.edges ?? []
   const sampleActs = tensionCurveData?.acts ?? []
 
-  const scaledNodes: SceneNode[] = useMemo(() =>
-    nodes.map((n) => ({
-      ...n,
-      x: n.x * 1.4 + 40,
-      y: n.y * 1.22,
-    })),
-    [nodes]
-  )
-
-  const visibleNodes = useMemo(() =>
-    filters.hideMinor ? scaledNodes.filter(n => n.node_type !== 'minor') : scaledNodes,
-    [scaledNodes, filters.hideMinor]
+  const visibleNodes: SceneNode[] = useMemo(
+    () => (filters.hideMinor ? nodes.filter((n) => n.node_type !== 'minor') : nodes),
+    [nodes, filters.hideMinor],
   )
 
   const selectedNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null
@@ -99,12 +92,10 @@ function GraphView() {
             height={560}
             nodes={visibleNodes}
             edges={edges}
+            timeSlice={scrubberPosition + 1}
             onNodeClick={(id) => selectNode(id)}
             selectedId={selectedNodeId ?? undefined}
           />
-          <Anno variant="blue" style={{ left: 500, top: 190 }}>hub {'\u00B7'} Iris {'\u00B7'} degree 6</Anno>
-          <Anno variant="red" style={{ left: 620, top: 170 }}>conflict triangle</Anno>
-          <Anno style={{ left: 120, top: 440, borderStyle: 'dashed', color: 'var(--ink-3)' }}>disconnected {'\u2014'} Doc</Anno>
         </div>
 
         {/* Right sidebar */}

@@ -13,6 +13,13 @@ from app.schemas.character import CharacterCreate, CharacterRead, CharacterUpdat
 from app.schemas.graph import NodeRead, NodeUpdate, EdgeCreate, EdgeRead, EdgeUpdate, GraphResponse
 from app.schemas.insight import InsightRead
 from app.schemas.draft import DraftRead, DraftUpdate
-from app.schemas.core import CoreNodeRead, CoreNodeUpdate, CoreSettingRead, CoreSettingUpdate
+from app.schemas.core import (
+    CoreNodeRead,
+    CoreNodeUpdate,
+    CoreSettingCreate,
+    CoreSettingRead,
+    CoreSettingUpdate,
+    ResolvedSettingRead,
+)
 from app.schemas.manuscript import ChapterRead, ChapterUpdate
 from app.schemas.collaboration import CollaboratorRead, InviteRequest, CommentCreate, CommentRead, ActivityRead

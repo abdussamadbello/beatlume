@@ -1,7 +1,21 @@
-from app.ai.context.token_budget import TokenBudget, count_tokens
-from app.ai.context.formatters import format_scene_metadata, format_character_card, format_edge
-from app.ai.context.retrievers import SceneContext, CharacterContext, EdgeContext
+import uuid
+
+import pytest
+
+from app.ai.context.assembler import ContextAssembler
+from app.ai.context.formatters import (
+    format_character_card,
+    format_edge,
+    format_scene_metadata,
+    format_story_metadata,
+)
 from app.ai.context.rankers import rank_scenes_for_continuation
+from app.ai.context.retrievers import CharacterContext, EdgeContext, SceneContext
+from app.ai.context.token_budget import TokenBudget, count_tokens
+from app.models.scene import Scene
+from app.models.story import Story
+from app.models.user import Organization
+from app.services.core import populate_default_core
 
 
 def test_count_tokens():
@@ -63,3 +77,191 @@ def test_rank_scenes_proximity():
     ranked = rank_scenes_for_continuation(scenes, target_n=3)
     # Scene 3 should rank highest (distance 0)
     assert ranked[0][0].n == 3
+
+
+def test_format_story_metadata_renders_known_keys():
+    out = format_story_metadata({
+        "Title": "A Stranger in the Orchard",
+        "POV": "Third-person limited",
+        "Tense": "Past",
+        "Genre": "Literary",
+        "Unrelated": "ignored",
+    })
+    assert "STORY METADATA:" in out
+    assert "Title: A Stranger in the Orchard" in out
+    assert "POV: Third-person limited" in out
+    assert "Genre: Literary" in out
+    assert "Unrelated" not in out
+
+
+def test_format_story_metadata_empty_dict():
+    assert format_story_metadata({}) == ""
+    assert format_story_metadata({"Unrelated": "x"}) == ""
+
+
+@pytest.mark.asyncio
+async def test_assembler_includes_story_metadata(db_session):
+    org = Organization(id=uuid.uuid4(), name="Org", slug="org")
+    db_session.add(org)
+    await db_session.flush()
+
+    story = Story(
+        id=uuid.uuid4(),
+        org_id=org.id,
+        title="Assembler Test",
+        genres=["Literary"],
+        target_words=80000,
+        structure_type="3-act",
+    )
+    db_session.add(story)
+    await db_session.flush()
+
+    scene = Scene(
+        id=uuid.uuid4(),
+        org_id=org.id,
+        story_id=story.id,
+        n=1,
+        title="Opening",
+        pov="Iris",
+        tension=5,
+        act=1,
+        location="Orchard",
+        tag="Setup",
+    )
+    db_session.add(scene)
+    await populate_default_core(db_session, story)
+    await db_session.flush()
+
+    assembler = ContextAssembler(db_session, model_tier="standard")
+    ctx = await assembler.assemble_for_prose_continuation(
+        story_id=story.id, scene_id=scene.id, scene_n=1, pov="Iris"
+    )
+    assert "story_metadata" in ctx.sections
+    assert "Title: Assembler Test" in ctx.sections["story_metadata"]
+
+
+@pytest.mark.asyncio
+async def test_assembler_uses_scene_override(db_session):
+    """Per-scene override in core_settings should beat the story-root value
+    when the assembler resolves story_metadata."""
+    from app.models.core import CoreConfigNode, CoreKind, CoreSetting
+
+    org = Organization(id=uuid.uuid4(), name="OrgScene", slug=f"org-{uuid.uuid4().hex[:8]}")
+    db_session.add(org)
+    await db_session.flush()
+
+    story = Story(
+        id=uuid.uuid4(),
+        org_id=org.id,
+        title="Override Test",
+        genres=["Literary"],
+        target_words=80000,
+        structure_type="3-act",
+    )
+    db_session.add(story)
+    await db_session.flush()
+
+    scene = Scene(
+        id=uuid.uuid4(),
+        org_id=org.id,
+        story_id=story.id,
+        n=5,
+        title="Jon on the ridge",
+        pov="Jon",
+        tension=5,
+        act=2,
+        location="Ridge",
+        tag="",
+    )
+    db_session.add(scene)
+    await populate_default_core(db_session, story)
+    await db_session.flush()
+
+    # Add a scene-level config node for scene 5 and override POV there.
+    scene_node = CoreConfigNode(
+        id=uuid.uuid4(),
+        org_id=org.id,
+        story_id=story.id,
+        parent_id=None,
+        depth=3,
+        label="S05 - Jon watches",
+        kind=CoreKind.scene,
+        active=False,
+        sort_order=1,
+    )
+    db_session.add(scene_node)
+    await db_session.flush()
+
+    db_session.add(
+        CoreSetting(
+            id=uuid.uuid4(),
+            org_id=org.id,
+            story_id=story.id,
+            config_node_id=scene_node.id,
+            key="POV",
+            value="Third-person close (Jon)",
+            source="user",
+            tag=None,
+        )
+    )
+    # Also set a story-level POV that the scene override should beat.
+    db_session.add(
+        CoreSetting(
+            id=uuid.uuid4(),
+            org_id=org.id,
+            story_id=story.id,
+            config_node_id=None,
+            key="POV",
+            value="Third-person limited",
+            source="user",
+            tag=None,
+        )
+    )
+    await db_session.flush()
+
+    assembler = ContextAssembler(db_session, model_tier="standard")
+    ctx = await assembler.assemble_for_prose_continuation(
+        story_id=story.id, scene_id=scene.id, scene_n=5, pov="Jon"
+    )
+    meta = ctx.sections.get("story_metadata", "")
+    assert "POV: Third-person close (Jon)" in meta
+    assert "POV: Third-person limited" not in meta
+
+
+@pytest.mark.asyncio
+async def test_assembler_omits_story_metadata_when_empty(db_session):
+    org = Organization(id=uuid.uuid4(), name="Org2", slug="org2")
+    db_session.add(org)
+    await db_session.flush()
+
+    story = Story(
+        id=uuid.uuid4(),
+        org_id=org.id,
+        title="Empty",
+        genres=[],
+        target_words=80000,
+        structure_type="3-act",
+    )
+    db_session.add(story)
+    await db_session.flush()
+
+    scene = Scene(
+        id=uuid.uuid4(),
+        org_id=org.id,
+        story_id=story.id,
+        n=1,
+        title="Opening",
+        pov="Iris",
+        tension=5,
+        act=1,
+        location="",
+        tag="",
+    )
+    db_session.add(scene)
+    await db_session.flush()
+
+    assembler = ContextAssembler(db_session, model_tier="standard")
+    ctx = await assembler.assemble_for_prose_continuation(
+        story_id=story.id, scene_id=scene.id, scene_n=1, pov="Iris"
+    )
+    assert "story_metadata" not in ctx.sections

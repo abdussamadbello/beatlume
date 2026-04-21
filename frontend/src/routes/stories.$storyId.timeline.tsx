@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { TensionCurve } from '../components/charts'
 import { Anno, SegmentedControl } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
@@ -58,7 +58,14 @@ function TimelineView() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 64 }}>
         <div style={{ textAlign: 'center', color: 'var(--ink-3)' }}>
           <div className="title-serif" style={{ fontSize: 22, marginBottom: 8 }}>No timeline data yet</div>
-          <div style={{ fontSize: 12 }}>Add scenes and tension scores to see the timeline chart.</div>
+          <div style={{ fontSize: 12, marginBottom: 12 }}>Add scenes and tension scores to see the timeline chart.</div>
+          <Link
+            to="/stories/$storyId/scenes"
+            params={{ storyId }}
+            style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink)', textDecoration: 'underline' }}
+          >
+            Go to Scenes
+          </Link>
         </div>
       </div>
     )
@@ -70,7 +77,7 @@ function TimelineView() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 24px', borderBottom: '1px solid var(--ink)' }}>
         <div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--ink-3)' }}>Timeline</div>
-          <div className="title-serif" style={{ fontSize: 24 }}>47 scenes {'\u00B7'} tension + emotional intensity</div>
+          <div className="title-serif" style={{ fontSize: 24 }}>{tensionData.length} scene{tensionData.length === 1 ? '' : 's'} {'\u00B7'} tension + emotional intensity</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <span style={{ padding: '6px 10px', border: '1px solid var(--ink-3)', background: 'transparent', color: 'var(--ink-2)', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: 'pointer' }}>View: Line {'\u25BE'}</span>

@@ -230,7 +230,7 @@ function SceneDetailPage() {
               <div>
                 <Label>Graph impact after this scene</Label>
                 <div style={{ border: '1px solid var(--line)', marginTop: 6 }}>
-                  <GraphRenderer nodes={graphNodes} edges={graphEdges} width={360} height={200} />
+                  <GraphRenderer nodes={graphNodes} edges={graphEdges} width={360} height={200} interactive={false} />
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
                   +1 edge (Iris&harr;Jon). Fen edge upgraded 1&rarr;2.

@@ -114,6 +114,37 @@ async def test_logout(client):
 
 
 @pytest.mark.asyncio
+async def test_refresh_with_cookie_after_signup(client):
+    signup = await client.post(
+        "/auth/signup",
+        json={
+            "name": "Refresh User",
+            "email": "refresh@example.com",
+            "password": "pass1234",
+        },
+    )
+    assert signup.status_code == 201
+
+    refresh = await client.post("/auth/refresh")
+    assert refresh.status_code == 200
+    data = refresh.json()
+    assert data["token_type"] == "bearer"
+    access = data["access_token"]
+    assert access
+
+    me = await client.get("/api/users/me", headers={"Authorization": f"Bearer {access}"})
+    assert me.status_code == 200
+    assert me.json()["email"] == "refresh@example.com"
+
+
+@pytest.mark.asyncio
+async def test_refresh_without_cookie(client):
+    resp = await client.post("/auth/refresh")
+    assert resp.status_code == 401
+    assert resp.json()["detail"] == "No refresh token"
+
+
+@pytest.mark.asyncio
 async def test_forgot_password(client):
     resp = await client.post("/auth/forgot-password", json={"email": "any@example.com"})
     assert resp.status_code == 200

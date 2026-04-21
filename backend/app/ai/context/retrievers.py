@@ -5,9 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.character import Character
+from app.models.core import CoreConfigNode, CoreKind, CoreSetting
 from app.models.draft import DraftContent
 from app.models.graph import CharacterEdge, CharacterNode
 from app.models.scene import Scene
+from app.services.core import resolved_settings_dict
 
 
 @dataclass
@@ -133,6 +135,53 @@ class ContextRetriever:
             return None
         return CharacterContext(name=c.name, role=c.role, desire=c.desire,
                                 flaw=c.flaw, scene_count=c.scene_count)
+
+    async def get_story_settings(self, story_id: uuid.UUID) -> dict[str, str]:
+        """Fetch story-root core settings as a flat {key: value} map.
+
+        Only returns the NULL-node (story-level) rows. For scene-scoped values
+        that respect per-node overrides, use `get_resolved_settings_for_scene`.
+        """
+        result = await self.db.execute(
+            select(CoreSetting).where(
+                CoreSetting.story_id == story_id,
+                CoreSetting.config_node_id.is_(None),
+            )
+        )
+        return {r.key: r.value for r in result.scalars().all()}
+
+    async def get_resolved_settings_for_scene(
+        self, story_id: uuid.UUID, scene_n: int
+    ) -> dict[str, str]:
+        """Resolve core settings for the config node that represents this scene.
+
+        The scene's config node is matched by label convention: ``Sxx`` (with
+        optional zero-padding) at the start of the node's label. When no
+        matching node is found, falls back to story-root settings.
+        """
+        result = await self.db.execute(
+            select(CoreConfigNode).where(
+                CoreConfigNode.story_id == story_id,
+                CoreConfigNode.kind == CoreKind.scene,
+            )
+        )
+        scene_nodes = result.scalars().all()
+        match: CoreConfigNode | None = None
+        for node in scene_nodes:
+            label = node.label.strip()
+            # Labels look like "S05 — Jon watches from the ridge"; extract the
+            # leading integer after the S prefix.
+            if not label:
+                continue
+            head = label.split(None, 1)[0].lstrip("Ss").lstrip("0") or "0"
+            try:
+                if int(head) == scene_n:
+                    match = node
+                    break
+            except ValueError:
+                continue
+        target_node_id = match.id if match is not None else None
+        return await resolved_settings_dict(self.db, story_id, target_node_id)
 
     async def get_act_scenes(self, story_id: uuid.UUID, act: int) -> list[SceneContext]:
         result = await self.db.execute(

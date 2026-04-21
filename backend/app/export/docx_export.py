@@ -31,8 +31,9 @@ class DOCXExporter(BaseExporter):
         section.left_margin = Inches(1.25)
         section.right_margin = Inches(1.25)
 
-        title = story.get("title", "Untitled")
+        title = self._get_setting(settings, "title") or story.get("title", "Untitled")
         author = self._get_setting(settings, "author", "")
+        genre = self._get_setting(settings, "genre", "")
         word_count = self._count_words(chapters)
 
         # Modify default style
@@ -56,6 +57,11 @@ class DOCXExporter(BaseExporter):
                 ap.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 run = ap.add_run(f"by {author}")
                 run.font.size = Pt(14)
+
+            if genre:
+                gp = doc.add_paragraph()
+                gp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                gp.add_run(genre).font.size = Pt(12)
 
             wp = doc.add_paragraph()
             wp.alignment = WD_ALIGN_PARAGRAPH.CENTER

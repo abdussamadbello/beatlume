@@ -12,7 +12,15 @@ from app.models.user import User, Organization
 from app.models.story import Story as StoryModel
 from app.services.auth import decode_token
 
-engine = create_async_engine(settings.database_url, echo=False)
+engine = create_async_engine(
+    settings.database_url,
+    echo=False,
+    pool_pre_ping=True,
+    pool_recycle=300,
+    # asyncpg caches prepared statements; after DDL (migrations) the cache can
+    # still point at old schema and raise spurious "relation does not exist".
+    connect_args={"prepared_statement_cache_size": 0},
+)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)

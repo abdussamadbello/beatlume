@@ -1,7 +1,7 @@
 import uuid
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import select
@@ -78,11 +78,11 @@ async def login(request: Request, body: LoginRequest, response: Response, db: As
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(
+    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),
-    refresh_token: str | None = None,
 ):
-    # Try cookie first, then body
+    refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(status_code=401, detail="No refresh token")
 
@@ -115,7 +115,13 @@ async def refresh_token(
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(response: Response):
-    response.delete_cookie("refresh_token")
+    response.delete_cookie(
+        key="refresh_token",
+        path="/",
+        secure=settings.environment != "development",
+        httponly=True,
+        samesite="lax",
+    )
     return None
 
 

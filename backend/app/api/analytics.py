@@ -39,6 +39,25 @@ async def _load_characters(db: AsyncSession, story_id: uuid.UUID) -> list[Charac
     return list(result.scalars().all())
 
 
+_ROMAN = ("", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")
+
+
+def _act_label(act: int) -> str:
+    if 1 <= act <= 10:
+        return f"Act {_ROMAN[act]}"
+    return f"Act {act}"
+
+
+def _chart_acts_from_scenes(scenes: list[Scene]) -> list[dict[str, int | str]]:
+    if not scenes:
+        return []
+    out: list[dict[str, int | str]] = []
+    for i, scene in enumerate(scenes):
+        if i == 0 or scene.act != scenes[i - 1].act:
+            out.append({"at": i, "label": _act_label(scene.act)})
+    return out
+
+
 @router.get("/tension-curve")
 async def get_tension_curve(
     story: Story = Depends(get_story),
@@ -46,7 +65,17 @@ async def get_tension_curve(
 ):
     scenes = await _load_scenes(db, story.id)
     tensions = [s.tension for s in scenes]
-    return compute_tension_curve(tensions)
+    result = compute_tension_curve(tensions)
+    chart_peaks = [
+        {"at": p["scene_index"], "v": p["tension"], "label": p["label"]}
+        for p in result["peaks"]
+    ]
+    return {
+        **result,
+        "data": tensions,
+        "acts": _chart_acts_from_scenes(scenes),
+        "peaks": chart_peaks,
+    }
 
 
 @router.get("/pacing")

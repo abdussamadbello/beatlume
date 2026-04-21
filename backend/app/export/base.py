@@ -50,8 +50,9 @@ class BaseExporter(ABC):
         return paras
 
     def _get_setting(self, settings: list[dict], key: str, default: str = "") -> str:
+        target = key.lower()
         for s in settings:
-            if s.get("key") == key:
+            if (s.get("key") or "").lower() == target:
                 return s.get("value", default)
         return default
 

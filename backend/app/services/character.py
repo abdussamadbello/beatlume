@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.character import Character
+from app.services import graph as graph_service
 
 
 async def list_characters(db: AsyncSession, story_id: uuid.UUID, offset: int = 0, limit: int = 50) -> tuple[list[Character], int]:
@@ -27,6 +28,7 @@ async def create_character(db: AsyncSession, story_id: uuid.UUID, org_id: uuid.U
     db.add(char)
     await db.commit()
     await db.refresh(char)
+    await graph_service.ensure_nodes_for_characters(db, story_id)
     return char
 
 

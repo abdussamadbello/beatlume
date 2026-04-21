@@ -167,7 +167,7 @@ All story data scoped under `/api/stories/{storyId}/`:
 | Graph | `/api/stories/{id}/graph` | Nodes, edges, suggestions |
 | Insights | `/api/stories/{id}/insights` | List, dismiss, AI generate |
 | Draft | `/api/stories/{id}/draft/{sceneId}` | Read/write prose content |
-| Core Config | `/api/stories/{id}/core/tree`, `/core/settings` | Story structure config |
+| Core Config | `/api/stories/{id}/core/tree`, `/core/settings` | Story metadata with per-node overrides (walk-up inheritance Story → Part → Chapter → Scene → Beat), `user`/`system`/`AI` provenance, and AI-prompt scene-scoped resolution |
 | Manuscript | `/api/stories/{id}/manuscript` | Chapter read/update |
 | Collaboration | `/api/stories/{id}/collaborators`, `/comments`, `/activity` | Team features |
 | Analytics | `/api/stories/{id}/analytics/*` | Tension curve, pacing, presence, arcs, health, sparkline |

@@ -87,8 +87,9 @@ class PDFExporter(BaseExporter):
         )
 
         elements = []
-        title = story.get("title", "Untitled")
+        title = self._get_setting(settings, "title") or story.get("title", "Untitled")
         author = self._get_setting(settings, "author", "")
+        genre = self._get_setting(settings, "genre", "")
         word_count = self._count_words(chapters)
 
         # Title page
@@ -97,6 +98,8 @@ class PDFExporter(BaseExporter):
             elements.append(Paragraph(title, title_style))
             if author:
                 elements.append(Paragraph(f"by {author}", author_style))
+            if genre:
+                elements.append(Paragraph(genre, author_style))
             elements.append(Spacer(1, 0.5 * inch))
             elements.append(
                 Paragraph(f"{word_count:,} words", author_style)

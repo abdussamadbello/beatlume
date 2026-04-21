@@ -31,8 +31,9 @@ class EPUBExporter(BaseExporter):
         on_progress: callable | None = None,
     ) -> ExportResult:
         book = epub.EpubBook()
-        title = story.get("title", "Untitled")
+        title = self._get_setting(settings, "title") or story.get("title", "Untitled")
         author = self._get_setting(settings, "author", "Unknown")
+        genre = self._get_setting(settings, "genre", "")
         word_count = self._count_words(chapters)
 
         # Metadata
@@ -40,6 +41,8 @@ class EPUBExporter(BaseExporter):
         book.set_title(title)
         book.set_language("en")
         book.add_author(author)
+        if genre:
+            book.add_metadata("DC", "subject", genre)
 
         # CSS
         css = epub.EpubItem(

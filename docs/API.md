@@ -406,21 +406,99 @@ Word count computed automatically on save.
 
 ## Core Config
 
+Structural hierarchy (story → part → chapter → scene → beat) plus a
+configuration key/value store that supports **per-node overrides**. Every raw
+setting row has a `source` — `user`, `system`, or `AI` — plus an optional `tag`
+(e.g. `inferred`, `primary`) and an optional `config_node_id`:
+
+- `config_node_id IS NULL` → story-level default (applies everywhere by
+  inheritance).
+- `config_node_id = <node id>` → override scoped to that node and its
+  descendants.
+
+The tree is self-referential via `parent_id`. When a key is looked up for a
+specific node, the backend walks from that node up through its ancestors and
+returns the nearest-defined value, along with `defined_at_node_id` /
+`defined_at_label` / `is_override` so the UI knows where the value came from.
+
 ### GET /api/stories/{storyId}/core/tree
 
-Returns story structure tree (acts, chapters, scenes, beats).
+Returns all config nodes for the story, each with `parent_id`, `depth`, `label`,
+`kind`, `active`, `sort_order`.
 
 ### PUT /api/stories/{storyId}/core/tree/{nodeId}
 
+Patch `label` and/or `active` on a node.
+
 ### GET /api/stories/{storyId}/core/settings
 
-Returns story metadata settings (title, author, genre, POV, tense, etc.).
+Returns resolved settings for a given tree node. Query params:
+
+- `node_id` (optional UUID) — resolve relative to this node. Omit to resolve
+  the story root.
+
+Response shape:
+
+```json
+[
+  {
+    "key": "POV",
+    "value": "Third-person close (Jon)",
+    "source": "user",
+    "tag": null,
+    "defined_at_node_id": "…",
+    "defined_at_label": "Ch 5 — The Ridge",
+    "is_override": false
+  }
+]
+```
+
+`is_override` is `true` only when the row is defined on the node being queried.
+
+### GET /api/stories/{storyId}/core/settings/raw
+
+Returns every raw `core_settings` row for this story (no resolution). Debug/
+admin use only.
+
+### POST /api/stories/{storyId}/core/settings
+
+Create a new setting. Omit `config_node_id` (or pass `null`) for a story-level
+default; pass a node UUID to scope the value to that node. Returns `201` with
+the created row, `409` if a row with the same `(story_id, config_node_id, key)`
+already exists.
+
+```json
+{
+  "key": "Tense",
+  "value": "Present",
+  "source": "user",
+  "tag": null,
+  "config_node_id": "…"
+}
+```
 
 ### PUT /api/stories/{storyId}/core/settings/{key}
 
+Update `value`, `source`, and/or `tag` on either a story-level row or a
+node-scoped override. All three fields are optional. Use `?node_id=...` to
+target a node-scoped row; omit the query param to hit the story-level row.
+Useful for "accept AI suggestion" by sending
+`{"source": "user", "tag": null}`.
+
 ```json
-{ "value": "new value" }
+{ "value": "new value", "source": "user", "tag": null }
 ```
+
+### DELETE /api/stories/{storyId}/core/settings/{key}
+
+Remove either a story-level row (omit `node_id`) or a node-scoped override
+(pass `?node_id=...`). Deleting a node override is equivalent to "revert to
+inheritance" — descendants that were inheriting this value will now inherit
+from the next ancestor up.
+
+Returns `204` on success, `404` if the key is missing at the requested scope,
+or `409` if the row is a story-level `source=system` entry (system-derived
+story-level settings are immutable).
 
 ---
 

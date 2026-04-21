@@ -26,6 +26,33 @@ def format_edge(edge: EdgeContext) -> str:
     return f"{edge.source} \u2194 {edge.target} \u2014 {edge.kind} (weight: {edge.weight})"
 
 
+_METADATA_KEYS = (
+    "Title",
+    "Genre",
+    "POV",
+    "Tense",
+    "Protagonist",
+    "Central conflict",
+    "Act structure",
+)
+
+
+def format_story_metadata(settings: dict[str, str]) -> str:
+    """Render story-global metadata keys that matter for AI prompts.
+
+    Only emits keys the AI actually needs; keys missing from the dict are
+    silently skipped. Returns an empty string if nothing relevant is set.
+    """
+    lines: list[str] = []
+    for key in _METADATA_KEYS:
+        value = settings.get(key)
+        if value:
+            lines.append(f"  {key}: {value}")
+    if not lines:
+        return ""
+    return "STORY METADATA:\n" + "\n".join(lines)
+
+
 def format_story_skeleton(skeleton: StorySkeleton) -> str:
     lines = ["STORY OVERVIEW:"]
     lines.append(f"\nSCENES ({len(skeleton.scenes)}):")

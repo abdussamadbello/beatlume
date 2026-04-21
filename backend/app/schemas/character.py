@@ -5,6 +5,8 @@ from pydantic import BaseModel
 class CharacterCreate(BaseModel):
     name: str
     role: str = ""
+    description: str = ""
+    bio: str = ""
     desire: str = ""
     flaw: str = ""
 
@@ -14,6 +16,8 @@ class CharacterRead(BaseModel):
     story_id: uuid.UUID
     name: str
     role: str
+    description: str
+    bio: str
     desire: str
     flaw: str
     scene_count: int
@@ -25,6 +29,8 @@ class CharacterRead(BaseModel):
 class CharacterUpdate(BaseModel):
     name: str | None = None
     role: str | None = None
+    description: str | None = None
+    bio: str | None = None
     desire: str | None = None
     flaw: str | None = None
     scene_count: int | None = None

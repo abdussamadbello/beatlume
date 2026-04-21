@@ -17,8 +17,9 @@ class PlainTextExporter(BaseExporter):
         on_progress: callable | None = None,
     ) -> ExportResult:
         lines: list[str] = []
-        title = story.get("title", "Untitled")
+        title = self._get_setting(settings, "title") or story.get("title", "Untitled")
         author = self._get_setting(settings, "author", "")
+        genre = self._get_setting(settings, "genre", "")
         word_count = self._count_words(chapters)
 
         # Title page
@@ -26,6 +27,8 @@ class PlainTextExporter(BaseExporter):
             lines.append(title.upper())
             if author:
                 lines.append(f"by {author}")
+            if genre:
+                lines.append(genre)
             lines.append(f"{word_count:,} words")
             lines.append("")
             lines.append("=" * 60)

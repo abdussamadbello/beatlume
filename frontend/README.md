@@ -1,73 +1,91 @@
-# React + TypeScript + Vite
+# BeatLume — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Web app for BeatLume: graph-driven AI fiction planning. This package is a React SPA that talks to the FastAPI backend in `../backend`.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **React 19** + **TypeScript**
+- **Vite 8** (dev server + build)
+- **TanStack Router** — file-based routes under `src/routes/`
+- **TanStack Query** — server state in `src/api/`
+- **Zustand** — auth (persisted) and UI-only state in `src/store.ts`
 
-## React Compiler
+Styling uses inline `CSSProperties` and tokens from `src/styles/tokens.css` (see repo root `CLAUDE.md` for full conventions).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Prerequisites
 
-## Expanding the ESLint configuration
+- **Node.js** (current LTS is fine) and npm
+- **Backend API** running (default `http://localhost:8000`) unless you point `VITE_API_URL` elsewhere
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+From the monorepo root you can run `make dev` to start backend + frontend together.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Setup
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cd frontend
+npm install
+cp .env.example .env   # optional; defaults match local dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Environment
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Create `frontend/.env` (or copy `.env.example`). Vite exposes only variables prefixed with `VITE_` to the app, except `FRONTEND_PORT` which is read in `vite.config.ts` for the dev server.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Variable | Purpose |
+|----------|---------|
+| `FRONTEND_PORT` | Dev server port (default `5173`). Must match what you use in the browser. |
+| `VITE_API_URL` | Backend base URL for API calls and SSE (default `http://localhost:8000`). |
+
+If you change the API port, set `VITE_API_URL` to the same origin (e.g. `http://localhost:8001`) and align `backend/.env` `BACKEND_PORT` + backend CORS if needed.
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start Vite dev server (HMR) |
+| `npm run build` | Typecheck + production build to `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm run lint` | ESLint |
+| `npx tsc --noEmit` | Typecheck only (used in CI / `make test-frontend`) |
+
+## Local development
+
+**Option A — monorepo Makefile (recommended)**
+
+```bash
+# from repo root
+make dev
 ```
+
+Ports come from `backend/.env` and `frontend/.env` when present (see root `Makefile`).
+
+**Option B — frontend only**
+
+```bash
+cd frontend
+npm run dev
+```
+
+Open the URL Vite prints (default `http://localhost:5173/`).
+
+## Project layout
+
+```
+src/
+  api/           # TanStack Query hooks + fetch client (single source for HTTP)
+  routes/        # TanStack Router file routes; story routes use stories.$storyId.*
+  components/    # UI (chrome/, charts/, primitives/, …)
+  hooks/         # e.g. useSSE
+  styles/        # tokens.css, global.css
+  store.ts       # Zustand: auth + UI state only
+  types.ts       # Shared TypeScript types
+  main.tsx       # Entry + providers
+```
+
+- **Server data** → TanStack Query in `src/api/`, not Zustand.
+- **`src/data/`** — legacy mock modules; do not import from new route code.
+
+## Related docs
+
+- Repo-wide architecture and commands: `../CLAUDE.md`
+- Agent workflow: `../AGENTS.md`

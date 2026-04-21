@@ -7,6 +7,7 @@ import { useStore } from '../store'
 
 function ManuscriptPage() {
   const { storyId } = Route.useParams()
+  const { chapter: chapterParam } = Route.useSearch()
   const { data: chaptersData, isLoading } = useChapters(storyId)
   const editMode = useStore(s => s.editMode)
   const toggleEditMode = useStore(s => s.toggleEditMode)
@@ -59,10 +60,28 @@ function ManuscriptPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!chapterParam) return
+    const target = chapterRefsMap.current.get(chapterParam)
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setActiveChapter(chapterParam)
+    }
+  }, [chapterParam, chapters.length])
+
   if (isLoading) return <LoadingState />
 
   return (
-    <div style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#F3EEDF' }}>
+    <div
+      style={{
+        height: '100%',
+        minHeight: 0,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#F3EEDF',
+      }}
+    >
       {/* Top reader bar */}
       <div
         style={{
@@ -134,6 +153,22 @@ function ManuscriptPage() {
             <div style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 18 }}>by Elena Marsh</div>
           </div>
 
+          {chapters.length === 0 && (
+            <div
+              style={{
+                marginTop: 64,
+                textAlign: 'center',
+                fontSize: 12,
+                color: 'var(--ink-3)',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+              }}
+            >
+              No chapters yet. Draft scenes in the Draft view; once a chapter is
+              created it will appear here.
+            </div>
+          )}
+
           {/* Chapters - content is from internal API, not user-generated HTML */}
           {chapters.map((ch, i) => (
             <div
@@ -178,18 +213,20 @@ function ManuscriptPage() {
             </div>
           ))}
 
-          <div
-            style={{
-              marginTop: 72,
-              textAlign: 'center',
-              fontSize: 11,
-              color: 'var(--ink-3)',
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-            }}
-          >
-            &mdash; continued &middot; chapter six &mdash;
-          </div>
+          {chapters.length > 0 && (
+            <div
+              style={{
+                marginTop: 72,
+                textAlign: 'center',
+                fontSize: 11,
+                color: 'var(--ink-3)',
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
+              }}
+            >
+              &mdash; end of draft &mdash;
+            </div>
+          )}
         </div>
       </div>
 
@@ -216,5 +253,8 @@ function ManuscriptPage() {
 }
 
 export const Route = createFileRoute('/stories/$storyId/manuscript')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    chapter: typeof search.chapter === 'string' ? search.chapter : undefined,
+  }),
   component: ManuscriptPage,
 })

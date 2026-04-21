@@ -17,6 +17,8 @@ class Character(Base, OrgScopedMixin, TimestampMixin):
     story_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("stories.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(100), default="")
+    description: Mapped[str] = mapped_column(String(500), default="", server_default="")
+    bio: Mapped[str] = mapped_column(Text, default="", server_default="")
     desire: Mapped[str] = mapped_column(Text, default="")
     flaw: Mapped[str] = mapped_column(Text, default="")
     scene_count: Mapped[int] = mapped_column(default=0)

@@ -101,5 +101,6 @@ def test_unique_constraints():
     assert "uq_edge" in constraint_names
 
     setting_table = Base.metadata.tables["core_settings"]
-    constraint_names = [c.name for c in setting_table.constraints if hasattr(c, "name") and c.name]
-    assert "uq_core_setting" in constraint_names
+    index_names = {ix.name for ix in setting_table.indexes}
+    assert "uq_core_setting_story_key_null_node" in index_names
+    assert "uq_core_setting_story_node_key" in index_names

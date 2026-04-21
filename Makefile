@@ -2,9 +2,17 @@
 # Usage: make <target>
 
 .PHONY: help install dev dev-frontend dev-backend test test-backend test-frontend lint lint-backend lint-frontend \
-        migrate migrate-new seed db-create db-reset build clean \
+        migrate migrate-new seed db-create db-reset db-fresh db-clear-alembic build clean \
         celery-fast celery-heavy celery-export celery-beat \
         docker-up docker-down
+
+# Load local env files when present
+-include backend/.env
+-include frontend/.env
+
+# Development ports (overridable via environment or make args)
+BACKEND_PORT ?= 8000
+FRONTEND_PORT ?= 5173
 
 # ============================================================================
 # Help
@@ -33,15 +41,15 @@ install-backend: ## Install backend dependencies
 # ============================================================================
 
 dev: ## Start both frontend and backend dev servers
-	@echo "Starting backend on :8000 and frontend on :5173..."
+	@echo "Starting backend on :$(BACKEND_PORT) and frontend on :$(FRONTEND_PORT)..."
 	@make dev-backend &
 	@make dev-frontend
 
 dev-frontend: ## Start frontend dev server (port 5173)
-	cd frontend && npm run dev
+	cd frontend && FRONTEND_PORT=$(FRONTEND_PORT) npm run dev
 
 dev-backend: ## Start backend dev server (port 8000)
-	cd backend && PYTHONPATH=. uv run uvicorn app.main:app --reload --port 8000
+	cd backend && PYTHONPATH=. uv run uvicorn app.main:app --reload --port $(BACKEND_PORT)
 
 # ============================================================================
 # Testing
@@ -84,13 +92,18 @@ db-create: ## Create beatlume database and user in PostgreSQL
 	PGPASSWORD=postgres psql -U postgres -h localhost -c "GRANT ALL ON SCHEMA public TO beatlume;" -d beatlume || true
 	PGPASSWORD=postgres psql -U postgres -h localhost -d beatlume -f backend/migrations/init_rls.sql || true
 
-db-reset: ## Drop and recreate database, run migrations, seed
+db-reset: ## Wipe DB (all tables + alembic history), migrate from scratch, seed
 	PGPASSWORD=postgres psql -U postgres -h localhost -c "DROP DATABASE IF EXISTS beatlume;"
 	PGPASSWORD=postgres psql -U postgres -h localhost -c "CREATE DATABASE beatlume OWNER beatlume;"
 	PGPASSWORD=postgres psql -U postgres -h localhost -c "GRANT ALL ON SCHEMA public TO beatlume;" -d beatlume
 	PGPASSWORD=postgres psql -U postgres -h localhost -d beatlume -f backend/migrations/init_rls.sql
 	cd backend && PYTHONPATH=. uv run alembic upgrade head
 	cd backend && PYTHONPATH=. uv run python -m app.seeds.sample_story
+
+db-fresh: db-reset ## Alias: full reset (same as db-reset)
+
+db-clear-alembic: ## Delete all rows in alembic_version (empty DB: then migrate; else stamp head or db-reset)
+	PGPASSWORD=postgres psql -U postgres -h localhost -d beatlume -c "DELETE FROM alembic_version;"
 
 migrate: ## Run pending Alembic migrations
 	cd backend && PYTHONPATH=. uv run alembic upgrade head

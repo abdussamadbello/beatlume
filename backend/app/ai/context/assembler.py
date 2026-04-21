@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.context.formatters import (
     format_character_card,
     format_scene_with_prose,
+    format_story_metadata,
     format_story_skeleton,
 )
 from app.ai.context.retrievers import ContextRetriever
@@ -33,6 +34,14 @@ class ContextAssembler:
         self, story_id: uuid.UUID, scene_id: uuid.UUID, scene_n: int, pov: str
     ) -> AssembledContext:
         ctx = AssembledContext()
+
+        # Resolve core settings for the specific scene. The resolver walks
+        # parent -> chapter -> part -> story, so per-chapter or per-scene
+        # overrides (e.g. POV/Tense) take priority over story-level defaults.
+        settings = await self.retriever.get_resolved_settings_for_scene(story_id, scene_n)
+        metadata_text = format_story_metadata(settings)
+        if metadata_text:
+            ctx.sections["story_metadata"] = metadata_text
 
         # Get story skeleton
         skeleton = await self.retriever.get_story_skeleton(story_id)
@@ -78,6 +87,11 @@ class ContextAssembler:
         self, story_id: uuid.UUID, act: int
     ) -> AssembledContext:
         ctx = AssembledContext()
+
+        settings = await self.retriever.get_story_settings(story_id)
+        metadata_text = format_story_metadata(settings)
+        if metadata_text:
+            ctx.sections["story_metadata"] = metadata_text
 
         skeleton = await self.retriever.get_story_skeleton(story_id)
         ctx.sections["story_skeleton"] = format_story_skeleton(skeleton)

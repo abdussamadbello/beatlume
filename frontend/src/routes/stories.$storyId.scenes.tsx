@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, Outlet } from '@tanstack/react-router'
 import { Btn, Label } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { useScenes } from '../api/scenes'
@@ -111,6 +111,9 @@ function SceneBoard() {
         <ActColumn act={2} label="II" />
         <ActColumn act={3} label="III" />
       </div>
+
+      {/* Scene detail modal renders here when /scenes/$id is matched */}
+      <Outlet />
     </div>
   )
 }
