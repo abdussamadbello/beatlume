@@ -155,6 +155,31 @@ function GraphView() {
           {/* Filters */}
           <div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--ink-3)' }}>Filters</div>
+
+            {/* Pick by name — convenience alternative to clicking a node. */}
+            <div style={{ marginTop: 8, marginBottom: 8 }}>
+              <select
+                value={selectedNodeId ?? ''}
+                onChange={(e) => selectNode(e.target.value || null)}
+                style={{
+                  width: '100%',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  padding: '6px 8px',
+                  border: '1px solid var(--line)',
+                  background: 'var(--paper)',
+                  color: 'var(--ink)',
+                }}
+              >
+                <option value="">— Select character —</option>
+                {[...nodes]
+                  .sort((a, b) => a.label.localeCompare(b.label))
+                  .map((n) => (
+                    <option key={n.id} value={n.id}>{n.label}</option>
+                  ))}
+              </select>
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, fontSize: 11 }}>
               <label style={{ display: 'flex', gap: 6 }}>
                 <input type="checkbox" checked={filters.allActs} onChange={(e) => setFilters(f => ({ ...f, allActs: e.target.checked }))} />
