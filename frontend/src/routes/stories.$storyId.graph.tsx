@@ -30,6 +30,7 @@ function GraphView() {
     onlyUnresolved: false,
     allActs: true,
     allPov: true,
+    focusSelected: false,
   })
   // Default to final scene so relationship lines are visible on first load (earlier
   // slices hide edges/nodes by first_evidenced / first_appearance until that scene).
@@ -39,10 +40,32 @@ function GraphView() {
   const edges = useMemo(() => graphData?.edges ?? [], [graphData?.edges])
   const sampleActs = tensionCurveData?.acts ?? []
 
-  const visibleNodes: SceneNode[] = useMemo(
-    () => (filters.hideMinor ? nodes.filter((n) => n.node_type !== 'minor') : nodes),
-    [nodes, filters.hideMinor],
-  )
+  // Compute the node id set to keep when focus filter is on: selected node plus
+  // anything it shares an edge with. Edges themselves are filtered below in
+  // visibleEdges. Falls back to "all nodes" when focus is off or no node
+  // selected, so turning on the filter with no selection doesn't blank the graph.
+  const focusedNodeIds = useMemo(() => {
+    if (!filters.focusSelected || !selectedNodeId) return null
+    const kept = new Set<string>([selectedNodeId])
+    for (const e of edges) {
+      if (e.source_node_id === selectedNodeId) kept.add(e.target_node_id)
+      if (e.target_node_id === selectedNodeId) kept.add(e.source_node_id)
+    }
+    return kept
+  }, [filters.focusSelected, selectedNodeId, edges])
+
+  const visibleNodes: SceneNode[] = useMemo(() => {
+    let out = filters.hideMinor ? nodes.filter((n) => n.node_type !== 'minor') : nodes
+    if (focusedNodeIds) out = out.filter((n) => focusedNodeIds.has(n.id))
+    return out
+  }, [nodes, filters.hideMinor, focusedNodeIds])
+
+  const visibleEdges = useMemo(() => {
+    if (!focusedNodeIds) return edges
+    return edges.filter(
+      (e) => focusedNodeIds.has(e.source_node_id) && focusedNodeIds.has(e.target_node_id),
+    )
+  }, [edges, focusedNodeIds])
 
   const selectedNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null
   const selectedEdges = selectedNodeId
@@ -112,7 +135,7 @@ function GraphView() {
             width={920}
             height={560}
             nodes={visibleNodes}
-            edges={edges}
+            edges={visibleEdges}
             timeSlice={scrubberPosition + 1}
             onNodeClick={(id) => selectNode(id)}
             selectedId={selectedNodeId ?? undefined}
@@ -148,6 +171,15 @@ function GraphView() {
               <label style={{ display: 'flex', gap: 6 }}>
                 <input type="checkbox" checked={filters.onlyUnresolved} onChange={(e) => setFilters(f => ({ ...f, onlyUnresolved: e.target.checked }))} />
                 Only unresolved
+              </label>
+              <label style={{ display: 'flex', gap: 6, opacity: selectedNodeId ? 1 : 0.55 }}>
+                <input
+                  type="checkbox"
+                  checked={filters.focusSelected}
+                  disabled={!selectedNodeId}
+                  onChange={(e) => setFilters(f => ({ ...f, focusSelected: e.target.checked }))}
+                />
+                Focus on selected + neighbors
               </label>
             </div>
           </div>
