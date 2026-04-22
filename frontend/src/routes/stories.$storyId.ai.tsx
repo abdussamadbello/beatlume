@@ -2,7 +2,12 @@ import { useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Tag, Btn, Label } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
-import { useInsights, useDismissInsight } from '../api/insights'
+import {
+  useInsights,
+  useDismissInsight,
+  useRestoreInsight,
+  type InsightScope,
+} from '../api/insights'
 import { useTriggerInsights } from '../api/ai'
 
 export const Route = createFileRoute('/stories/$storyId/ai')({
@@ -12,8 +17,10 @@ export const Route = createFileRoute('/stories/$storyId/ai')({
 function AIPage() {
   const { storyId } = Route.useParams()
   const [activeCategory, setActiveCategory] = useState('All')
-  const { data, isLoading } = useInsights(storyId)
+  const [scope, setScope] = useState<InsightScope>('active')
+  const { data, isLoading } = useInsights(storyId, { scope })
   const dismissMutation = useDismissInsight(storyId)
+  const restoreMutation = useRestoreInsight(storyId)
   const generateMutation = useTriggerInsights(storyId)
   const navigate = useNavigate()
 
@@ -72,6 +79,33 @@ function AIPage() {
           <div className="title-serif" style={{ fontSize: 22 }}>{insights.length} recommendations &middot; explainable</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 0, marginRight: 8 }}>
+            {(
+              [
+                ['active', 'Active'],
+                ['dismissed', 'Dismissed'],
+                ['all', 'All'],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setScope(key)}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 10,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  padding: '6px 10px',
+                  border: '1px solid var(--ink)',
+                  background: scope === key ? 'var(--ink)' : 'var(--paper)',
+                  color: scope === key ? 'var(--paper)' : 'var(--ink)',
+                  cursor: 'pointer',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <Btn
             variant="ghost"
             onClick={() => generateMutation.mutate()}
@@ -163,7 +197,19 @@ function AIPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <Btn style={{ fontSize: 10 }} onClick={() => handleInspect(c.category)}>Inspect &rarr;</Btn>
                 <Btn variant="ghost" style={{ fontSize: 10 }}>Apply</Btn>
-                <Btn variant="ghost" style={{ fontSize: 10 }} onClick={() => handleDismiss(c)}>Dismiss</Btn>
+                {c.dismissed ? (
+                  <Btn
+                    variant="ghost"
+                    style={{ fontSize: 10 }}
+                    onClick={() => restoreMutation.mutate(c.id)}
+                  >
+                    Restore
+                  </Btn>
+                ) : (
+                  <Btn variant="ghost" style={{ fontSize: 10 }} onClick={() => handleDismiss(c)}>
+                    Dismiss
+                  </Btn>
+                )}
               </div>
             </div>
           ))}

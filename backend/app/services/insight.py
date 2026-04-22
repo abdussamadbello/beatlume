@@ -13,9 +13,19 @@ async def list_insights(
     severity: str | None = None,
     offset: int = 0,
     limit: int = 50,
+    include_dismissed: bool = False,
+    only_dismissed: bool = False,
 ) -> tuple[list[Insight], int]:
-    query = select(Insight).where(Insight.story_id == story_id, Insight.dismissed == False)  # noqa: E712
-    count_q = select(func.count()).select_from(Insight).where(Insight.story_id == story_id, Insight.dismissed == False)  # noqa: E712
+    query = select(Insight).where(Insight.story_id == story_id)
+    count_q = select(func.count()).select_from(Insight).where(Insight.story_id == story_id)
+
+    if only_dismissed:
+        query = query.where(Insight.dismissed.is_(True))
+        count_q = count_q.where(Insight.dismissed.is_(True))
+    elif not include_dismissed:
+        query = query.where(Insight.dismissed.is_(False))
+        count_q = count_q.where(Insight.dismissed.is_(False))
+
     if category:
         query = query.where(Insight.category == category)
         count_q = count_q.where(Insight.category == category)
@@ -29,10 +39,22 @@ async def list_insights(
 
 
 async def dismiss_insight(db: AsyncSession, story_id: uuid.UUID, insight_id: uuid.UUID) -> bool:
-    result = await db.execute(select(Insight).where(Insight.id == insight_id, Insight.story_id == story_id))
+    return await _set_dismissed(db, story_id, insight_id, True)
+
+
+async def restore_insight(db: AsyncSession, story_id: uuid.UUID, insight_id: uuid.UUID) -> bool:
+    return await _set_dismissed(db, story_id, insight_id, False)
+
+
+async def _set_dismissed(
+    db: AsyncSession, story_id: uuid.UUID, insight_id: uuid.UUID, value: bool
+) -> bool:
+    result = await db.execute(
+        select(Insight).where(Insight.id == insight_id, Insight.story_id == story_id)
+    )
     insight = result.scalar_one_or_none()
     if not insight:
         return False
-    insight.dismissed = True
+    insight.dismissed = value
     await db.commit()
     return True

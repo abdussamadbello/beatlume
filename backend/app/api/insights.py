@@ -20,9 +20,18 @@ async def list_insights(
     severity: str | None = Query(None),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
+    include_dismissed: bool = Query(False),
+    only_dismissed: bool = Query(False),
 ):
     insights, total = await insight_service.list_insights(
-        db, story.id, category, severity, offset=offset, limit=limit,
+        db,
+        story.id,
+        category,
+        severity,
+        offset=offset,
+        limit=limit,
+        include_dismissed=include_dismissed,
+        only_dismissed=only_dismissed,
     )
     return PaginatedResponse(items=insights, total=total)
 
@@ -33,3 +42,11 @@ async def dismiss_insight(insight_id: uuid.UUID, story: Story = Depends(get_stor
     if not dismissed:
         raise HTTPException(status_code=404, detail="Insight not found")
     return {"status": "dismissed"}
+
+
+@router.put("/{insight_id}/restore")
+async def restore_insight(insight_id: uuid.UUID, story: Story = Depends(get_story), db: AsyncSession = Depends(get_db)):
+    restored = await insight_service.restore_insight(db, story.id, insight_id)
+    if not restored:
+        raise HTTPException(status_code=404, detail="Insight not found")
+    return {"status": "restored"}
