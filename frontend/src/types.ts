@@ -34,7 +34,16 @@ export interface Scene {
   tag: string
   summary?: string
   participants?: SceneParticipant[]
+  emotional: number
+  stakes: number
+  mystery: number
+  romance: number
+  danger: number
+  hope: number
 }
+
+export const SCENE_METRICS = ['emotional', 'stakes', 'mystery', 'romance', 'danger', 'hope'] as const
+export type SceneMetric = typeof SCENE_METRICS[number]
 
 // --- Character ---
 export interface Character {

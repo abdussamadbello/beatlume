@@ -1,12 +1,32 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { TensionCurve } from '../components/charts'
+import type { FacetLayer } from '../components/charts/TensionCurve'
 import { Btn, Label, Tag, TensionBar } from '../components/primitives'
 import { Modal } from '../components/Modal'
 import { LoadingState } from '../components/LoadingState'
 import { useTensionCurve } from '../api/analytics'
 import { useScenes } from '../api/scenes'
-import type { Scene } from '../types'
+import type { Scene, SceneMetric } from '../types'
+import { SCENE_METRICS } from '../types'
+
+const FACET_COLORS: Record<SceneMetric, string> = {
+  emotional: 'var(--red)',
+  stakes: 'var(--amber)',
+  mystery: 'var(--blue)',
+  romance: '#d4679a',
+  danger: 'var(--ink)',
+  hope: '#6c9a47',
+}
+
+const FACET_LABELS: Record<SceneMetric, string> = {
+  emotional: 'Emotional',
+  stakes: 'Stakes',
+  mystery: 'Mystery',
+  romance: 'Romance',
+  danger: 'Danger',
+  hope: 'Hope',
+}
 
 export const Route = createFileRoute('/stories/$storyId/timeline')({
   component: TimelineView,
@@ -30,6 +50,7 @@ function TimelineView() {
 
   const [chartWidth, setChartWidth] = useState(0)
   const [activeScene, setActiveScene] = useState<Scene | null>(null)
+  const [enabledFacets, setEnabledFacets] = useState<Set<SceneMetric>>(new Set())
 
   const chartContainerRef = useCallback((el: HTMLDivElement | null) => {
     if (!el) return
@@ -60,7 +81,33 @@ function TimelineView() {
   const acts = data?.acts ?? []
   const peaks = data?.peaks ?? []
   const metrics = data?.metrics
+  const facetsData = data?.facets
   const n = tensionData.length
+
+  // A facet is "scored" once at least one scene has a non-zero value. Unscored
+  // facets stay disabled so authors aren't tempted to toggle on six flat lines.
+  const scoredFacets = useMemo<SceneMetric[]>(() => {
+    if (!facetsData) return []
+    return SCENE_METRICS.filter((m) => facetsData[m].some((v) => v > 0))
+  }, [facetsData])
+
+  const chartFacets = useMemo<FacetLayer[]>(() => {
+    if (!facetsData) return []
+    return [...enabledFacets].map((m) => ({
+      name: m,
+      data: facetsData[m],
+      stroke: FACET_COLORS[m],
+    }))
+  }, [facetsData, enabledFacets])
+
+  const toggleFacet = (m: SceneMetric) => {
+    setEnabledFacets((prev) => {
+      const next = new Set(prev)
+      if (next.has(m)) next.delete(m)
+      else next.add(m)
+      return next
+    })
+  }
 
   const previewScene = (i: number) => {
     const scene = scenesById[i]
@@ -109,6 +156,50 @@ function TimelineView() {
         <div ref={chartContainerRef} style={{ padding: 20, minWidth: 0 }}>
           {chartWidth > 0 && (
             <>
+              {scoredFacets.length > 0 && (
+                <div style={{ marginBottom: 10, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                  <span style={{ ...labelStyle, marginRight: 4 }}>Layers</span>
+                  {SCENE_METRICS.map((m) => {
+                    const scored = scoredFacets.includes(m)
+                    const active = enabledFacets.has(m)
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => scored && toggleFacet(m)}
+                        disabled={!scored}
+                        title={scored ? `Toggle ${FACET_LABELS[m]}` : `${FACET_LABELS[m]} not scored yet`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '3px 9px',
+                          border: `1px solid ${active ? 'var(--ink)' : 'var(--line)'}`,
+                          background: active ? 'var(--paper-2)' : 'var(--paper)',
+                          color: scored ? 'var(--ink)' : 'var(--ink-3)',
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: 10,
+                          letterSpacing: '0.06em',
+                          textTransform: 'uppercase',
+                          cursor: scored ? 'pointer' : 'not-allowed',
+                          opacity: scored ? 1 : 0.55,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 8,
+                            height: 8,
+                            background: FACET_COLORS[m],
+                            opacity: scored ? 1 : 0.4,
+                          }}
+                        />
+                        {FACET_LABELS[m]}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
               <TensionCurve
                 width={chartWidth}
                 height={360}
@@ -117,6 +208,7 @@ function TimelineView() {
                 peaks={peaks}
                 fill="var(--ink)"
                 onPointClick={previewScene}
+                facets={chartFacets}
               />
 
               <div style={{ marginTop: 8, display: 'flex', gap: 2 }}>

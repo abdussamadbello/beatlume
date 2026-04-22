@@ -53,6 +53,12 @@ export interface SceneUpdatePayload {
   summary?: string | null
   chapter_id?: string | null
   participants?: SceneParticipantWrite[]
+  emotional?: number
+  stakes?: number
+  mystery?: number
+  romance?: number
+  danger?: number
+  hope?: number
 }
 
 export function useUpdateScene(storyId: string) {

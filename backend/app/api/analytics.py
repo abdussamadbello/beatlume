@@ -59,6 +59,9 @@ def _chart_acts_from_scenes(scenes: list[Scene]) -> list[dict[str, int | str]]:
     return out
 
 
+SCENE_FACETS = ("emotional", "stakes", "mystery", "romance", "danger", "hope")
+
+
 @router.get("/tension-curve")
 async def get_tension_curve(
     story: Story = Depends(get_story),
@@ -71,11 +74,19 @@ async def get_tension_curve(
         {"at": p["scene_index"], "v": p["tension"], "label": p["label"]}
         for p in result["peaks"]
     ]
+    # Per-facet arrays for layered rendering. A facet present but all-zero
+    # means the author hasn't scored that dimension yet — the frontend hides
+    # layers where max == 0 so empty stories don't render six flat baselines.
+    facets = {
+        name: [getattr(s, name) for s in scenes]
+        for name in SCENE_FACETS
+    }
     return {
         **result,
         "data": tensions,
         "acts": _chart_acts_from_scenes(scenes),
         "peaks": chart_peaks,
+        "facets": facets,
     }
 
 

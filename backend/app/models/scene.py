@@ -16,6 +16,12 @@ class Scene(Base, OrgScopedMixin, TimestampMixin):
         UniqueConstraint("story_id", "n", name="uq_scene_number"),
         CheckConstraint("tension >= 1 AND tension <= 10", name="ck_scene_tension"),
         CheckConstraint("act >= 1", name="ck_scene_act"),
+        CheckConstraint("emotional >= 0 AND emotional <= 10", name="ck_scene_emotional"),
+        CheckConstraint("stakes >= 0 AND stakes <= 10", name="ck_scene_stakes"),
+        CheckConstraint("mystery >= 0 AND mystery <= 10", name="ck_scene_mystery"),
+        CheckConstraint("romance >= 0 AND romance <= 10", name="ck_scene_romance"),
+        CheckConstraint("danger >= 0 AND danger <= 10", name="ck_scene_danger"),
+        CheckConstraint("hope >= 0 AND hope <= 10", name="ck_scene_hope"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
@@ -32,6 +38,14 @@ class Scene(Base, OrgScopedMixin, TimestampMixin):
     location: Mapped[str] = mapped_column(String(500), default="")
     tag: Mapped[str] = mapped_column(String(100), default="")
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Per-scene multi-metric scoring (0=absent, 10=peak). tension is the
+    # overall scalar; these six are the layered facets the Timeline chart renders.
+    emotional: Mapped[int] = mapped_column(default=0, server_default="0")
+    stakes: Mapped[int] = mapped_column(default=0, server_default="0")
+    mystery: Mapped[int] = mapped_column(default=0, server_default="0")
+    romance: Mapped[int] = mapped_column(default=0, server_default="0")
+    danger: Mapped[int] = mapped_column(default=0, server_default="0")
+    hope: Mapped[int] = mapped_column(default=0, server_default="0")
 
     participants: Mapped[list["SceneParticipant"]] = relationship(
         "SceneParticipant",

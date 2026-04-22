@@ -14,6 +14,12 @@ class SceneCreate(BaseModel):
     summary: str | None = None
     chapter_id: uuid.UUID | None = None
     participants: list[SceneParticipantCreate] | None = None
+    emotional: int = 0
+    stakes: int = 0
+    mystery: int = 0
+    romance: int = 0
+    danger: int = 0
+    hope: int = 0
 
 
 class SceneRead(BaseModel):
@@ -29,6 +35,12 @@ class SceneRead(BaseModel):
     tag: str
     summary: str | None = None
     participants: list[SceneParticipantRead] = []
+    emotional: int = 0
+    stakes: int = 0
+    mystery: int = 0
+    romance: int = 0
+    danger: int = 0
+    hope: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -43,3 +55,9 @@ class SceneUpdate(BaseModel):
     summary: str | None = None
     chapter_id: uuid.UUID | None = None
     participants: list[SceneParticipantCreate] | None = None
+    emotional: int | None = None
+    stakes: int | None = None
+    mystery: int | None = None
+    romance: int | None = None
+    danger: int | None = None
+    hope: int | None = None

@@ -10,6 +10,12 @@ export interface TensionTooltipDatum {
   value: number;
 }
 
+export interface FacetLayer {
+  name: string;
+  data: number[];
+  stroke: string;
+}
+
 interface TensionCurveProps {
   data: number[];
   acts?: Act[];
@@ -21,6 +27,7 @@ interface TensionCurveProps {
   height?: number;
   onPointClick?: (index: number) => void;
   renderTooltip?: (datum: TensionTooltipDatum) => React.ReactNode;
+  facets?: FacetLayer[];
 }
 
 const PAD_LEFT = 30;
@@ -40,6 +47,7 @@ export function TensionCurve({
   height: h = 200,
   onPointClick,
   renderTooltip,
+  facets,
 }: TensionCurveProps) {
   const n = data.length;
 
@@ -151,6 +159,20 @@ export function TensionCurve({
             opacity={0.12}
           />
         )}
+
+        {facets?.map((facet) => (
+          <LinePath<number>
+            key={facet.name}
+            data={facet.data}
+            x={(_d, i) => xScale(i) ?? 0}
+            y={(d) => yScale(d) ?? 0}
+            stroke={facet.stroke}
+            strokeWidth={1}
+            strokeOpacity={0.55}
+            strokeDasharray="3 3"
+            fill="none"
+          />
+        ))}
 
         <LinePath<number>
           data={data}

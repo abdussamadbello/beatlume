@@ -11,7 +11,8 @@ import {
   useCreateCoreSetting,
   useUpdateCoreSetting,
 } from '../api/core'
-import type { CoreConfigNode, Scene } from '../types'
+import type { CoreConfigNode, Scene, SceneMetric } from '../types'
+import { SCENE_METRICS } from '../types'
 
 function SceneDetailPage() {
   const navigate = useNavigate()
@@ -164,6 +165,8 @@ function SceneDetailPage() {
             </div>
 
             <DramaticStructure storyId={storyId} scene={scene} />
+
+            <TensionFacets storyId={storyId} scene={scene} />
 
             <ChapterAssignment storyId={storyId} scene={scene} />
 
@@ -546,6 +549,124 @@ function Participants({ storyId, scene }: { storyId: string; scene: Scene }) {
             </button>
           )
         )}
+      </div>
+    </div>
+  )
+}
+
+const FACET_LABELS: Record<SceneMetric | 'tension', string> = {
+  tension: 'Tension',
+  emotional: 'Emotional',
+  stakes: 'Stakes',
+  mystery: 'Mystery',
+  romance: 'Romance',
+  danger: 'Danger',
+  hope: 'Hope',
+}
+
+const FACET_HINTS: Record<SceneMetric | 'tension', string> = {
+  tension: 'Overall dramatic pressure (1-10).',
+  emotional: 'Raw feeling intensity — grief, rage, longing.',
+  stakes: 'How much is on the line for the POV character.',
+  mystery: 'Unresolved questions surfacing or deepening.',
+  romance: 'Affection, attraction, intimacy.',
+  danger: 'Physical or existential threat level.',
+  hope: 'Belief that a better outcome is possible.',
+}
+
+function FacetRow({
+  label,
+  hint,
+  value,
+  min,
+  onCommit,
+}: {
+  label: string
+  hint: string
+  value: number
+  min: 0 | 1
+  onCommit: (n: number) => void
+}) {
+  const [draft, setDraft] = useState(String(value))
+  const current = Math.max(min, Math.min(10, Number(draft) || min))
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '100px 1fr 60px',
+        gap: 12,
+        alignItems: 'center',
+      }}
+    >
+      <div title={hint}>
+        <Label>{label}</Label>
+      </div>
+      <div style={{ display: 'flex', gap: 3 }}>
+        {Array.from({ length: 10 }).map((_, i) => (
+          <span
+            key={i}
+            style={{
+              flex: 1,
+              height: 6,
+              background: i < current ? 'var(--ink)' : 'var(--line-2)',
+            }}
+          />
+        ))}
+      </div>
+      <input
+        type="number"
+        min={min}
+        max={10}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          const n = Math.max(min, Math.min(10, parseInt(draft, 10) || min))
+          setDraft(String(n))
+          if (n !== value) onCommit(n)
+        }}
+        style={{
+          width: 56,
+          padding: '4px 8px',
+          border: '1px solid var(--ink-3)',
+          background: 'var(--paper)',
+          fontFamily: 'var(--font-mono)',
+          fontSize: 12,
+          textAlign: 'center',
+        }}
+      />
+    </div>
+  )
+}
+
+function TensionFacets({ storyId, scene }: { storyId: string; scene: Scene }) {
+  const update = useUpdateScene(storyId)
+  const commit = (patch: Partial<Pick<Scene, 'tension' | SceneMetric>>) => {
+    update.mutate({ sceneId: scene.id, ...patch })
+  }
+  return (
+    <div style={{ marginTop: 24 }}>
+      <Label>Tension facets</Label>
+      <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4, marginBottom: 10 }}>
+        Score each dimension 0-10. 0 means "not applicable in this scene" — layered facets stay hidden in the Timeline until they have a non-zero score somewhere.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <FacetRow
+          label={FACET_LABELS.tension}
+          hint={FACET_HINTS.tension}
+          value={scene.tension}
+          min={1}
+          onCommit={(n) => commit({ tension: n })}
+        />
+        {SCENE_METRICS.map((m) => (
+          <FacetRow
+            key={m}
+            label={FACET_LABELS[m]}
+            hint={FACET_HINTS[m]}
+            value={scene[m]}
+            min={0}
+            onCommit={(n) => commit({ [m]: n } as Partial<Pick<Scene, SceneMetric>>)}
+          />
+        ))}
       </div>
     </div>
   )

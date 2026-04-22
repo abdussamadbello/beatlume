@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import type { Act, Peak } from '../types'
+import type { Act, Peak, SceneMetric } from '../types'
 import { api } from './client'
 
 export interface TensionCurveMetrics {
@@ -11,6 +11,8 @@ export interface TensionCurveMetrics {
   climax_position: number
 }
 
+export type TensionCurveFacets = Record<SceneMetric, number[]>
+
 export interface TensionCurveResponse {
   points: Array<{ x: number; y: number }>
   raw_points: Array<{ x: number; y: number }>
@@ -19,6 +21,7 @@ export interface TensionCurveResponse {
   metrics: TensionCurveMetrics
   data: number[]
   acts: Act[]
+  facets: TensionCurveFacets
 }
 
 export function useTensionCurve(storyId: string) {
