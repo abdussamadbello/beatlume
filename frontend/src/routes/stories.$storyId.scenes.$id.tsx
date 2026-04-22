@@ -1058,7 +1058,7 @@ function CommentItem({
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.04em' }}>
-          {comment.user_id.slice(0, 8)}
+          {comment.user_name ?? comment.user_id.slice(0, 8)}
         </span>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)' }}>
           {new Date(comment.created_at).toLocaleString()}

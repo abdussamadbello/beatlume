@@ -6,6 +6,8 @@ from pydantic import BaseModel
 class CollaboratorRead(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
+    user_name: str | None = None
+    user_email: str | None = None
     role: str
     invited_at: datetime
     accepted_at: datetime | None = None
@@ -30,6 +32,7 @@ class CommentUpdate(BaseModel):
 class CommentRead(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
+    user_name: str | None = None
     scene_id: uuid.UUID | None = None
     body: str
     created_at: datetime
@@ -40,6 +43,7 @@ class CommentRead(BaseModel):
 class ActivityRead(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
+    user_name: str | None = None
     action: str
     detail: dict
     created_at: datetime

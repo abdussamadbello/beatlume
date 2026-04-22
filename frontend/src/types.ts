@@ -155,6 +155,8 @@ export interface ManuscriptChapter {
 export interface Collaborator {
   id: string
   user_id: string
+  user_name?: string | null
+  user_email?: string | null
   role: 'author' | 'editor' | 'reader'
   invited_at: string
   accepted_at?: string
@@ -163,6 +165,7 @@ export interface Collaborator {
 export interface Comment {
   id: string
   user_id: string
+  user_name?: string | null
   scene_id?: string
   body: string
   created_at: string
@@ -171,6 +174,7 @@ export interface Comment {
 export interface ActivityEvent {
   id: string
   user_id: string
+  user_name?: string | null
   action: string
   detail: Record<string, unknown>
   created_at: string

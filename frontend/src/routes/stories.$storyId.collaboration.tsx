@@ -222,11 +222,18 @@ function CollaborationPage() {
                   color: 'var(--ink-2)',
                 }}
               >
-                {collab.user_id.slice(0, 2).toUpperCase()}
+                {(collab.user_name ?? collab.user_id).slice(0, 2).toUpperCase()}
               </div>
-              <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13 }}>
-                {collab.user_id}
-              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {collab.user_name ?? 'Unknown user'}
+                </span>
+                {collab.user_email && (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {collab.user_email}
+                  </span>
+                )}
+              </div>
               <Tag variant={collab.accepted_at ? 'solid' : 'blue'}>
                 {collab.accepted_at ? 'Accepted' : 'Pending'}
               </Tag>
@@ -292,7 +299,7 @@ function CollaborationPage() {
                 }}
               >
                 <div style={{ fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.4 }}>
-                  <span style={{ fontWeight: 500, color: 'var(--ink)' }}>{a.user_id.slice(0, 8)}</span>{' '}
+                  <span style={{ fontWeight: 500, color: 'var(--ink)' }}>{a.user_name ?? a.user_id.slice(0, 8)}</span>{' '}
                   {formatActivityAction(a.action, a.detail)}
                 </div>
                 <span
@@ -371,7 +378,7 @@ function CollaborationPage() {
                           fontWeight: 500,
                         }}
                       >
-                        {c.user_id}
+                        {c.user_name ?? c.user_id.slice(0, 8)}
                       </span>
                     </div>
                     <span
