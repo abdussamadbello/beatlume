@@ -4,6 +4,7 @@ import { Tag, Btn, Label, PresenceStrip } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { Modal } from '../components/Modal'
 import { useCharacters, useCreateCharacter } from '../api/characters'
+import { useArcs, type CharacterArc } from '../api/analytics'
 
 export const Route = createFileRoute('/stories/$storyId/characters/')({
   component: CharactersView,
@@ -258,6 +259,7 @@ function FilterMenu({
 function CharactersView() {
   const { storyId } = Route.useParams()
   const { data, isLoading } = useCharacters(storyId)
+  const { data: arcsData } = useArcs(storyId)
   const navigate = useNavigate()
   const [sortBy, setSortBy] = useState<'name' | 'scenes' | 'gap'>('name')
   const [selectedName, setSelectedName] = useState<string | null>(null)
@@ -267,6 +269,12 @@ function CharactersView() {
   const [hideMinor, setHideMinor] = useState(false)
 
   const characters = useMemo(() => data?.items ?? [], [data?.items])
+
+  const arcByCharId = useMemo(() => {
+    const map = new Map<string, CharacterArc>()
+    for (const arc of arcsData?.arcs ?? []) map.set(arc.character_id, arc)
+    return map
+  }, [arcsData])
 
   const allRoles = useMemo(
     () =>
@@ -431,16 +439,8 @@ function CharactersView() {
                 {c.longest_gap || '\u2014'}
               </div>
 
-              {/* Arc sparkline */}
-              <div style={{ display: 'flex', gap: 2, height: 18, alignItems: 'flex-end' }}>
-                {Array.from({ length: 8 }).map((_, k) => (
-                  <span key={k} style={{
-                    flex: 1,
-                    background: 'var(--ink)',
-                    height: `${20 + k * 10 + Math.sin(i + k) * 20}%`,
-                  }} />
-                ))}
-              </div>
+              {/* Arc sparkline — real data from /analytics/arcs */}
+              <ArcSparkline arc={arcByCharId.get(c.id)} />
             </div>
           );
         })}
@@ -453,4 +453,46 @@ function CharactersView() {
       />
     </div>
   )
+}
+
+function ArcSparkline({ arc }: { arc: CharacterArc | undefined }) {
+  if (!arc || arc.points.length === 0) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, height: 18 }}>
+        <span style={{ color: 'var(--ink-3)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>—</span>
+      </div>
+    )
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 18 }}>
+      <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', flex: 1, height: 18 }}>
+        {arc.points.map((p) => (
+          <span
+            key={p.scene_index}
+            title={`S${String(p.scene_index + 1).padStart(2, '0')} · T${p.tension}`}
+            style={{
+              flex: 1,
+              minWidth: 2,
+              background: 'var(--ink)',
+              height: `${(p.tension / 10) * 100}%`,
+            }}
+          />
+        ))}
+      </div>
+      <span
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 9,
+          color: 'var(--ink-3)',
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+          padding: '1px 5px',
+          border: '1px dashed var(--line)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {arc.arc_shape}
+      </span>
+    </div>
+  );
 }

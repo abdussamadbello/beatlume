@@ -50,10 +50,35 @@ export function usePresence(storyId: string) {
   })
 }
 
+export type ArcShape =
+  | 'rise'
+  | 'fall'
+  | 'rise-fall'
+  | 'fall-rise'
+  | 'wave'
+  | 'flat'
+
+export interface CharacterArc {
+  character_id: string
+  character_name: string
+  points: Array<{ scene_index: number; tension: number }>
+  arc_shape: ArcShape
+  turning_points: Array<{
+    scene_index: number
+    tension: number
+    type: 'peak' | 'valley'
+  }>
+}
+
+export interface ArcsResponse {
+  arcs: CharacterArc[]
+}
+
 export function useArcs(storyId: string) {
   return useQuery({
     queryKey: ['stories', storyId, 'analytics', 'arcs'],
-    queryFn: () => api.get<unknown>(`/api/stories/${storyId}/analytics/arcs`),
+    queryFn: () =>
+      api.get<ArcsResponse>(`/api/stories/${storyId}/analytics/arcs`),
     enabled: !!storyId,
   })
 }
