@@ -109,3 +109,23 @@ async def log_activity(
     db.add(event)
     await db.commit()
     return event
+
+
+async def safe_log_activity(
+    db: AsyncSession,
+    story_id: uuid.UUID,
+    org_id: uuid.UUID,
+    user_id: uuid.UUID,
+    action: str,
+    detail: dict,
+) -> None:
+    """Write an ActivityEvent, swallowing failures.
+
+    Activity log writes are informational. A DB hiccup here must not
+    roll back the caller's successful mutation. Log and continue.
+    """
+    try:
+        await log_activity(db, story_id, org_id, user_id, action, detail)
+    except Exception:
+        # Deliberately suppressed — activity log is best-effort.
+        pass

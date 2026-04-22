@@ -4,18 +4,29 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.deps import get_current_org, get_db, get_story
+from app.deps import get_current_org, get_current_user, get_db, get_story
 from app.models.story import Story
-from app.models.user import Organization
+from app.models.user import Organization, User
 from app.schemas.scene import SceneCreate, SceneRead, SceneUpdate
 from app.schemas.common import PaginatedResponse
 from app.services import scene as scene_service
+from app.services.collaboration import safe_log_activity
 
 router = APIRouter(prefix="/api/stories/{story_id}/scenes", tags=["scenes"])
 
 
+class SceneReorderItem(BaseModel):
+    id: uuid.UUID
+    act: int | None = None
+
+
 class ReorderRequest(BaseModel):
-    ordered_ids: list[uuid.UUID]
+    # Accept both shapes during the cross-column rollout:
+    # - legacy: {ordered_ids: [uuid, ...]}
+    # - new:    {items: [{id, act?}, ...]} — `act` optionally re-homes a scene
+    #           into a different act column atomically with the reorder.
+    ordered_ids: list[uuid.UUID] | None = None
+    items: list[SceneReorderItem] | None = None
 
 
 @router.patch("/reorder", response_model=list[SceneRead])
@@ -24,8 +35,16 @@ async def reorder_scenes(
     story: Story = Depends(get_story),
     db: AsyncSession = Depends(get_db),
 ):
+    if body.items is not None:
+        tuples = [(i.id, i.act) for i in body.items]
+    elif body.ordered_ids is not None:
+        tuples = [(sid, None) for sid in body.ordered_ids]
+    else:
+        raise HTTPException(
+            status_code=400, detail="Either ordered_ids or items is required"
+        )
     try:
-        scenes = await scene_service.reorder_scenes(db, story.id, body.ordered_ids)
+        scenes = await scene_service.reorder_scenes(db, story.id, tuples)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return scenes
@@ -52,9 +71,14 @@ async def create_scene(
     body: SceneCreate,
     story: Story = Depends(get_story),
     org: Organization = Depends(get_current_org),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     scene = await scene_service.create_scene(db, story.id, org.id, body.model_dump())
+    await safe_log_activity(
+        db, story.id, org.id, user.id, "scene.create",
+        {"scene_id": str(scene.id), "title": scene.title, "n": scene.n},
+    )
     return scene
 
 
@@ -88,10 +112,18 @@ async def update_scene(
 async def delete_scene(
     scene_id: uuid.UUID,
     story: Story = Depends(get_story),
+    org: Organization = Depends(get_current_org),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     scene = await scene_service.get_scene(db, story.id, scene_id)
     if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
+    title = scene.title
+    n = scene.n
     await scene_service.delete_scene(db, scene)
+    await safe_log_activity(
+        db, story.id, org.id, user.id, "scene.delete",
+        {"scene_id": str(scene_id), "title": title, "n": n},
+    )
     return None

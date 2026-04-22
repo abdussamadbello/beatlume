@@ -143,15 +143,19 @@ async def delete_scene(db: AsyncSession, scene: Scene) -> None:
 async def reorder_scenes(
     db: AsyncSession,
     story_id: uuid.UUID,
-    ordered_ids: list[uuid.UUID],
+    items: list[tuple[uuid.UUID, int | None]],
 ) -> list[Scene]:
-    """Rewrite scene.n to match the given order.
+    """Rewrite scene.n to match the given order, optionally re-homing
+    scenes into a different act.
 
     Two-phase write to sidestep UniqueConstraint(story_id, n): first
-    shift affected scenes into a high staging range (current_max_n +
-    1_000_000 + i), then assign final positions 1..N. Scenes not in
-    `ordered_ids` keep their current n values.
+    shift affected scenes into a high staging range (1_000_000 + i),
+    then assign final positions 1..N. When an item's `act` is provided,
+    it's applied during phase 1 so the scene lands in its new column
+    atomically with the reorder. Scenes not in `items` keep their
+    current n and act.
     """
+    ordered_ids = [sid for sid, _ in items]
     result = await db.execute(
         select(Scene).where(
             Scene.story_id == story_id,
@@ -164,14 +168,17 @@ async def reorder_scenes(
     if missing:
         raise ValueError(f"Scene ids not in story: {missing}")
 
-    # Phase 1: move out of the way.
+    # Phase 1: move out of the way + apply any act changes.
     staging_base = 1_000_000
-    for i, sid in enumerate(ordered_ids):
-        scenes_by_id[sid].n = staging_base + i
+    for i, (sid, new_act) in enumerate(items):
+        scene = scenes_by_id[sid]
+        scene.n = staging_base + i
+        if new_act is not None:
+            scene.act = new_act
     await db.flush()
 
     # Phase 2: assign final positions.
-    for i, sid in enumerate(ordered_ids):
+    for i, (sid, _) in enumerate(items):
         scenes_by_id[sid].n = i + 1
 
     await db.commit()

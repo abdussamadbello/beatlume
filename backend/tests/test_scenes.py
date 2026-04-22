@@ -95,3 +95,31 @@ async def test_reorder_scenes(client):
     body = resp.json()
     assert [item["title"] for item in body] == ["C", "A", "B"]
     assert [item["n"] for item in body] == [1, 2, 3]
+
+
+@pytest.mark.asyncio
+async def test_reorder_scenes_can_change_act(client):
+    token, story_id = await setup_story(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    a = (await client.post(f"/api/stories/{story_id}/scenes", json={"title": "A", "act": 1}, headers=headers)).json()
+    b = (await client.post(f"/api/stories/{story_id}/scenes", json={"title": "B", "act": 1}, headers=headers)).json()
+    c = (await client.post(f"/api/stories/{story_id}/scenes", json={"title": "C", "act": 2}, headers=headers)).json()
+
+    # Move B from act 1 to act 2, sequencing A, C, B (B last).
+    resp = await client.patch(
+        f"/api/stories/{story_id}/scenes/reorder",
+        json={
+            "items": [
+                {"id": a["id"]},
+                {"id": c["id"]},
+                {"id": b["id"], "act": 2},
+            ]
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert [s["title"] for s in body] == ["A", "C", "B"]
+    assert [s["act"] for s in body] == [1, 2, 2]
+    assert [s["n"] for s in body] == [1, 2, 3]

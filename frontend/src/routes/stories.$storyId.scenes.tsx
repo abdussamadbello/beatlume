@@ -211,28 +211,23 @@ function SceneBoard() {
     const activeScene = scenes.find((s) => s.id === active.id)
     const overScene = scenes.find((s) => s.id === over.id)
     if (!activeScene || !overScene) return
-    // Within-column only. Cross-column drag would also change scene.act —
-    // keeping that out of v1.
-    if (activeScene.act !== overScene.act) return
 
-    const actItems = scenes
-      .filter((s) => s.act === activeScene.act)
-      .sort((a, b) => a.n - b.n)
-    const fromIndex = actItems.findIndex((s) => s.id === active.id)
-    const toIndex = actItems.findIndex((s) => s.id === over.id)
+    // Work off the full sorted list so within-column and cross-column
+    // drags share one path. For cross-column, the moved scene's act is
+    // re-homed to the drop target's act and sent alongside the reorder.
+    const sortedFull = [...scenes].sort((a, b) => a.n - b.n)
+    const fromIndex = sortedFull.findIndex((s) => s.id === active.id)
+    const toIndex = sortedFull.findIndex((s) => s.id === over.id)
     if (fromIndex === -1 || toIndex === -1) return
 
-    const newActOrder = arrayMove(actItems, fromIndex, toIndex)
-
-    // Rebuild full list: same relative positions, Act items replaced with
-    // their new order. Preserves other acts' ordering.
-    const sortedFull = [...scenes].sort((a, b) => a.n - b.n)
-    let cursor = 0
-    const newFullOrder = sortedFull.map((s) =>
-      s.act === activeScene.act ? newActOrder[cursor++] : s,
+    const newFullOrder = arrayMove(sortedFull, fromIndex, toIndex)
+    const crossColumn = activeScene.act !== overScene.act
+    const items = newFullOrder.map((s) =>
+      crossColumn && s.id === activeScene.id
+        ? { id: s.id, act: overScene.act }
+        : { id: s.id },
     )
-    const orderedIds = newFullOrder.map((s) => s.id)
-    reorderScenes.mutate(orderedIds)
+    reorderScenes.mutate(items)
   }
 
   const board = (
@@ -242,7 +237,7 @@ function SceneBoard() {
         <div>
           <Label>Scene Board</Label>
           <div className="title-serif" style={{ fontSize: 26 }}>
-            {scenes.length} scenes {MIDDOT} {dragEnabled ? 'drag to reorder' : 'sort/filter active — reorder disabled'}
+            {scenes.length} scenes {MIDDOT} {dragEnabled ? 'drag to reorder or move between acts' : 'sort/filter active — reorder disabled'}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
