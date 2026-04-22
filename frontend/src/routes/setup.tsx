@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
-import { Tag, Label, Btn, Placeholder } from '../components/primitives'
+import { Tag, Label, Btn } from '../components/primitives'
 import { useStore } from '../store'
 import { useCreateStory } from '../api/stories'
 import { api } from '../api/client'
@@ -12,7 +12,31 @@ interface Premise {
   genres: string
   subgenre: string
   themes: string
+  structure_type: string
+  target_words: number
 }
+
+interface StructureOption {
+  value: string
+  label: string
+  summary: string
+  acts: string
+}
+
+const structureOptions: StructureOption[] = [
+  { value: '3-act', label: 'Three-Act', summary: 'Setup, confrontation, resolution. Default novelist shape.', acts: 'I · II · III' },
+  { value: 'save-the-cat', label: 'Save the Cat', summary: '15-beat screenplay structure adapted for prose.', acts: '15 beats' },
+  { value: 'hero-journey', label: "Hero's Journey", summary: 'Twelve stages of departure, initiation, return.', acts: '12 stages' },
+  { value: '5-act', label: 'Five-Act', summary: 'Exposition, rising action, climax, falling action, denouement.', acts: 'I–V' },
+  { value: 'freeform', label: 'Freeform', summary: 'No preset. You plot the beats.', acts: '—' },
+]
+
+const wordTargetPresets: { label: string; value: number }[] = [
+  { label: 'Novella', value: 30000 },
+  { label: 'Short novel', value: 60000 },
+  { label: 'Novel', value: 80000 },
+  { label: 'Epic', value: 120000 },
+]
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -60,16 +84,7 @@ function StepContent({
     return <StepPremise premise={premise} setPremise={setPremise} />
   }
   if (step === 2) {
-    return (
-      <div>
-        <Label>Step 02 of 04</Label>
-        <div className="title-serif" style={{ fontSize: 38, margin: '4px 0 8px' }}>Structure</div>
-        <div style={{ fontSize: 13, color: 'var(--ink-2)', maxWidth: '58ch', lineHeight: 1.6 }}>
-          Choose an act structure and approximate length.
-        </div>
-        <Placeholder label="Structure options" style={{ height: 200, marginTop: 24, maxWidth: 720 }} />
-      </div>
-    )
+    return <StepStructure premise={premise} setPremise={setPremise} />
   }
   if (step === 4) {
     const charCount = setupCharacters.filter(c => c.name.trim()).length
@@ -92,8 +107,12 @@ function StepContent({
             </div>
             <div style={{ border: '1px solid var(--ink)', padding: '14px 16px' }}>
               <Label>Structure</Label>
-              <div className="title-serif" style={{ fontSize: 28, lineHeight: 1 }}>3 Acts</div>
-              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>~40 scenes estimated</div>
+              <div className="title-serif" style={{ fontSize: 28, lineHeight: 1 }}>
+                {structureOptions.find((o) => o.value === premise.structure_type)?.label ?? 'Three-Act'}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
+                Target {(premise.target_words / 1000).toFixed(0)}k words
+              </div>
             </div>
             <div style={{ border: '1px solid var(--ink)', padding: '14px 16px' }}>
               <Label>Workspace</Label>
@@ -332,6 +351,102 @@ function StepPremise({ premise, setPremise }: { premise: Premise; setPremise: (p
   )
 }
 
+function StepStructure({ premise, setPremise }: { premise: Premise; setPremise: (patch: Partial<Premise>) => void }) {
+  const wordInput = Math.round(premise.target_words / 1000)
+  return (
+    <div>
+      <Label>Step 02 of 04</Label>
+      <div className="title-serif" style={{ fontSize: 38, margin: '4px 0 8px' }}>Structure</div>
+      <div style={{ fontSize: 13, color: 'var(--ink-2)', maxWidth: '58ch', lineHeight: 1.6 }}>
+        Pick an act structure and an approximate target length. You can change both later — BeatLume never locks you in.
+      </div>
+
+      <div style={{ marginTop: 24, maxWidth: 720 }}>
+        <Label>Act structure</Label>
+        <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {structureOptions.map((opt) => {
+            const selected = premise.structure_type === opt.value
+            return (
+              <div
+                key={opt.value}
+                onClick={() => setPremise({ structure_type: opt.value })}
+                style={{
+                  border: selected ? '1.5px solid var(--ink)' : '1px solid var(--line)',
+                  background: selected ? 'var(--paper-2)' : 'var(--paper)',
+                  padding: '14px 16px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: 18 }}>{opt.label}</div>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.06em' }}>
+                    {opt.acts}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.4 }}>{opt.summary}</div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 32, maxWidth: 720 }}>
+        <Label>Target length</Label>
+        <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {wordTargetPresets.map((p) => {
+            const selected = premise.target_words === p.value
+            return (
+              <div
+                key={p.value}
+                onClick={() => setPremise({ target_words: p.value })}
+                style={{
+                  border: selected ? '1.5px solid var(--ink)' : '1px solid var(--line)',
+                  background: selected ? 'var(--paper-2)' : 'var(--paper)',
+                  padding: '8px 14px',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {p.label} · {(p.value / 1000).toFixed(0)}k
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ marginTop: 14, display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          <input
+            type="number"
+            min={1}
+            max={500}
+            value={wordInput}
+            onChange={(e) => {
+              const n = parseInt(e.target.value, 10)
+              if (!Number.isFinite(n) || n <= 0) return
+              setPremise({ target_words: n * 1000 })
+            }}
+            style={{
+              width: 100,
+              padding: '8px 10px',
+              border: '1px solid var(--ink)',
+              background: 'var(--paper)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 14,
+            }}
+          />
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            × 1,000 words ({premise.target_words.toLocaleString()} total)
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function SetupPage() {
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(1)
@@ -341,6 +456,8 @@ function SetupPage() {
     genres: '',
     subgenre: '',
     themes: '',
+    structure_type: '3-act',
+    target_words: 80000,
   })
   const setPremise = (patch: Partial<Premise>) => setPremiseState((p) => ({ ...p, ...patch }))
 
@@ -369,6 +486,8 @@ function SetupPage() {
         genres: parseList(premise.genres),
         subgenre: premise.subgenre.trim(),
         themes: parseList(premise.themes),
+        structure_type: premise.structure_type,
+        target_words: premise.target_words,
       })
       const namedCharacters = setupCharacters.filter((c) => c.name.trim())
       await Promise.all(
