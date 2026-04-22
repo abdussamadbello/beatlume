@@ -1,6 +1,8 @@
 import uuid
 from pydantic import BaseModel
 
+from app.schemas.scene_participant import SceneParticipantCreate, SceneParticipantRead
+
 
 class SceneCreate(BaseModel):
     title: str
@@ -10,11 +12,14 @@ class SceneCreate(BaseModel):
     location: str = ""
     tag: str = ""
     summary: str | None = None
+    chapter_id: uuid.UUID | None = None
+    participants: list[SceneParticipantCreate] | None = None
 
 
 class SceneRead(BaseModel):
     id: uuid.UUID
     story_id: uuid.UUID
+    chapter_id: uuid.UUID | None = None
     n: int
     title: str
     pov: str
@@ -23,6 +28,7 @@ class SceneRead(BaseModel):
     location: str
     tag: str
     summary: str | None = None
+    participants: list[SceneParticipantRead] = []
 
     model_config = {"from_attributes": True}
 
@@ -35,3 +41,5 @@ class SceneUpdate(BaseModel):
     location: str | None = None
     tag: str | None = None
     summary: str | None = None
+    chapter_id: uuid.UUID | None = None
+    participants: list[SceneParticipantCreate] | None = None

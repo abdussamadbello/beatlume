@@ -13,9 +13,18 @@ export interface Story {
 }
 
 // --- Scene ---
+export interface SceneParticipant {
+  id: string
+  scene_id: string
+  character_id: string
+  role: string
+  interaction_weight?: number | null
+}
+
 export interface Scene {
   id: string
   story_id: string
+  chapter_id?: string | null
   n: number
   title: string
   pov: string
@@ -24,6 +33,7 @@ export interface Scene {
   location: string
   tag: string
   summary?: string
+  participants?: SceneParticipant[]
 }
 
 // --- Character ---

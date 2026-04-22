@@ -2,8 +2,11 @@ import uuid
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from app.models.character import Character
 from app.models.scene import Scene
+from app.models.scene_participant import SceneParticipant
 
 
 async def list_scenes(
@@ -15,7 +18,11 @@ async def list_scenes(
     offset: int = 0,
     limit: int = 50,
 ) -> tuple[list[Scene], int]:
-    query = select(Scene).where(Scene.story_id == story_id)
+    query = (
+        select(Scene)
+        .where(Scene.story_id == story_id)
+        .options(selectinload(Scene.participants))
+    )
     count_query = select(func.count()).select_from(Scene).where(Scene.story_id == story_id)
 
     if act is not None:
@@ -42,34 +49,133 @@ async def list_scenes(
 
 async def get_scene(db: AsyncSession, story_id: uuid.UUID, scene_id: uuid.UUID) -> Scene | None:
     result = await db.execute(
-        select(Scene).where(Scene.id == scene_id, Scene.story_id == story_id)
+        select(Scene)
+        .where(Scene.id == scene_id, Scene.story_id == story_id)
+        .options(selectinload(Scene.participants))
     )
     return result.scalar_one_or_none()
 
 
-async def create_scene(db: AsyncSession, story_id: uuid.UUID, org_id: uuid.UUID, data: dict) -> Scene:
+async def create_scene(
+    db: AsyncSession,
+    story_id: uuid.UUID,
+    org_id: uuid.UUID,
+    data: dict,
+) -> Scene:
     # Auto-assign next scene number
     max_n = await db.execute(
         select(func.max(Scene.n)).where(Scene.story_id == story_id)
     )
     next_n = (max_n.scalar() or 0) + 1
 
+    participants_data = data.pop("participants", None) or []
     scene = Scene(story_id=story_id, org_id=org_id, n=next_n, **data)
     db.add(scene)
+    await db.flush()  # assign scene.id
+
+    for p in participants_data:
+        db.add(
+            SceneParticipant(
+                scene_id=scene.id,
+                character_id=p["character_id"],
+                role=p.get("role", "supporting"),
+                interaction_weight=p.get("interaction_weight"),
+                org_id=org_id,
+            )
+        )
+
+    # Mirror pov string into a role='pov' participant, if a character matches
+    await _sync_pov_participant(db, scene, org_id)
+
     await db.commit()
-    await db.refresh(scene)
-    return scene
+    return await get_scene(db, story_id, scene.id) or scene
 
 
-async def update_scene(db: AsyncSession, scene: Scene, patch: dict) -> Scene:
+async def update_scene(
+    db: AsyncSession,
+    scene: Scene,
+    patch: dict,
+) -> Scene:
+    """Update scalar fields and (optionally) replace the participants set.
+
+    If `participants` is present in the patch, the existing rows for this
+    scene are deleted and replaced. If absent, participants are left alone.
+    Changing `pov` best-effort upserts a role='pov' participant row matched
+    by character name within the same story.
+    """
+    participants_data = patch.pop("participants", None)
     for key, value in patch.items():
         if value is not None:
             setattr(scene, key, value)
+
+    if participants_data is not None:
+        # Delete-and-replace semantics.
+        existing = await db.execute(
+            select(SceneParticipant).where(SceneParticipant.scene_id == scene.id)
+        )
+        for row in existing.scalars().all():
+            await db.delete(row)
+        for p in participants_data:
+            db.add(
+                SceneParticipant(
+                    scene_id=scene.id,
+                    character_id=p["character_id"],
+                    role=p.get("role", "supporting"),
+                    interaction_weight=p.get("interaction_weight"),
+                    org_id=scene.org_id,
+                )
+            )
+
+    # Keep the role='pov' participant aligned with the current pov string.
+    if "pov" in patch and patch["pov"] is not None:
+        await _sync_pov_participant(db, scene, scene.org_id)
+
     await db.commit()
-    await db.refresh(scene)
-    return scene
+    refreshed = await get_scene(db, scene.story_id, scene.id)
+    return refreshed or scene
 
 
 async def delete_scene(db: AsyncSession, scene: Scene) -> None:
     await db.delete(scene)
     await db.commit()
+
+
+async def _sync_pov_participant(
+    db: AsyncSession,
+    scene: Scene,
+    org_id: uuid.UUID,
+) -> None:
+    """Best-effort: if scene.pov matches a character name in this story,
+    ensure a role='pov' participant row exists. Any existing row for that
+    character is promoted to role='pov' (so an author switching POV to
+    someone already listed as supporting just works)."""
+    if not scene.pov or not scene.pov.strip():
+        return
+    name = scene.pov.strip()
+    char_q = await db.execute(
+        select(Character).where(
+            Character.story_id == scene.story_id,
+            func.lower(func.trim(Character.name)) == name.lower(),
+        )
+    )
+    character = char_q.scalar_one_or_none()
+    if not character:
+        return
+    existing_q = await db.execute(
+        select(SceneParticipant).where(
+            SceneParticipant.scene_id == scene.id,
+            SceneParticipant.character_id == character.id,
+        )
+    )
+    existing = existing_q.scalar_one_or_none()
+    if existing:
+        existing.role = "pov"
+    else:
+        db.add(
+            SceneParticipant(
+                scene_id=scene.id,
+                character_id=character.id,
+                role="pov",
+                org_id=org_id,
+            )
+        )
