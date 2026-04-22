@@ -2,6 +2,17 @@ import { useState } from 'react'
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { Tag, Label, Btn, Placeholder } from '../components/primitives'
 import { useStore } from '../store'
+import { useCreateStory } from '../api/stories'
+import { api } from '../api/client'
+import type { Character } from '../types'
+
+interface Premise {
+  title: string
+  logline: string
+  genres: string
+  subgenre: string
+  themes: string
+}
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -31,14 +42,22 @@ const steps: [string, string, boolean][] = [
 
 const roleOptions = ['Protagonist', 'Antagonist', 'Foil', 'Mentor', 'Mirror', 'Family', 'Ward', 'Witness'] as const
 
-function StepContent({ step }: { step: number }) {
+function StepContent({
+  step,
+  premise,
+  setPremise,
+}: {
+  step: number
+  premise: Premise
+  setPremise: (patch: Partial<Premise>) => void
+}) {
   const setupCharacters = useStore(s => s.setupCharacters)
   const addSetupCharacter = useStore(s => s.addSetupCharacter)
   const updateSetupCharacter = useStore(s => s.updateSetupCharacter)
   const removeSetupCharacter = useStore(s => s.removeSetupCharacter)
 
   if (step === 1) {
-    return <StepPremise />
+    return <StepPremise premise={premise} setPremise={setPremise} />
   }
   if (step === 2) {
     return (
@@ -250,15 +269,8 @@ function StepContent({ step }: { step: number }) {
   )
 }
 
-function StepPremise() {
-  // Local-only state for now — setup doesn't POST to /api/stories yet.
-  // When the create flow is wired, these will feed into useCreateStory.
-  const [title, setTitle] = useState('')
-  const [logline, setLogline] = useState('')
-  const [genres, setGenres] = useState('')
-  const [subgenre, setSubgenre] = useState('')
-  const [themes, setThemes] = useState('')
-
+function StepPremise({ premise, setPremise }: { premise: Premise; setPremise: (patch: Partial<Premise>) => void }) {
+  const { title, logline, genres, subgenre, themes } = premise
   return (
     <div>
       <Label>Step 01 of 04</Label>
@@ -272,7 +284,7 @@ function StepPremise() {
           <input
             autoFocus
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => setPremise({ title: e.target.value })}
             style={{ ...inputStyle, marginTop: 6, fontFamily: 'var(--font-serif)', fontSize: 22 }}
             placeholder="A Stranger in the Orchard"
           />
@@ -281,7 +293,7 @@ function StepPremise() {
           <Label>Logline</Label>
           <textarea
             value={logline}
-            onChange={(e) => setLogline(e.target.value)}
+            onChange={(e) => setPremise({ logline: e.target.value })}
             style={{ ...textareaStyle, marginTop: 6 }}
             placeholder="A widow returning to her family's failing orchard discovers the stranger who appears at harvest may be the one who buried her sister."
           />
@@ -291,7 +303,7 @@ function StepPremise() {
             <Label>Genres (comma-separated)</Label>
             <input
               value={genres}
-              onChange={(e) => setGenres(e.target.value)}
+              onChange={(e) => setPremise({ genres: e.target.value })}
               style={{ ...inputStyle, marginTop: 6 }}
               placeholder="Literary, Mystery"
             />
@@ -300,7 +312,7 @@ function StepPremise() {
             <Label>Subgenre</Label>
             <input
               value={subgenre}
-              onChange={(e) => setSubgenre(e.target.value)}
+              onChange={(e) => setPremise({ subgenre: e.target.value })}
               style={{ ...inputStyle, marginTop: 6 }}
               placeholder="Domestic noir"
             />
@@ -310,7 +322,7 @@ function StepPremise() {
           <Label>Themes (comma-separated)</Label>
           <input
             value={themes}
-            onChange={(e) => setThemes(e.target.value)}
+            onChange={(e) => setPremise({ themes: e.target.value })}
             style={{ ...inputStyle, marginTop: 6 }}
             placeholder="Grief, inheritance, return"
           />
@@ -322,10 +334,57 @@ function StepPremise() {
 
 function SetupPage() {
   const navigate = useNavigate()
-  const [currentStep, setCurrentStep] = useState(3)
+  const [currentStep, setCurrentStep] = useState(1)
+  const [premise, setPremiseState] = useState<Premise>({
+    title: '',
+    logline: '',
+    genres: '',
+    subgenre: '',
+    themes: '',
+  })
+  const setPremise = (patch: Partial<Premise>) => setPremiseState((p) => ({ ...p, ...patch }))
+
+  const setupCharacters = useStore((s) => s.setupCharacters)
+  const createStory = useCreateStory()
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const getStepDone = (stepIndex: number) => {
     return stepIndex + 1 < currentStep
+  }
+
+  const parseList = (s: string): string[] =>
+    s.split(',').map((x) => x.trim()).filter(Boolean)
+
+  const canCreate = premise.title.trim().length > 0 && !submitting
+
+  const handleCreate = async () => {
+    if (!canCreate) return
+    setSubmitError(null)
+    setSubmitting(true)
+    try {
+      const story = await createStory.mutateAsync({
+        title: premise.title.trim(),
+        logline: premise.logline.trim(),
+        genres: parseList(premise.genres),
+        subgenre: premise.subgenre.trim(),
+        themes: parseList(premise.themes),
+      })
+      const namedCharacters = setupCharacters.filter((c) => c.name.trim())
+      await Promise.all(
+        namedCharacters.map((c) =>
+          api.post<Character>(`/api/stories/${story.id}/characters`, {
+            name: c.name.trim(),
+            role: c.role,
+            description: c.description,
+          }),
+        ),
+      )
+      navigate({ to: '/stories/$storyId', params: { storyId: story.id } })
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to create story')
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -406,11 +465,17 @@ function SetupPage() {
 
         {/* Step content */}
         <div style={{ padding: '40px 60px', overflow: 'auto' }}>
-          <StepContent step={currentStep} />
+          <StepContent step={currentStep} premise={premise} setPremise={setPremise} />
+          {submitError && (
+            <div style={{ marginTop: 16, maxWidth: 720, border: '1px solid var(--red)', background: 'var(--red-soft, #fce8e8)', padding: '10px 14px', fontSize: 12, color: 'var(--red)' }}>
+              {submitError}
+            </div>
+          )}
           <div style={{ marginTop: 32, display: 'flex', justifyContent: 'space-between', maxWidth: 720 }}>
             <Btn
               variant="ghost"
               onClick={() => currentStep === 1 ? navigate({ to: '/dashboard' }) : setCurrentStep((s) => s - 1)}
+              disabled={submitting}
             >
               &larr; {currentStep > 1 ? steps[currentStep - 2][1] : 'Dashboard'}
             </Btn>
@@ -418,15 +483,17 @@ function SetupPage() {
               <Btn
                 variant="solid"
                 onClick={() => setCurrentStep((s) => s + 1)}
+                disabled={currentStep === 1 && !premise.title.trim()}
               >
                 Continue &rarr; {steps[currentStep][1]}
               </Btn>
             ) : (
               <Btn
                 variant="solid"
-                onClick={() => navigate({ to: '/' })}
+                onClick={handleCreate}
+                disabled={!canCreate}
               >
-                Create Story &rarr;
+                {submitting ? 'Creating…' : 'Create Story →'}
               </Btn>
             )}
           </div>

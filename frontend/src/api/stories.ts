@@ -20,8 +20,15 @@ export function useStory(storyId: string) {
 export function useCreateStory() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { title: string; genres?: string[]; target_words?: number; structure_type?: string }) =>
-      api.post<Story>('/api/stories', data),
+    mutationFn: (data: {
+      title: string
+      logline?: string
+      genres?: string[]
+      subgenre?: string
+      themes?: string[]
+      target_words?: number
+      structure_type?: string
+    }) => api.post<Story>('/api/stories', data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['stories'] }),
   })
 }

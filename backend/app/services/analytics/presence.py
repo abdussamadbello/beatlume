@@ -3,12 +3,20 @@
 from __future__ import annotations
 
 
-def compute_presence(scenes: list[dict], characters: list[dict]) -> dict:
+def compute_presence(
+    scenes: list[dict],
+    characters: list[dict],
+    presence_matrix: list[list[int]] | None = None,
+) -> dict:
     """Compute a character-vs-scene presence matrix.
 
     Args:
         scenes: list of scene dicts with at least "pov" field.
         characters: list of character dicts with at least "name" field.
+        presence_matrix: optional pre-built matrix (rows=characters, cols=scenes)
+            with values 0=absent, 1=mentioned, 2=POV. When provided, the pov/summary
+            string-matching logic is skipped entirely. Used by the API layer to
+            feed participant-based presence while keeping the stats computation here.
 
     Returns:
         Dict with matrix, characters, scenes, and stats.
@@ -17,25 +25,27 @@ def compute_presence(scenes: list[dict], characters: list[dict]) -> dict:
         return {"matrix": [], "characters": [], "scenes": [], "stats": []}
 
     char_names = [c["name"] for c in characters]
-    n_chars = len(char_names)
     n_scenes = len(scenes)
 
-    # Build binary matrix: rows=characters, cols=scenes
-    # 0=absent, 1=mentioned (scene summary contains name), 2=POV
-    matrix: list[list[int]] = []
-    for c_idx, c in enumerate(characters):
-        row = []
-        name = c["name"]
-        for s_idx, s in enumerate(scenes):
-            pov = s.get("pov", "")
-            summary = s.get("summary", "") or ""
-            if pov and pov.strip().lower() == name.strip().lower():
-                row.append(2)
-            elif name.lower() in summary.lower():
-                row.append(1)
-            else:
-                row.append(0)
-        matrix.append(row)
+    if presence_matrix is not None:
+        matrix = presence_matrix
+    else:
+        # Build binary matrix: rows=characters, cols=scenes
+        # 0=absent, 1=mentioned (scene summary contains name), 2=POV
+        matrix = []
+        for c in characters:
+            row = []
+            name = c["name"]
+            for s in scenes:
+                pov = s.get("pov", "")
+                summary = s.get("summary", "") or ""
+                if pov and pov.strip().lower() == name.strip().lower():
+                    row.append(2)
+                elif name.lower() in summary.lower():
+                    row.append(1)
+                else:
+                    row.append(0)
+            matrix.append(row)
 
     # Per-character stats
     stats = []

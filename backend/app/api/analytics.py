@@ -101,7 +101,67 @@ async def get_presence(
         for s in scenes
     ]
     char_dicts = [{"name": c.name} for c in characters]
-    return compute_presence(scene_dicts, char_dicts)
+
+    # Canonical source of presence is scene_participants. For each scene with
+    # no participant rows we fall back to pov-string matching — keeps stories
+    # seeded before migration 5b2c3d4e6f7a working. Summary-mention detection
+    # applies in either branch so a character named in prose still surfaces.
+    participant_roles = await _load_participant_roles(db, story.id)
+    scenes_with_participants = {scene_id for scene_id, _ in participant_roles}
+
+    presence_matrix = [
+        [
+            _presence_level(
+                scene=s,
+                char=c,
+                participant_roles=participant_roles,
+                scenes_with_participants=scenes_with_participants,
+            )
+            for s in scenes
+        ]
+        for c in characters
+    ]
+    return compute_presence(scene_dicts, char_dicts, presence_matrix=presence_matrix)
+
+
+async def _load_participant_roles(
+    db: AsyncSession, story_id: uuid.UUID
+) -> dict[tuple[uuid.UUID, uuid.UUID], str]:
+    """Load (scene_id, character_id) → role for all participants in a story."""
+    result = await db.execute(
+        select(
+            SceneParticipant.scene_id,
+            SceneParticipant.character_id,
+            SceneParticipant.role,
+        )
+        .join(Scene, Scene.id == SceneParticipant.scene_id)
+        .where(Scene.story_id == story_id)
+    )
+    return {(row.scene_id, row.character_id): row.role for row in result}
+
+
+def _presence_level(
+    *,
+    scene: Scene,
+    char: Character,
+    participant_roles: dict[tuple[uuid.UUID, uuid.UUID], str],
+    scenes_with_participants: set[uuid.UUID],
+) -> int:
+    """Return 0=absent, 1=mentioned/supporting, 2=POV for a (scene, character) pair.
+
+    Participant row is canonical; pov-string fallback only fires when a scene
+    has no participant rows at all. Summary mention remains a secondary signal.
+    """
+    role = participant_roles.get((scene.id, char.id))
+    if role is not None:
+        return 2 if role == "pov" else 1
+    if scene.id not in scenes_with_participants:
+        if scene.pov.strip().lower() == char.name.strip().lower():
+            return 2
+    summary = (scene.summary or "").lower()
+    if summary and char.name.lower() in summary:
+        return 1
+    return 0
 
 
 @router.get("/arcs")
