@@ -48,6 +48,24 @@ export function useCreateComment(storyId: string) {
   })
 }
 
+export function useUpdateComment(storyId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ commentId, body }: { commentId: string; body: string }) =>
+      api.put<Comment>(`/api/stories/${storyId}/comments/${commentId}`, { body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['stories', storyId, 'comments'] }),
+  })
+}
+
+export function useDeleteComment(storyId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (commentId: string) =>
+      api.delete(`/api/stories/${storyId}/comments/${commentId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['stories', storyId, 'comments'] }),
+  })
+}
+
 export function useActivity(storyId: string) {
   return useQuery({
     queryKey: ['stories', storyId, 'activity'],

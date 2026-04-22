@@ -9,7 +9,10 @@ import {
   useInviteCollaborator,
   useRemoveCollaborator,
   useCreateComment,
+  useUpdateComment,
+  useDeleteComment,
 } from '../api/collaboration'
+import { useStore } from '../store'
 
 export const Route = createFileRoute('/stories/$storyId/collaboration')({
   component: CollaborationPage,
@@ -42,6 +45,11 @@ function CollaborationPage() {
   const invite = useInviteCollaborator(storyId)
   const remove = useRemoveCollaborator(storyId)
   const createComment = useCreateComment(storyId)
+  const updateComment = useUpdateComment(storyId)
+  const deleteComment = useDeleteComment(storyId)
+  const currentUserId = useStore((s) => s.currentUser?.id) ?? null
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingBody, setEditingBody] = useState('')
 
   const [showInvite, setShowInvite] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -335,54 +343,119 @@ function CollaborationPage() {
             </Btn>
           </div>
           <div style={{ padding: '8px 0' }}>
-            {comments.map((c) => (
-              <div
-                key={c.id}
-                style={{
-                  padding: '14px 20px',
-                  borderBottom: '1px solid var(--line-2)',
-                }}
-              >
+            {comments.map((c) => {
+              const isAuthor = currentUserId === c.user_id
+              const isEditing = editingId === c.id
+              return (
                 <div
+                  key={c.id}
                   style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 6,
+                    padding: '14px 20px',
+                    borderBottom: '1px solid var(--line-2)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span
-                      style={{
-                        fontFamily: 'var(--font-sans)',
-                        fontSize: 12,
-                        fontWeight: 500,
-                      }}
-                    >
-                      {c.user_id}
-                    </span>
-                  </div>
-                  <span
+                  <div
                     style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 10,
-                      color: 'var(--ink-3)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 6,
                     }}
                   >
-                    {c.created_at}
-                  </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-sans)',
+                          fontSize: 12,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {c.user_id}
+                      </span>
+                    </div>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 10,
+                        color: 'var(--ink-3)',
+                      }}
+                    >
+                      {new Date(c.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                  {isEditing ? (
+                    <textarea
+                      value={editingBody}
+                      onChange={(e) => setEditingBody(e.target.value)}
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        fontFamily: 'var(--font-serif)',
+                        fontSize: 13,
+                        padding: 8,
+                        border: '1px solid var(--ink-3)',
+                        background: 'var(--paper-2)',
+                        outline: 'none',
+                        resize: 'vertical',
+                      }}
+                    />
+                  ) : (
+                    <div style={{ fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.5 }}>
+                      {c.body}
+                    </div>
+                  )}
+                  {isAuthor && (
+                    <div style={{ marginTop: 6, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                      {isEditing ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => { setEditingId(null); setEditingBody('') }}
+                            style={{ ...labelStyle, background: 'none', border: 'none', cursor: 'pointer' }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const body = editingBody.trim()
+                              if (!body || body === c.body) {
+                                setEditingId(null)
+                                return
+                              }
+                              await updateComment.mutateAsync({ commentId: c.id, body })
+                              setEditingId(null)
+                            }}
+                            style={{ ...labelStyle, background: 'none', border: 'none', cursor: 'pointer' }}
+                          >
+                            Save
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => { setEditingId(c.id); setEditingBody(c.body) }}
+                            style={{ ...labelStyle, background: 'none', border: 'none', cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteComment.mutate(c.id)}
+                            disabled={deleteComment.isPending}
+                            style={{ ...labelStyle, background: 'none', border: 'none', cursor: 'pointer' }}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--ink-2)',
-                    lineHeight: 1.5,
-                  }}
-                >
-                  {c.body}
-                </div>
-              </div>
-            ))}
+              )
+            })}
             {comments.length === 0 && (
               <div style={{ padding: 20, textAlign: 'center', color: 'var(--ink-3)', fontSize: 12 }}>
                 No comments yet.

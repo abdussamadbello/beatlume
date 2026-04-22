@@ -11,7 +11,7 @@ import {
   useCreateCoreSetting,
   useUpdateCoreSetting,
 } from '../api/core'
-import type { Beat, CoreConfigNode, Scene, SceneMetric } from '../types'
+import type { Beat, Comment, CoreConfigNode, Scene, SceneMetric } from '../types'
 import { BEAT_KINDS, SCENE_METRICS } from '../types'
 import {
   useBeats,
@@ -20,7 +20,8 @@ import {
   useReorderBeats,
   useUpdateBeat,
 } from '../api/beats'
-import { useComments, useCreateComment } from '../api/collaboration'
+import { useComments, useCreateComment, useUpdateComment, useDeleteComment } from '../api/collaboration'
+import { useStore } from '../store'
 import {
   DndContext,
   PointerSensor,
@@ -934,6 +935,9 @@ function BeatRow({
 function SceneComments({ storyId, sceneId }: { storyId: string; sceneId: string }) {
   const { data: comments } = useComments(storyId, sceneId)
   const create = useCreateComment(storyId)
+  const update = useUpdateComment(storyId)
+  const remove = useDeleteComment(storyId)
+  const currentUserId = useStore((s) => s.currentUser?.id)
   const [draft, setDraft] = useState('')
 
   const submit = async () => {
@@ -955,26 +959,13 @@ function SceneComments({ storyId, sceneId }: { storyId: string; sceneId: string 
 
       <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
         {list.map((c) => (
-          <div
+          <CommentItem
             key={c.id}
-            style={{
-              border: '1px solid var(--line)',
-              background: 'var(--paper)',
-              padding: '8px 10px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.04em' }}>
-                {c.user_id.slice(0, 8)}
-              </span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)' }}>
-                {new Date(c.created_at).toLocaleString()}
-              </span>
-            </div>
-            <div style={{ fontFamily: 'var(--font-serif)', fontSize: 14, lineHeight: 1.5, color: 'var(--ink)' }}>
-              {c.body}
-            </div>
-          </div>
+            comment={c}
+            currentUserId={currentUserId ?? null}
+            onSave={(body) => update.mutateAsync({ commentId: c.id, body })}
+            onDelete={() => remove.mutateAsync(c.id)}
+          />
         ))}
         {list.length === 0 && (
           <div style={{ fontSize: 11, color: 'var(--ink-3)', fontStyle: 'italic', padding: '4px 0' }}>
@@ -1022,4 +1013,119 @@ function SceneComments({ storyId, sceneId }: { storyId: string; sceneId: string 
       </div>
     </div>
   )
+}
+
+function CommentItem({
+  comment,
+  currentUserId,
+  onSave,
+  onDelete,
+}: {
+  comment: Comment
+  currentUserId: string | null
+  onSave: (body: string) => Promise<unknown>
+  onDelete: () => Promise<unknown>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(comment.body)
+  const [saving, setSaving] = useState(false)
+
+  const isAuthor = currentUserId != null && currentUserId === comment.user_id
+
+  const save = async () => {
+    const body = draft.trim()
+    if (!body || body === comment.body) {
+      setEditing(false)
+      setDraft(comment.body)
+      return
+    }
+    setSaving(true)
+    try {
+      await onSave(body)
+      setEditing(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      style={{
+        border: '1px solid var(--line)',
+        background: 'var(--paper)',
+        padding: '8px 10px',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.04em' }}>
+          {comment.user_id.slice(0, 8)}
+        </span>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)' }}>
+          {new Date(comment.created_at).toLocaleString()}
+        </span>
+      </div>
+      {editing ? (
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={2}
+          style={{
+            width: '100%',
+            boxSizing: 'border-box',
+            fontFamily: 'var(--font-serif)',
+            fontSize: 13,
+            padding: 6,
+            border: '1px solid var(--ink-3)',
+            background: 'var(--paper-2)',
+            outline: 'none',
+            resize: 'vertical',
+          }}
+        />
+      ) : (
+        <div style={{ fontFamily: 'var(--font-serif)', fontSize: 14, lineHeight: 1.5, color: 'var(--ink)' }}>
+          {comment.body}
+        </div>
+      )}
+      {isAuthor && (
+        <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          {editing ? (
+            <>
+              <button
+                type="button"
+                onClick={() => { setEditing(false); setDraft(comment.body) }}
+                disabled={saving}
+                style={commentActionStyle}
+              >
+                Cancel
+              </button>
+              <button type="button" onClick={save} disabled={saving} style={commentActionStyle}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={() => setEditing(true)} style={commentActionStyle}>
+                Edit
+              </button>
+              <button type="button" onClick={() => onDelete()} style={commentActionStyle}>
+                Delete
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const commentActionStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: 9,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-3)',
+  border: 'none',
+  background: 'transparent',
+  cursor: 'pointer',
+  padding: 0,
 }

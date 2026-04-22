@@ -23,6 +23,10 @@ class CommentCreate(BaseModel):
     scene_id: uuid.UUID | None = None
 
 
+class CommentUpdate(BaseModel):
+    body: str
+
+
 class CommentRead(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID

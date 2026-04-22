@@ -95,6 +95,30 @@ async def create_comment(
     return comment
 
 
+async def get_comment(
+    db: AsyncSession, story_id: uuid.UUID, comment_id: uuid.UUID
+) -> Comment | None:
+    result = await db.execute(
+        select(Comment).where(
+            Comment.id == comment_id,
+            Comment.story_id == story_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def update_comment(db: AsyncSession, comment: Comment, body: str) -> Comment:
+    comment.body = body
+    await db.commit()
+    await db.refresh(comment)
+    return comment
+
+
+async def delete_comment(db: AsyncSession, comment: Comment) -> None:
+    await db.delete(comment)
+    await db.commit()
+
+
 async def list_activity(db: AsyncSession, story_id: uuid.UUID) -> list[ActivityEvent]:
     result = await db.execute(
         select(ActivityEvent).where(ActivityEvent.story_id == story_id).order_by(ActivityEvent.created_at.desc()).limit(50)

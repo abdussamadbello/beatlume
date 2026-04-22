@@ -11,6 +11,7 @@ from app.schemas.collaboration import (
     CollaboratorRead,
     CommentCreate,
     CommentRead,
+    CommentUpdate,
     InviteRequest,
 )
 from app.services import collaboration as collab_service
@@ -78,6 +79,42 @@ async def create_comment(
     db: AsyncSession = Depends(get_db),
 ):
     return await collab_service.create_comment(db, story.id, org.id, user.id, body.body, body.scene_id)
+
+
+@router.put("/comments/{comment_id}", response_model=CommentRead)
+async def update_comment(
+    comment_id: uuid.UUID,
+    body: CommentUpdate,
+    story: Story = Depends(get_story),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    comment = await collab_service.get_comment(db, story.id, comment_id)
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    if comment.user_id != user.id:
+        raise HTTPException(
+            status_code=403, detail="Only the author can edit this comment"
+        )
+    return await collab_service.update_comment(db, comment, body.body)
+
+
+@router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_comment(
+    comment_id: uuid.UUID,
+    story: Story = Depends(get_story),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    comment = await collab_service.get_comment(db, story.id, comment_id)
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    if comment.user_id != user.id:
+        raise HTTPException(
+            status_code=403, detail="Only the author can delete this comment"
+        )
+    await collab_service.delete_comment(db, comment)
+    return None
 
 
 @router.get("/activity", response_model=list[ActivityRead])
