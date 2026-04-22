@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "dev-secret-change-in-production"
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 7
+    sse_token_expire_seconds: int = 60
 
     # OAuth
     oauth_google_client_id: str = ""

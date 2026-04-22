@@ -1,7 +1,12 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { TensionCurve } from '../components/charts'
+import { Btn, Label, Tag, TensionBar } from '../components/primitives'
+import { Modal } from '../components/Modal'
 import { LoadingState } from '../components/LoadingState'
 import { useTensionCurve } from '../api/analytics'
+import { useScenes } from '../api/scenes'
+import type { Scene } from '../types'
 
 export const Route = createFileRoute('/stories/$storyId/timeline')({
   component: TimelineView,
@@ -21,6 +26,33 @@ function TimelineView() {
   const { storyId } = Route.useParams()
   const navigate = useNavigate()
   const { data, isLoading } = useTensionCurve(storyId)
+  const { data: scenesData } = useScenes(storyId)
+
+  const [chartWidth, setChartWidth] = useState(0)
+  const [activeScene, setActiveScene] = useState<Scene | null>(null)
+
+  const chartContainerRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => {
+      setChartWidth(Math.floor(entry.contentRect.width))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const scenesById = useMemo(() => {
+    const items = scenesData?.items ?? []
+    return [...items].sort((a, b) => a.n - b.n)
+  }, [scenesData])
+
+  useEffect(() => {
+    if (!activeScene) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setActiveScene(null)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [activeScene])
 
   if (isLoading) return <LoadingState />
 
@@ -30,10 +62,16 @@ function TimelineView() {
   const metrics = data?.metrics
   const n = tensionData.length
 
-  const goToScene = (i: number) => {
+  const previewScene = (i: number) => {
+    const scene = scenesById[i]
+    if (scene) setActiveScene(scene)
+  }
+
+  const openFullScene = (scene: Scene) => {
+    setActiveScene(null)
     navigate({
       to: '/stories/$storyId/scenes/$id',
-      params: { storyId, id: String(i + 1) },
+      params: { storyId, id: scene.id },
     })
   }
 
@@ -56,7 +94,7 @@ function TimelineView() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
       {/* Header */}
       <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--ink)' }}>
         <div style={labelStyle}>Timeline</div>
@@ -66,44 +104,47 @@ function TimelineView() {
       </div>
 
       {/* Main: chart + right panel */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 240px', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 240px', overflow: 'hidden' }}>
         {/* Chart area */}
-        <div style={{ padding: 20 }}>
-          <TensionCurve
-            width={960}
-            height={360}
-            data={tensionData}
-            acts={acts}
-            peaks={peaks}
-            fill="var(--ink)"
-            onPointClick={goToScene}
-          />
-
-          {/* Heatmap strip */}
-          <div style={{ marginTop: 8, display: 'flex', gap: 2 }}>
-            {tensionData.map((v, i) => (
-              <div
-                key={i}
-                onClick={() => goToScene(i)}
-                style={{
-                  flex: 1,
-                  height: 18,
-                  background: v >= 8 ? 'var(--ink)' : v >= 5 ? 'var(--ink-2)' : 'var(--line)',
-                  borderRight: '1px solid var(--paper)',
-                  cursor: 'pointer',
-                }}
-                title={`${sceneCode(i)} · tension ${v}`}
+        <div ref={chartContainerRef} style={{ padding: 20, minWidth: 0 }}>
+          {chartWidth > 0 && (
+            <>
+              <TensionCurve
+                width={chartWidth}
+                height={360}
+                data={tensionData}
+                acts={acts}
+                peaks={peaks}
+                fill="var(--ink)"
+                onPointClick={previewScene}
               />
-            ))}
-          </div>
-          <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--ink-3)', letterSpacing: '0.08em' }}>
-            <span>{sceneCode(0)}</span>
-            <span>{sceneCode(n - 1)}</span>
-          </div>
+
+              <div style={{ marginTop: 8, display: 'flex', gap: 2 }}>
+                {tensionData.map((v, i) => (
+                  <div
+                    key={i}
+                    onClick={() => previewScene(i)}
+                    style={{
+                      flex: 1,
+                      height: 18,
+                      background: v >= 8 ? 'var(--ink)' : v >= 5 ? 'var(--ink-2)' : 'var(--line)',
+                      borderRight: '1px solid var(--paper)',
+                      cursor: 'pointer',
+                    }}
+                    title={`${sceneCode(i)} · tension ${v}`}
+                  />
+                ))}
+              </div>
+              <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--ink-3)', letterSpacing: '0.08em' }}>
+                <span>{sceneCode(0)}</span>
+                <span>{sceneCode(n - 1)}</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Right panel */}
-        <div style={{ borderLeft: '1px solid var(--ink)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ borderLeft: '1px solid var(--ink)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 18, overflow: 'auto' }}>
           {metrics && (
             <div>
               <div style={labelStyle}>Metrics</div>
@@ -143,7 +184,7 @@ function TimelineView() {
                 {peaks.map((peak) => (
                   <button
                     key={`${peak.at}-${peak.label}`}
-                    onClick={() => goToScene(peak.at)}
+                    onClick={() => previewScene(peak.at)}
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -166,6 +207,79 @@ function TimelineView() {
             </div>
           )}
         </div>
+      </div>
+
+      <Modal open={!!activeScene} onClose={() => setActiveScene(null)} width={520}>
+        {activeScene && <ScenePreview scene={activeScene} onOpenFull={() => openFullScene(activeScene)} onClose={() => setActiveScene(null)} />}
+      </Modal>
+    </div>
+  )
+}
+
+function ScenePreview({
+  scene,
+  onOpenFull,
+  onClose,
+}: {
+  scene: Scene
+  onOpenFull: () => void
+  onClose: () => void
+}) {
+  const metaBits = [scene.pov && `POV: ${scene.pov}`, `Act ${scene.act}`, scene.location].filter(Boolean)
+
+  return (
+    <div style={{ padding: '18px 22px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <Label>S{String(scene.n).padStart(2, '0')}</Label>
+        <button
+          onClick={onClose}
+          aria-label="Close preview"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 16,
+            color: 'var(--ink-3)',
+            lineHeight: 1,
+            padding: 4,
+          }}
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="title-serif" style={{ fontSize: 22, marginBottom: 6 }}>
+        {scene.title}
+      </div>
+
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.04em', color: 'var(--ink-3)', marginBottom: 14, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        {metaBits.flatMap((bit, i) =>
+          i === 0
+            ? [<span key={`bit-${i}`}>{bit}</span>]
+            : [
+                <span key={`sep-${i}`} style={{ color: 'var(--line)' }}>·</span>,
+                <span key={`bit-${i}`}>{bit}</span>,
+              ],
+        )}
+        {scene.tag && <Tag style={{ fontSize: 9 }}>{scene.tag}</Tag>}
+      </div>
+
+      <Label style={{ display: 'block', marginBottom: 6 }}>Tension</Label>
+      <TensionBar value={scene.tension} />
+
+      {scene.summary && (
+        <>
+          <Label style={{ display: 'block', marginTop: 16, marginBottom: 6 }}>Summary</Label>
+          <div style={{ fontFamily: 'var(--font-serif)', fontSize: 14, lineHeight: 1.6, color: 'var(--ink-2)' }}>
+            {scene.summary}
+          </div>
+        </>
+      )}
+
+      <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <Btn variant="ghost" onClick={onClose}>Close</Btn>
+        <Btn onClick={onOpenFull}>Open full scene →</Btn>
       </div>
     </div>
   )

@@ -1,0 +1,91 @@
+# BeatLume monorepo ignores
+
+# --- Local environment and secrets ---
+.env
+.env.*
+!.env.example
+*.local
+
+# --- Python / backend ---
+__pycache__/
+*.py[cod]
+*$py.class
+.python-version
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.eggs/
+build/
+dist/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# --- Node / frontend ---
+node_modules/
+dist/
+dist-ssr/
+.vite/
+.parcel-cache/
+.turbo/
+.next/
+.nuxt/
+coverage/
+*.tsbuildinfo
+
+# --- TanStack / Vite generated local state ---
+.tanstack/
+
+# --- Playwright / browser tooling ---
+test-results/
+playwright-report/
+blob-report/
+.playwright-mcp/
+
+# --- Logs and runtime files ---
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.pid
+*.seed
+
+# --- Local storage / uploads / generated exports ---
+uploads/
+exports/
+tmp/
+temp/
+*.sqlite
+*.sqlite3
+*.db
+
+# --- OS and editor noise ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# --- Tooling caches ---
+.cache/
+.eslintcache
+.stylelintcache
+.npm/
+.pnpm-store/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz

@@ -43,6 +43,18 @@ def create_refresh_token(user_id: uuid.UUID, org_id: uuid.UUID) -> str:
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=ALGORITHM)
 
 
+def create_sse_token(user_id: uuid.UUID, org_id: uuid.UUID, story_id: uuid.UUID) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(seconds=settings.sse_token_expire_seconds)
+    payload = {
+        "sub": str(user_id),
+        "org": str(org_id),
+        "story": str(story_id),
+        "exp": expire,
+        "type": "sse",
+    }
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=ALGORITHM)
+
+
 def decode_token(token: str) -> dict:
     """Decode and validate a JWT token. Raises JWTError on invalid/expired."""
     return jwt.decode(token, settings.jwt_secret_key, algorithms=[ALGORITHM])
