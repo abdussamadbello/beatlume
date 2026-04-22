@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { TensionCurve } from '../components/charts'
 import { Panel, PanelHead, Tag, Label, PresenceStrip } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
+import { useStory } from '../api/stories'
 import { useScenes } from '../api/scenes'
 import { useCharacters } from '../api/characters'
 import { useInsights } from '../api/insights'
@@ -14,12 +15,13 @@ export const Route = createFileRoute('/stories/$storyId/')({
 function Overview() {
   const { storyId } = Route.useParams()
   const navigate = useNavigate()
+  const { data: story, isLoading: storyLoading } = useStory(storyId)
   const { data: scenesData, isLoading: scenesLoading } = useScenes(storyId)
   const { data: charsData, isLoading: charsLoading } = useCharacters(storyId)
   const { data: insightsData, isLoading: insightsLoading } = useInsights(storyId)
   const { data: tensionCurveData } = useTensionCurve(storyId)
 
-  if (scenesLoading || charsLoading || insightsLoading) return <LoadingState />
+  if (storyLoading || scenesLoading || charsLoading || insightsLoading) return <LoadingState />
 
   const scenes = scenesData?.items ?? []
   const characters = charsData?.items ?? []
@@ -30,40 +32,50 @@ function Overview() {
   const samplePeaks = tensionCurveData?.peaks ?? []
 
   const firstInsight = insights.length > 0 ? insights[0] : null
+  const povCount = new Set(scenes.map((s) => s.pov).filter(Boolean)).size
+  const actCount = scenes.reduce((max, s) => Math.max(max, s.act), 0)
+  const activeInsights = insights.filter((i) => !i.dismissed)
+  const redInsights = insights.filter((i) => i.severity === 'red')
 
   const stats = [
-    { n: String(scenes.length), l: 'Scenes', s: `of ~58` },
-    { n: String(characters.length), l: 'Characters', s: `${characters.filter(c => c.scene_count > 5).length} active` },
-    { n: '3', l: 'Subplots', s: '2 resolved' },
-    { n: '9', l: 'Relationships', s: 'in flux' },
-  ] as const;
+    { n: String(scenes.length), l: 'Scenes', s: povCount > 0 ? `${povCount} POV${povCount === 1 ? '' : 's'}` : 'no POVs yet' },
+    { n: String(characters.length), l: 'Characters', s: `${characters.filter((c) => c.scene_count > 5).length} active` },
+    { n: String(actCount || '—'), l: 'Acts', s: story?.structure_type ?? '—' },
+    { n: String(activeInsights.length), l: 'AI flags', s: `${redInsights.length} red` },
+  ] as const
+
+  const MIDDOT = '·'
 
   return (
     <div style={{ padding: '28px 36px', overflow: 'hidden' }}>
       {/* Story title section */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
-          <Label>Story {'\u00B7'} Draft 3</Label>
-          <h1 className="title-serif" style={{ margin: '4px 0 8px', fontSize: 44 }}>A Stranger in the Orchard</h1>
-          <div style={{ fontSize: 12, color: 'var(--ink-2)', maxWidth: '62ch' }}>
-            A widow returning to her family's failing orchard discovers the stranger who appears at harvest may be the one who buried her sister.
-          </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-            <Tag>Literary {'\u00B7'} Mystery</Tag>
-            <Tag>Multi-POV {'\u00B7'} 3</Tag>
-            <Tag variant="blue">72,000 words target</Tag>
+          <Label>Story {MIDDOT} Draft {story?.draft_number ?? '—'}</Label>
+          <h1 className="title-serif" style={{ margin: '4px 0 8px', fontSize: 44 }}>
+            {story?.title ?? 'Untitled story'}
+          </h1>
+          <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+            {(story?.genres ?? []).length > 0 && (
+              <Tag>{(story?.genres ?? []).join(` ${MIDDOT} `)}</Tag>
+            )}
+            {povCount > 1 && <Tag>Multi-POV {MIDDOT} {povCount}</Tag>}
+            {povCount === 1 && <Tag>Single POV</Tag>}
+            {story && <Tag variant="blue">{story.target_words.toLocaleString()} words target</Tag>}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <Label>Last edited</Label>
-          <div style={{ fontSize: 12 }}>Today, 14:02 {'\u00B7'} Scene 23</div>
+          <Label>Status</Label>
+          <div style={{ fontSize: 12, textTransform: 'capitalize' }}>
+            {(story?.status ?? '').replace('_', ' ') || '—'}
+          </div>
         </div>
       </div>
 
       {/* Tension curve + AI flag */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
         <Panel>
-          <PanelHead left="Tension curve \u00B7 whole story" right={`${scenes.length} scenes`} />
+          <PanelHead left={`Tension curve ${MIDDOT} whole story`} right={`${scenes.length} scenes`} />
           <div style={{ padding: 8 }}>
             <TensionCurve width={760} height={200} data={tensionData} acts={sampleActs} peaks={samplePeaks} />
           </div>
@@ -119,7 +131,7 @@ function Overview() {
                 <div style={{ display: 'flex', gap: 12, alignItems: 'baseline' }}>
                   <Label style={{ minWidth: 24 }}>{String(s.n).padStart(2, '0')}</Label>
                   <span style={{ fontFamily: 'var(--font-serif)', fontSize: 16 }}>{s.title}</span>
-                  <span className="dim" style={{ fontSize: 10 }}>{s.pov} {'\u00B7'} {s.location}</span>
+                  <span className="dim" style={{ fontSize: 10 }}>{s.pov} {MIDDOT} {s.location}</span>
                 </div>
                 <Tag>T {s.tension}</Tag>
               </div>
