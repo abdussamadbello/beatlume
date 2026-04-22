@@ -1,7 +1,6 @@
 import { Fragment, useMemo, useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { GraphRenderer } from '../components/charts'
-import { Tag, Btn, Label, TensionBar } from '../components/primitives'
+import { Tag, Btn, Label } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { useDeleteScene, useScenes, useScene } from '../api/scenes'
 import {
@@ -10,24 +9,7 @@ import {
   useCreateCoreSetting,
   useUpdateCoreSetting,
 } from '../api/core'
-import type { CoreConfigNode, SceneNode, GraphEdge, Scene } from '../types'
-
-const graphNodes: SceneNode[] = [
-  { id: 'iris', character_id: 'iris', x: 180, y: 100, label: 'Iris', initials: 'IR', node_type: 'hub', first_appearance_scene: 1 },
-  { id: 'jon', character_id: 'jon', x: 290, y: 70, label: 'Jon', initials: 'JN', first_appearance_scene: 1 },
-  { id: 'fen', character_id: 'fen', x: 90, y: 140, label: 'Fen', initials: 'FN', first_appearance_scene: 2 },
-]
-
-const graphEdges: GraphEdge[] = [
-  { id: 'e1', source_node_id: 'iris', target_node_id: 'jon', kind: 'alliance', weight: 3, provenance: 'author', evidence: [], first_evidenced_scene: 1 },
-  { id: 'e2', source_node_id: 'iris', target_node_id: 'fen', kind: 'secret', weight: 2, provenance: 'author', evidence: [], first_evidenced_scene: 2 },
-]
-
-const beats = [
-  { id: 'B1', tag: 'Action', text: 'Iris runs toward the smoke' },
-  { id: 'B2', tag: 'Reveal', text: 'Fen with something in his coat' },
-  { id: 'B3', tag: 'Decision', text: 'Jon says "I\'m staying"' },
-]
+import type { CoreConfigNode, Scene } from '../types'
 
 function SceneDetailPage() {
   const navigate = useNavigate()
@@ -82,15 +64,6 @@ function SceneDetailPage() {
     fields.push(['Summary', scene.summary])
   }
 
-  const scores: [string, number, string][] = [
-    ['Tension', scene.tension, 'var(--ink)'],
-    ['Emotional', Math.min(10, scene.tension + 1), 'oklch(0.45 0.12 75)'],
-    ['Stakes', scene.tension, 'var(--blue)'],
-    ['Mystery', Math.max(1, scene.tension - 3), 'var(--ink-3)'],
-    ['Danger', scene.tension, 'var(--red)'],
-    ['Hope', Math.max(1, 10 - scene.tension), 'var(--green)'],
-  ]
-
   const handleDelete = async () => {
     if (!window.confirm(`Delete scene ${scene.n}: ${scene.title}? This cannot be undone.`)) return
     await deleteScene.mutateAsync(scene.id)
@@ -123,7 +96,7 @@ function SceneDetailPage() {
       >
         <div
           style={{
-            width: 1080,
+            width: 720,
             maxWidth: '96%',
             background: 'var(--paper)',
             border: '2px solid var(--ink)',
@@ -162,96 +135,33 @@ function SceneDetailPage() {
             </div>
           </div>
 
-          {/* Two columns */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 0 }}>
-            {/* Left: fields + summary + beats */}
-            <div style={{ padding: '22px 24px', borderRight: '1px solid var(--line)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '10px 16px', fontSize: 12, lineHeight: 1.6 }}>
-                {fields.map(([k, v]) => (
-                  <Fragment key={k}>
-                    <Label>{k}</Label>
-                    <span style={{ fontFamily: 'var(--font-mono)' }}>{v}</span>
-                  </Fragment>
-                ))}
-              </div>
+          {/* Body */}
+          <div style={{ padding: '22px 24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '10px 16px', fontSize: 12, lineHeight: 1.6 }}>
+              {fields.map(([k, v]) => (
+                <Fragment key={k}>
+                  <Label>{k}</Label>
+                  <span style={{ fontFamily: 'var(--font-mono)' }}>{v}</span>
+                </Fragment>
+              ))}
+            </div>
 
-              <div style={{ marginTop: 20 }}>
-                <Label>Summary</Label>
-                <div
-                  style={{
-                    fontFamily: 'var(--font-serif)',
-                    fontSize: 15,
-                    lineHeight: 1.55,
-                    marginTop: 6,
-                    color: 'var(--ink)',
-                  }}
-                >
-                  {scene.summary || `Scene ${scene.n}: ${scene.title}. POV: ${scene.pov}, Location: ${scene.location}.`}
-                </div>
-              </div>
-
-              <DramaticStructure storyId={storyId} scene={scene} />
-
-              <div style={{ marginTop: 20 }}>
-                <Label>Beats (3 &middot; optional)</Label>
-                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                  {beats.map((b) => (
-                    <div
-                      key={b.id}
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: '24px 90px 1fr',
-                        gap: 8,
-                        padding: '6px 8px',
-                        background: 'var(--paper-2)',
-                      }}
-                    >
-                      <span style={{ fontFamily: 'var(--font-mono)' }}>{b.id}</span>
-                      <Tag>{b.tag}</Tag>
-                      <span>{b.text}</span>
-                    </div>
-                  ))}
-                </div>
+            <div style={{ marginTop: 20 }}>
+              <Label>Summary</Label>
+              <div
+                style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: 15,
+                  lineHeight: 1.55,
+                  marginTop: 6,
+                  color: 'var(--ink)',
+                }}
+              >
+                {scene.summary || `Scene ${scene.n}: ${scene.title}. POV: ${scene.pov}, Location: ${scene.location}.`}
               </div>
             </div>
 
-            {/* Right: scoring + graph */}
-            <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Label>Scoring</Label>
-                  <Label>Hybrid &middot; AI + manual</Label>
-                </div>
-                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {scores.map(([label, value, color]) => (
-                    <div key={label}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                        <span>{label}</span>
-                        <span style={{ fontFamily: 'var(--font-mono)' }}>{value}/10</span>
-                      </div>
-                      <div style={{ marginTop: 3 }}>
-                        <TensionBar
-                          value={value}
-                          max={10}
-                          height={8}
-                          color={color}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <Label>Graph impact after this scene</Label>
-                <div style={{ border: '1px solid var(--line)', marginTop: 6 }}>
-                  <GraphRenderer nodes={graphNodes} edges={graphEdges} width={360} height={200} interactive={false} />
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-                  +1 edge (Iris&harr;Jon). Fen edge upgraded 1&rarr;2.
-                </div>
-              </div>
-            </div>
+            <DramaticStructure storyId={storyId} scene={scene} />
           </div>
 
           {/* Footer */}
