@@ -35,11 +35,12 @@ export function useTensionCurve(storyId: string) {
   })
 }
 
-export function usePacing(storyId: string) {
+export function usePacing(storyId: string, facet?: SceneMetric) {
+  const qs = facet ? `?facet=${facet}` : ''
   return useQuery({
-    queryKey: ['stories', storyId, 'analytics', 'pacing'],
+    queryKey: ['stories', storyId, 'analytics', 'pacing', { facet: facet ?? null }],
     queryFn: () =>
-      api.get<unknown>(`/api/stories/${storyId}/analytics/pacing`),
+      api.get<unknown>(`/api/stories/${storyId}/analytics/pacing${qs}`),
     enabled: !!storyId,
   })
 }
@@ -77,11 +78,12 @@ export interface ArcsResponse {
   arcs: CharacterArc[]
 }
 
-export function useArcs(storyId: string) {
+export function useArcs(storyId: string, facet?: SceneMetric) {
+  const qs = facet ? `?facet=${facet}` : ''
   return useQuery({
-    queryKey: ['stories', storyId, 'analytics', 'arcs'],
+    queryKey: ['stories', storyId, 'analytics', 'arcs', { facet: facet ?? null }],
     queryFn: () =>
-      api.get<ArcsResponse>(`/api/stories/${storyId}/analytics/arcs`),
+      api.get<ArcsResponse>(`/api/stories/${storyId}/analytics/arcs${qs}`),
     enabled: !!storyId,
   })
 }

@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -90,14 +90,30 @@ async def get_tension_curve(
     }
 
 
+def _scene_series(scenes: list[Scene], facet: str | None) -> list[int]:
+    """Return the per-scene series — `tension` by default, or one of the six
+    facets when `facet` names a valid SCENE_FACETS entry. Unknown facet names
+    raise HTTPException so the API returns 400 instead of silently falling
+    back to tension."""
+    if facet is None:
+        return [s.tension for s in scenes]
+    if facet not in SCENE_FACETS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"facet must be one of {SCENE_FACETS}",
+        )
+    return [getattr(s, facet) for s in scenes]
+
+
 @router.get("/pacing")
 async def get_pacing(
     story: Story = Depends(get_story),
     db: AsyncSession = Depends(get_db),
+    facet: str | None = Query(None),
 ):
     scenes = await _load_scenes(db, story.id)
-    tensions = [s.tension for s in scenes]
-    return analyze_pacing(tensions)
+    series = _scene_series(scenes, facet)
+    return {"facet": facet or "tension", **analyze_pacing(series)}
 
 
 @router.get("/presence")
@@ -180,10 +196,13 @@ async def get_arcs(
     story: Story = Depends(get_story),
     db: AsyncSession = Depends(get_db),
     character_id: uuid.UUID | None = Query(None),
+    facet: str | None = Query(None),
 ):
     scenes = await _load_scenes(db, story.id)
     characters = await _load_characters(db, story.id)
-    tensions = [s.tension for s in scenes]
+    # When a facet is requested, drive the arc analysis off that facet's
+    # per-scene values. Defaults to tension.
+    series = _scene_series(scenes, facet)
 
     if character_id:
         characters = [c for c in characters if c.id == character_id]
@@ -203,12 +222,12 @@ async def get_arcs(
                         scenes_with_participants=scenes_with_participants)
             for s in scenes
         ]
-        arc = compute_character_arc(tensions, presence)
+        arc = compute_character_arc(series, presence)
         arc["character_name"] = char.name
         arc["character_id"] = str(char.id)
         arcs.append(arc)
 
-    return {"arcs": arcs}
+    return {"arcs": arcs, "facet": facet or "tension"}
 
 
 async def _load_participant_set(

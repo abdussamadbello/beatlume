@@ -68,3 +68,60 @@ async def test_tension_curve_endpoint_empty_story(client):
     assert body["acts"] == []
     assert body["peaks"] == []
     assert body["points"] == []
+
+
+@pytest.mark.asyncio
+async def test_pacing_accepts_facet_override(client):
+    token, story_id = await _new_story(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    # Two scenes; set only `mystery` high on one so tension-based
+    # pacing and facet-based pacing diverge.
+    s1 = (await client.post(
+        f"/api/stories/{story_id}/scenes",
+        json={"title": "S1", "tension": 2, "mystery": 9},
+        headers=headers,
+    )).json()
+    assert s1["mystery"] == 9
+
+    default_resp = await client.get(
+        f"/api/stories/{story_id}/analytics/pacing", headers=headers
+    )
+    assert default_resp.status_code == 200
+    assert default_resp.json()["facet"] == "tension"
+
+    mystery_resp = await client.get(
+        f"/api/stories/{story_id}/analytics/pacing?facet=mystery",
+        headers=headers,
+    )
+    assert mystery_resp.status_code == 200
+    assert mystery_resp.json()["facet"] == "mystery"
+
+    bad_resp = await client.get(
+        f"/api/stories/{story_id}/analytics/pacing?facet=suspense",
+        headers=headers,
+    )
+    assert bad_resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_arcs_accepts_facet_override(client):
+    token, story_id = await _new_story(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    await client.post(
+        f"/api/stories/{story_id}/characters",
+        json={"name": "Iris"},
+        headers=headers,
+    )
+    await client.post(
+        f"/api/stories/{story_id}/scenes",
+        json={"title": "S1", "pov": "Iris", "tension": 3, "romance": 8},
+        headers=headers,
+    )
+    resp = await client.get(
+        f"/api/stories/{story_id}/analytics/arcs?facet=romance",
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["facet"] == "romance"
+    assert len(body["arcs"]) == 1
