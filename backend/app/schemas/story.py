@@ -23,6 +23,7 @@ class StoryRead(BaseModel):
     draft_number: int
     status: str
     structure_type: str
+    archived: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -37,3 +38,4 @@ class StoryUpdate(BaseModel):
     draft_number: int | None = None
     status: str | None = None
     structure_type: str | None = None
+    archived: bool | None = None

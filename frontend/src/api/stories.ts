@@ -2,10 +2,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
 import type { Story, PaginatedResponse } from '../types'
 
-export function useStories() {
+export type StoryListScope = 'active' | 'archived' | 'all'
+
+export function useStories(scope: StoryListScope = 'active') {
+  const qs = scope === 'archived' ? '?only_archived=true'
+    : scope === 'all' ? '?include_archived=true'
+    : ''
   return useQuery({
-    queryKey: ['stories'],
-    queryFn: () => api.get<PaginatedResponse<Story>>('/api/stories'),
+    queryKey: ['stories', { scope }],
+    queryFn: () => api.get<PaginatedResponse<Story>>(`/api/stories${qs}`),
   })
 }
 
@@ -48,6 +53,15 @@ export function useDeleteStory() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (storyId: string) => api.delete(`/api/stories/${storyId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['stories'] }),
+  })
+}
+
+export function useDuplicateStory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (storyId: string) =>
+      api.post<Story>(`/api/stories/${storyId}/duplicate`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['stories'] }),
   })
 }

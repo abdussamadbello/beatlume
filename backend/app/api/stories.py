@@ -19,8 +19,17 @@ async def list_stories(
     db: AsyncSession = Depends(get_db),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
+    include_archived: bool = Query(False),
+    only_archived: bool = Query(False),
 ):
-    stories, total = await story_service.list_stories(db, org.id, offset=offset, limit=limit)
+    stories, total = await story_service.list_stories(
+        db,
+        org.id,
+        offset=offset,
+        limit=limit,
+        include_archived=include_archived,
+        only_archived=only_archived,
+    )
     return PaginatedResponse(items=stories, total=total)
 
 
@@ -30,10 +39,21 @@ async def create_story(
     org: Organization = Depends(get_current_org),
     db: AsyncSession = Depends(get_db),
 ):
-    story = await story_service.create_story(
-        db, org.id, body.title, body.genres, body.target_words, body.structure_type,
-    )
+    story = await story_service.create_story(db, org.id, body.model_dump())
     return story
+
+
+@router.post(
+    "/{story_id}/duplicate",
+    response_model=StoryRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def duplicate_story(
+    story: Story = Depends(get_story),
+    db: AsyncSession = Depends(get_db),
+):
+    new_story = await story_service.duplicate_story(db, story)
+    return new_story
 
 
 @router.get("/{story_id}", response_model=StoryRead)

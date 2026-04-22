@@ -10,6 +10,7 @@ export interface Story {
   draft_number: number
   status: 'not_started' | 'in_progress' | 'completed'
   structure_type: string
+  archived: boolean
 }
 
 // --- Scene ---

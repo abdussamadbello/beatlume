@@ -3,8 +3,14 @@ import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { Btn, Tag, Label } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { useStore } from '../store'
-import { useStories } from '../api/stories'
+import {
+  useStories,
+  useUpdateStory,
+  useDuplicateStory,
+  type StoryListScope,
+} from '../api/stories'
 import { logout } from '../api/auth'
+import type { Story } from '../types'
 
 type FilterStatus = 'all' | 'in_progress' | 'completed' | 'not_started'
 type SortMode = 'recent' | 'alphabetical' | 'wordcount'
@@ -50,9 +56,11 @@ function StatusBadge({ status }: { status: string }) {
 function DashboardPage() {
   const navigate = useNavigate()
   const currentUser = useStore(s => s.currentUser)
-  const { data, isLoading } = useStories()
+  const [scope, setScope] = useState<StoryListScope>('active')
+  const { data, isLoading } = useStories(scope)
   const [filter, setFilter] = useState<FilterStatus>('all')
   const [sort, setSort] = useState<SortMode>('recent')
+  const duplicateStory = useDuplicateStory()
 
   if (isLoading) {
     return (
@@ -142,6 +150,36 @@ function DashboardPage() {
           </Btn>
         </div>
 
+        {/* Scope tabs: Active / Archived / All */}
+        <div style={{ display: 'flex', gap: 16, marginBottom: 16, borderBottom: '1px solid var(--line)', paddingBottom: 8 }}>
+          {(
+            [
+              ['active', 'Active'],
+              ['archived', 'Archived'],
+              ['all', 'All'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setScope(key)}
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                padding: '4px 0',
+                border: 'none',
+                background: 'transparent',
+                borderBottom: scope === key ? '1.5px solid var(--ink)' : '1.5px solid transparent',
+                color: scope === key ? 'var(--ink)' : 'var(--ink-3)',
+                cursor: 'pointer',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         {/* Filter + Sort bar */}
         <div
           style={{
@@ -197,103 +235,161 @@ function DashboardPage() {
             gap: 20,
           }}
         >
-          {sorted.map((story) => {
-            const progress = story.target_words > 0 ? 0 / story.target_words : 0
-
-            return (
-              <div
-                key={story.id}
-                onClick={() => {
-                  navigate({ to: '/stories/$storyId', params: { storyId: story.id } })
-                }}
-                style={{
-                  border: '1.5px solid var(--ink)',
-                  background: 'var(--paper)',
-                  padding: '20px',
-                  cursor: 'pointer',
-                  transition: 'background 0.1s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'var(--paper-2)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'var(--paper)'
-                }}
-              >
-                {/* Title */}
-                <h3
-                  style={{
-                    fontFamily: 'var(--font-serif)',
-                    fontSize: 20,
-                    margin: '0 0 8px',
-                  }}
-                >
-                  {story.title}
-                </h3>
-
-                {/* Genre tags */}
-                <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-                  {story.genres.map((g) => (
-                    <Tag key={g}>{g}</Tag>
-                  ))}
-                  {story.genres.length === 0 && (
-                    <span
-                      style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 10,
-                        color: 'var(--ink-3)',
-                        fontStyle: 'italic',
-                      }}
-                    >
-                      No genre set
-                    </span>
-                  )}
-                </div>
-
-                {/* Stats */}
-                <div
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 11,
-                    color: 'var(--ink-2)',
-                    marginBottom: 8,
-                  }}
-                >
-                  Target: {story.target_words.toLocaleString()} words
-                </div>
-
-                {/* Draft + last edited */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
-                  {story.draft_number > 0 && <Label>Draft {story.draft_number}</Label>}
-                </div>
-
-                {/* Status badge */}
-                <div style={{ marginBottom: 12 }}>
-                  <StatusBadge status={story.status} />
-                </div>
-
-                {/* Progress bar */}
-                <div
-                  style={{
-                    height: 3,
-                    background: 'var(--line)',
-                    marginBottom: 12,
-                  }}
-                >
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${Math.min(progress * 100, 100)}%`,
-                      background: story.status === 'completed' ? 'var(--green)' : 'var(--ink)',
-                    }}
-                  />
-                </div>
-
-                {/* Tension sparkline placeholder */}
-              </div>
-            )
-          })}
+          {sorted.map((story) => (
+            <StoryCard
+              key={story.id}
+              story={story}
+              onOpen={() => navigate({ to: '/stories/$storyId', params: { storyId: story.id } })}
+              onAfterDuplicate={(newId) =>
+                navigate({ to: '/stories/$storyId', params: { storyId: newId } })
+              }
+              duplicatePending={duplicateStory.isPending}
+              duplicateFn={(id) => duplicateStory.mutateAsync(id)}
+            />
+          ))}
+          {sorted.length === 0 && (
+            <div
+              style={{
+                gridColumn: '1 / -1',
+                padding: '32px',
+                textAlign: 'center',
+                color: 'var(--ink-3)',
+                fontSize: 12,
+                border: '1px dashed var(--line)',
+              }}
+            >
+              {scope === 'archived' ? 'No archived stories.' : 'No stories match the current filters.'}
+            </div>
+          )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function StoryCard({
+  story,
+  onOpen,
+  onAfterDuplicate,
+  duplicatePending,
+  duplicateFn,
+}: {
+  story: Story
+  onOpen: () => void
+  onAfterDuplicate: (newId: string) => void
+  duplicatePending: boolean
+  duplicateFn: (id: string) => Promise<Story>
+}) {
+  const updateStory = useUpdateStory(story.id)
+
+  const toggleArchive = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    await updateStory.mutateAsync({ archived: !story.archived })
+  }
+  const duplicate = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const copy = await duplicateFn(story.id)
+    onAfterDuplicate(copy.id)
+  }
+
+  const progress = 0 // TODO: wire actual word count once draft totals are exposed
+
+  return (
+    <div
+      onClick={onOpen}
+      style={{
+        border: '1.5px solid var(--ink)',
+        background: 'var(--paper)',
+        padding: '20px',
+        cursor: 'pointer',
+        transition: 'background 0.1s',
+        opacity: story.archived ? 0.75 : 1,
+        position: 'relative',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'var(--paper-2)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'var(--paper)'
+      }}
+    >
+      {/* Title */}
+      <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 20, margin: '0 0 8px' }}>
+        {story.title}
+      </h3>
+
+      {/* Genre tags */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+        {story.genres.map((g) => (
+          <Tag key={g}>{g}</Tag>
+        ))}
+        {story.genres.length === 0 && (
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)', fontStyle: 'italic' }}>
+            No genre set
+          </span>
+        )}
+      </div>
+
+      {/* Stats */}
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-2)', marginBottom: 8 }}>
+        Target: {story.target_words.toLocaleString()} words
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+        {story.draft_number > 0 && <Label>Draft {story.draft_number}</Label>}
+        {story.archived && <Tag>Archived</Tag>}
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <StatusBadge status={story.status} />
+      </div>
+
+      <div style={{ height: 3, background: 'var(--line)', marginBottom: 12 }}>
+        <div
+          style={{
+            height: '100%',
+            width: `${Math.min(progress * 100, 100)}%`,
+            background: story.status === 'completed' ? 'var(--green)' : 'var(--ink)',
+          }}
+        />
+      </div>
+
+      {/* Row actions */}
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button
+          onClick={toggleArchive}
+          disabled={updateStory.isPending}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            padding: '4px 8px',
+            border: '1px solid var(--line)',
+            background: 'transparent',
+            color: 'var(--ink-2)',
+            cursor: updateStory.isPending ? 'default' : 'pointer',
+          }}
+        >
+          {story.archived ? 'Unarchive' : 'Archive'}
+        </button>
+        <button
+          onClick={duplicate}
+          disabled={duplicatePending}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            padding: '4px 8px',
+            border: '1px solid var(--line)',
+            background: 'transparent',
+            color: 'var(--ink-2)',
+            cursor: duplicatePending ? 'default' : 'pointer',
+          }}
+        >
+          {duplicatePending ? 'Copying…' : 'Duplicate'}
+        </button>
       </div>
     </div>
   )
