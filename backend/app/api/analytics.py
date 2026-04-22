@@ -11,6 +11,7 @@ from app.models.character import Character
 from app.models.graph import CharacterEdge
 from app.models.insight import Insight
 from app.models.scene import Scene
+from app.models.scene_participant import SceneParticipant
 from app.models.story import Story
 from app.services.analytics.arcs import compute_character_arc
 from app.services.analytics.health import compute_health
@@ -116,10 +117,20 @@ async def get_arcs(
     if character_id:
         characters = [c for c in characters if c.id == character_id]
 
+    # Canonical source of presence is scene_participants. Fallback to the
+    # pov string match only for scenes that have no participants recorded —
+    # keeps stories seeded before migration 5b2c3d4e6f7a working.
+    participants = await _load_participant_set(db, story.id)
+    scenes_with_participants = {
+        scene_id for scene_id, _ in participants
+    }
+
     arcs = []
     for char in characters:
         presence = [
-            s.pov.strip().lower() == char.name.strip().lower() for s in scenes
+            _is_present(scene=s, char=char, participants=participants,
+                        scenes_with_participants=scenes_with_participants)
+            for s in scenes
         ]
         arc = compute_character_arc(tensions, presence)
         arc["character_name"] = char.name
@@ -127,6 +138,34 @@ async def get_arcs(
         arcs.append(arc)
 
     return {"arcs": arcs}
+
+
+async def _load_participant_set(
+    db: AsyncSession, story_id: uuid.UUID
+) -> set[tuple[uuid.UUID, uuid.UUID]]:
+    """Load (scene_id, character_id) tuples for all participants in a story."""
+    result = await db.execute(
+        select(SceneParticipant.scene_id, SceneParticipant.character_id)
+        .join(Scene, Scene.id == SceneParticipant.scene_id)
+        .where(Scene.story_id == story_id)
+    )
+    return {(row.scene_id, row.character_id) for row in result}
+
+
+def _is_present(
+    *,
+    scene: Scene,
+    char: Character,
+    participants: set[tuple[uuid.UUID, uuid.UUID]],
+    scenes_with_participants: set[uuid.UUID],
+) -> bool:
+    if (scene.id, char.id) in participants:
+        return True
+    # Fallback: pov string match, only for scenes that have no participant
+    # rows at all (pre-migration data).
+    if scene.id not in scenes_with_participants:
+        return scene.pov.strip().lower() == char.name.strip().lower()
+    return False
 
 
 @router.get("/health")

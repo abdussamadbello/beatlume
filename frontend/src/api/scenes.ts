@@ -37,10 +37,28 @@ export function useCreateScene(storyId: string) {
   })
 }
 
+export interface SceneParticipantWrite {
+  character_id: string
+  role?: string
+  interaction_weight?: number | null
+}
+
+export interface SceneUpdatePayload {
+  title?: string
+  pov?: string
+  tension?: number
+  act?: number
+  location?: string
+  tag?: string
+  summary?: string | null
+  chapter_id?: string | null
+  participants?: SceneParticipantWrite[]
+}
+
 export function useUpdateScene(storyId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ sceneId, ...data }: { sceneId: string } & Partial<Scene>) =>
+    mutationFn: ({ sceneId, ...data }: { sceneId: string } & SceneUpdatePayload) =>
       api.put<Scene>(`/api/stories/${storyId}/scenes/${sceneId}`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['stories', storyId, 'scenes'] }),
   })

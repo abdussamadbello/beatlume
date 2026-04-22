@@ -2,7 +2,9 @@ import { Fragment, useMemo, useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Tag, Btn, Label } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
-import { useDeleteScene, useScenes, useScene } from '../api/scenes'
+import { useDeleteScene, useScenes, useScene, useUpdateScene } from '../api/scenes'
+import { useCharacters } from '../api/characters'
+import { useChapters } from '../api/manuscript'
 import {
   useCoreTree,
   useCoreSettings,
@@ -162,6 +164,10 @@ function SceneDetailPage() {
             </div>
 
             <DramaticStructure storyId={storyId} scene={scene} />
+
+            <ChapterAssignment storyId={storyId} scene={scene} />
+
+            <Participants storyId={storyId} scene={scene} />
           </div>
 
           {/* Footer */}
@@ -336,6 +342,210 @@ function DramaticStructure({ storyId, scene }: { storyId: string; scene: Scene }
             </div>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+function ChapterAssignment({ storyId, scene }: { storyId: string; scene: Scene }) {
+  const { data: chaptersData } = useChapters(storyId)
+  const update = useUpdateScene(storyId)
+  const chapters = chaptersData ?? []
+
+  const handleChange = (value: string) => {
+    update.mutate({ sceneId: scene.id, chapter_id: value || null })
+  }
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <Label>Chapter</Label>
+      <div style={{ marginTop: 6 }}>
+        <select
+          value={scene.chapter_id ?? ''}
+          onChange={(e) => handleChange(e.target.value)}
+          disabled={update.isPending}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 12,
+            padding: '6px 8px',
+            border: '1px solid var(--ink-3)',
+            background: 'var(--paper)',
+            color: 'var(--ink)',
+            minWidth: 260,
+          }}
+        >
+          <option value="">— Unassigned —</option>
+          {chapters.map((c) => (
+            <option key={c.id} value={c.id}>
+              Ch {c.num} — {c.title}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  )
+}
+
+function Participants({ storyId, scene }: { storyId: string; scene: Scene }) {
+  const { data: charactersData } = useCharacters(storyId)
+  const update = useUpdateScene(storyId)
+  const characters = charactersData?.items ?? []
+
+  const charById = useMemo(() => {
+    const map = new Map(characters.map((c) => [c.id, c]))
+    return map
+  }, [characters])
+
+  const current = scene.participants ?? []
+  const currentIds = new Set(current.map((p) => p.character_id))
+
+  const [addOpen, setAddOpen] = useState(false)
+
+  const writeAll = (next: Array<{ character_id: string; role: string }>) => {
+    update.mutate({ sceneId: scene.id, participants: next })
+  }
+
+  const remove = (characterId: string) => {
+    const next = current
+      .filter((p) => p.character_id !== characterId)
+      .map((p) => ({ character_id: p.character_id, role: p.role }))
+    writeAll(next)
+  }
+
+  const setRole = (characterId: string, role: string) => {
+    const next = current.map((p) => ({
+      character_id: p.character_id,
+      role: p.character_id === characterId ? role : p.role,
+    }))
+    writeAll(next)
+  }
+
+  const add = (characterId: string) => {
+    const next = [
+      ...current.map((p) => ({ character_id: p.character_id, role: p.role })),
+      { character_id: characterId, role: 'supporting' },
+    ]
+    writeAll(next)
+    setAddOpen(false)
+  }
+
+  const ROLE_OPTIONS = ['pov', 'supporting', 'antagonist', 'mentioned', 'ensemble'] as const
+  const available = characters.filter((c) => !currentIds.has(c.id))
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <Label>Participants</Label>
+      <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {current.length === 0 && (
+          <div style={{ fontSize: 11, color: 'var(--ink-3)', fontStyle: 'italic' }}>
+            No participants yet.
+          </div>
+        )}
+        {current.map((p) => {
+          const char = charById.get(p.character_id)
+          return (
+            <div
+              key={p.character_id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 140px auto',
+                gap: 10,
+                alignItems: 'center',
+                padding: '6px 0',
+                borderBottom: '1px dashed var(--line-2)',
+              }}
+            >
+              <span style={{ fontFamily: 'var(--font-serif)', fontSize: 14 }}>
+                {char?.name ?? '(removed character)'}
+              </span>
+              <select
+                value={p.role}
+                onChange={(e) => setRole(p.character_id, e.target.value)}
+                disabled={update.isPending}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  padding: '4px 6px',
+                  border: '1px solid var(--ink-3)',
+                  background: 'var(--paper)',
+                  color: 'var(--ink)',
+                }}
+              >
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+                {!ROLE_OPTIONS.includes(p.role as typeof ROLE_OPTIONS[number]) && (
+                  <option value={p.role}>{p.role}</option>
+                )}
+              </select>
+              <button
+                onClick={() => remove(p.character_id)}
+                disabled={update.isPending}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--ink-3)',
+                  color: 'var(--ink-2)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 10,
+                  padding: '3px 8px',
+                  cursor: 'pointer',
+                }}
+                title="Remove participant"
+              >
+                Remove
+              </button>
+            </div>
+          )
+        })}
+
+        {addOpen ? (
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 6 }}>
+            <select
+              autoFocus
+              defaultValue=""
+              onChange={(e) => e.target.value && add(e.target.value)}
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+                padding: '4px 8px',
+                border: '1px solid var(--ink-3)',
+                background: 'var(--paper)',
+                color: 'var(--ink)',
+                minWidth: 220,
+              }}
+            >
+              <option value="" disabled>Pick a character…</option>
+              {available.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.role ? `· ${c.role}` : ''}
+                </option>
+              ))}
+            </select>
+            <Btn variant="ghost" onClick={() => setAddOpen(false)}>Cancel</Btn>
+          </div>
+        ) : (
+          available.length > 0 && (
+            <button
+              onClick={() => setAddOpen(true)}
+              disabled={update.isPending}
+              style={{
+                marginTop: 6,
+                background: 'transparent',
+                border: '1px dashed var(--ink-3)',
+                color: 'var(--ink-3)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                padding: '6px 10px',
+                cursor: 'pointer',
+                alignSelf: 'flex-start',
+              }}
+            >
+              + Add participant
+            </button>
+          )
+        )}
       </div>
     </div>
   )
