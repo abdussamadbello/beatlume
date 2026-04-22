@@ -3,12 +3,13 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.deps import get_current_org, get_db, get_story
-from app.models.user import Organization
+from app.deps import get_current_org, get_current_user, get_db, get_story
+from app.models.user import Organization, User
 from app.models.story import Story
 from app.schemas.story import StoryCreate, StoryRead, StoryUpdate
 from app.schemas.common import PaginatedResponse
 from app.services import story as story_service
+from app.services.collaboration import safe_log_activity
 
 router = APIRouter(prefix="/api/stories", tags=["stories"])
 
@@ -50,9 +51,15 @@ async def create_story(
 )
 async def duplicate_story(
     story: Story = Depends(get_story),
+    org: Organization = Depends(get_current_org),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     new_story = await story_service.duplicate_story(db, story)
+    await safe_log_activity(
+        db, story.id, org.id, user.id, "story.duplicate",
+        {"new_story_id": str(new_story.id), "new_title": new_story.title},
+    )
     return new_story
 
 
@@ -65,9 +72,22 @@ async def get_story_detail(story: Story = Depends(get_story)):
 async def update_story(
     body: StoryUpdate,
     story: Story = Depends(get_story),
+    org: Organization = Depends(get_current_org),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    updated = await story_service.update_story(db, story, body.model_dump(exclude_unset=True))
+    patch = body.model_dump(exclude_unset=True)
+    updated = await story_service.update_story(db, story, patch)
+    # Archive/unarchive is the most common and most interesting update,
+    # so give it its own action name. Other updates share a generic one.
+    if "archived" in patch:
+        action = "story.archive" if patch["archived"] else "story.unarchive"
+    else:
+        action = "story.update"
+    await safe_log_activity(
+        db, story.id, org.id, user.id, action,
+        {"fields": sorted(patch.keys())},
+    )
     return updated
 
 

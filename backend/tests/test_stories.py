@@ -95,6 +95,41 @@ async def test_archive_story_hides_from_default_list(client):
 
 
 @pytest.mark.asyncio
+async def test_mutations_log_activity(client):
+    token = await get_auth_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    story = (await client.post(
+        "/api/stories", json={"title": "Logged"}, headers=headers
+    )).json()
+    # Trigger a few activities.
+    await client.post(
+        f"/api/stories/{story['id']}/characters",
+        json={"name": "Iris"},
+        headers=headers,
+    )
+    await client.post(
+        f"/api/stories/{story['id']}/scenes",
+        json={"title": "Opening"},
+        headers=headers,
+    )
+    await client.put(
+        f"/api/stories/{story['id']}",
+        json={"archived": True},
+        headers=headers,
+    )
+
+    activity = await client.get(
+        f"/api/stories/{story['id']}/activity", headers=headers
+    )
+    assert activity.status_code == 200
+    actions = {row["action"] for row in activity.json()}
+    assert "character.create" in actions
+    assert "scene.create" in actions
+    assert "story.archive" in actions
+
+
+@pytest.mark.asyncio
 async def test_duplicate_story_copies_narrative_hierarchy(client):
     token = await get_auth_token(client)
     headers = {"Authorization": f"Bearer {token}"}

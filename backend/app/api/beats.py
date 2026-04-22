@@ -4,12 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.deps import get_current_org, get_db, get_story
+from app.deps import get_current_org, get_current_user, get_db, get_story
 from app.models.story import Story
-from app.models.user import Organization
+from app.models.user import Organization, User
 from app.schemas.beat import BeatCreate, BeatRead, BeatUpdate
 from app.services import beat as beat_service
 from app.services import scene as scene_service
+from app.services.collaboration import safe_log_activity
 
 router = APIRouter(
     prefix="/api/stories/{story_id}/scenes/{scene_id}/beats",
@@ -65,10 +66,16 @@ async def create_beat(
     body: BeatCreate,
     story: Story = Depends(get_story),
     org: Organization = Depends(get_current_org),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     await _require_scene(story, scene_id, db)
-    return await beat_service.create_beat(db, scene_id, org.id, body.model_dump())
+    beat = await beat_service.create_beat(db, scene_id, org.id, body.model_dump())
+    await safe_log_activity(
+        db, story.id, org.id, user.id, "beat.create",
+        {"beat_id": str(beat.id), "scene_id": str(scene_id), "kind": beat.kind},
+    )
+    return beat
 
 
 @router.get("/{beat_id}", response_model=BeatRead)
