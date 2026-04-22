@@ -45,6 +45,19 @@ export interface Scene {
 export const SCENE_METRICS = ['emotional', 'stakes', 'mystery', 'romance', 'danger', 'hope'] as const
 export type SceneMetric = typeof SCENE_METRICS[number]
 
+// --- Beat ---
+export interface Beat {
+  id: string
+  scene_id: string
+  n: number
+  title: string
+  kind: string
+  summary?: string | null
+}
+
+export const BEAT_KINDS = ['setup', 'action', 'reaction', 'decision', 'reveal', 'turn'] as const
+export type BeatKind = typeof BEAT_KINDS[number]
+
 // --- Character ---
 export interface Character {
   id: string

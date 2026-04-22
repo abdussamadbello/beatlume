@@ -18,7 +18,7 @@ def test_all_tables_registered():
     table_names = sorted(Base.metadata.tables.keys())
     expected = sorted([
         "organizations", "users", "memberships", "stories", "scenes",
-        "scene_participants",
+        "scene_participants", "beats",
         "characters", "character_nodes", "character_edges", "insights",
         "draft_contents", "core_config_nodes", "core_settings",
         "manuscript_chapters", "collaborators", "comments",
@@ -29,7 +29,7 @@ def test_all_tables_registered():
 
 def test_org_scoped_tables_have_org_id():
     org_scoped = [
-        "stories", "scenes", "scene_participants", "characters",
+        "stories", "scenes", "scene_participants", "beats", "characters",
         "character_nodes", "character_edges",
         "insights", "draft_contents", "core_config_nodes", "core_settings",
         "manuscript_chapters", "collaborators", "comments", "activity_events",

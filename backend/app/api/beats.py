@@ -1,0 +1,98 @@
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.deps import get_current_org, get_db, get_story
+from app.models.story import Story
+from app.models.user import Organization
+from app.schemas.beat import BeatCreate, BeatRead, BeatUpdate
+from app.services import beat as beat_service
+from app.services import scene as scene_service
+
+router = APIRouter(
+    prefix="/api/stories/{story_id}/scenes/{scene_id}/beats",
+    tags=["beats"],
+)
+
+
+async def _require_scene(
+    story: Story, scene_id: uuid.UUID, db: AsyncSession
+):
+    """Resolve and guard that the scene belongs to the requested story.
+
+    Raises 404 if missing. Keeps the beat endpoints from leaking
+    cross-story data via a well-formed scene_id path param.
+    """
+    scene = await scene_service.get_scene(db, story.id, scene_id)
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+    return scene
+
+
+@router.get("", response_model=list[BeatRead])
+async def list_beats(
+    scene_id: uuid.UUID,
+    story: Story = Depends(get_story),
+    db: AsyncSession = Depends(get_db),
+):
+    await _require_scene(story, scene_id, db)
+    return await beat_service.list_beats(db, scene_id)
+
+
+@router.post("", response_model=BeatRead, status_code=status.HTTP_201_CREATED)
+async def create_beat(
+    scene_id: uuid.UUID,
+    body: BeatCreate,
+    story: Story = Depends(get_story),
+    org: Organization = Depends(get_current_org),
+    db: AsyncSession = Depends(get_db),
+):
+    await _require_scene(story, scene_id, db)
+    return await beat_service.create_beat(db, scene_id, org.id, body.model_dump())
+
+
+@router.get("/{beat_id}", response_model=BeatRead)
+async def get_beat(
+    scene_id: uuid.UUID,
+    beat_id: uuid.UUID,
+    story: Story = Depends(get_story),
+    db: AsyncSession = Depends(get_db),
+):
+    await _require_scene(story, scene_id, db)
+    beat = await beat_service.get_beat(db, scene_id, beat_id)
+    if not beat:
+        raise HTTPException(status_code=404, detail="Beat not found")
+    return beat
+
+
+@router.put("/{beat_id}", response_model=BeatRead)
+async def update_beat(
+    scene_id: uuid.UUID,
+    beat_id: uuid.UUID,
+    body: BeatUpdate,
+    story: Story = Depends(get_story),
+    db: AsyncSession = Depends(get_db),
+):
+    await _require_scene(story, scene_id, db)
+    beat = await beat_service.get_beat(db, scene_id, beat_id)
+    if not beat:
+        raise HTTPException(status_code=404, detail="Beat not found")
+    return await beat_service.update_beat(
+        db, beat, body.model_dump(exclude_unset=True)
+    )
+
+
+@router.delete("/{beat_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_beat(
+    scene_id: uuid.UUID,
+    beat_id: uuid.UUID,
+    story: Story = Depends(get_story),
+    db: AsyncSession = Depends(get_db),
+):
+    await _require_scene(story, scene_id, db)
+    beat = await beat_service.get_beat(db, scene_id, beat_id)
+    if not beat:
+        raise HTTPException(status_code=404, detail="Beat not found")
+    await beat_service.delete_beat(db, beat)
+    return None

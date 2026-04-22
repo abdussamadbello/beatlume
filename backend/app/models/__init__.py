@@ -3,6 +3,7 @@ from app.models.user import User, Organization, Membership
 from app.models.story import Story
 from app.models.scene import Scene
 from app.models.scene_participant import SceneParticipant
+from app.models.beat import Beat
 from app.models.character import Character
 from app.models.graph import CharacterNode, CharacterEdge
 from app.models.insight import Insight
@@ -14,7 +15,7 @@ from app.models.collaboration import Collaborator, Comment, ActivityEvent, Expor
 __all__ = [
     "Base", "OrgScopedMixin",
     "User", "Organization", "Membership",
-    "Story", "Scene", "SceneParticipant", "Character",
+    "Story", "Scene", "SceneParticipant", "Beat", "Character",
     "CharacterNode", "CharacterEdge",
     "Insight", "DraftContent",
     "CoreConfigNode", "CoreSetting",

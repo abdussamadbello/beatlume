@@ -9,6 +9,7 @@ from app.schemas.user import UserRead, UserUpdate, OrgRead
 from app.schemas.common import PaginatedResponse
 from app.schemas.story import StoryCreate, StoryRead, StoryUpdate
 from app.schemas.scene import SceneCreate, SceneRead, SceneUpdate
+from app.schemas.beat import BeatCreate, BeatRead, BeatUpdate
 from app.schemas.character import CharacterCreate, CharacterRead, CharacterUpdate
 from app.schemas.graph import NodeRead, NodeUpdate, EdgeCreate, EdgeRead, EdgeUpdate, GraphResponse
 from app.schemas.insight import InsightRead

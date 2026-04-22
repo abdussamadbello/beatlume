@@ -11,8 +11,9 @@ import {
   useCreateCoreSetting,
   useUpdateCoreSetting,
 } from '../api/core'
-import type { CoreConfigNode, Scene, SceneMetric } from '../types'
-import { SCENE_METRICS } from '../types'
+import type { Beat, CoreConfigNode, Scene, SceneMetric } from '../types'
+import { BEAT_KINDS, SCENE_METRICS } from '../types'
+import { useBeats, useCreateBeat, useDeleteBeat, useUpdateBeat } from '../api/beats'
 
 function SceneDetailPage() {
   const navigate = useNavigate()
@@ -167,6 +168,8 @@ function SceneDetailPage() {
             <DramaticStructure storyId={storyId} scene={scene} />
 
             <TensionFacets storyId={storyId} scene={scene} />
+
+            <Beats storyId={storyId} scene={scene} />
 
             <ChapterAssignment storyId={storyId} scene={scene} />
 
@@ -668,6 +671,195 @@ function TensionFacets({ storyId, scene }: { storyId: string; scene: Scene }) {
           />
         ))}
       </div>
+    </div>
+  )
+}
+
+function Beats({ storyId, scene }: { storyId: string; scene: Scene }) {
+  const { data: beats } = useBeats(storyId, scene.id)
+  const create = useCreateBeat(storyId, scene.id)
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <Label>Beats</Label>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)' }}>
+          {beats?.length ?? 0} beat{beats?.length === 1 ? '' : 's'}
+        </span>
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4, marginBottom: 10 }}>
+        The smallest units inside this scene — setup, action, reaction, decision, reveal, turn. One line each.
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {beats?.map((b) => (
+          <BeatRow key={b.id} storyId={storyId} sceneId={scene.id} beat={b} />
+        ))}
+        {beats && beats.length === 0 && (
+          <div style={{ fontSize: 11, color: 'var(--ink-3)', fontStyle: 'italic', padding: '4px 0' }}>
+            No beats yet. Add the first one to sketch what moves inside this scene.
+          </div>
+        )}
+      </div>
+
+      <button
+        type="button"
+        disabled={create.isPending}
+        onClick={() => create.mutate({ title: '', kind: 'action' })}
+        style={{
+          marginTop: 10,
+          fontFamily: 'var(--font-mono)',
+          fontSize: 10,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          border: '1px dashed var(--ink-3)',
+          background: 'transparent',
+          padding: '6px 10px',
+          cursor: create.isPending ? 'default' : 'pointer',
+          opacity: create.isPending ? 0.6 : 1,
+        }}
+      >
+        + Add beat
+      </button>
+    </div>
+  )
+}
+
+function BeatRow({
+  storyId,
+  sceneId,
+  beat,
+}: {
+  storyId: string
+  sceneId: string
+  beat: Beat
+}) {
+  const update = useUpdateBeat(storyId, sceneId)
+  const remove = useDeleteBeat(storyId, sceneId)
+  const [title, setTitle] = useState(beat.title)
+  const [summary, setSummary] = useState(beat.summary ?? '')
+  const [expanded, setExpanded] = useState(false)
+
+  const commitTitle = () => {
+    if (title !== beat.title) update.mutate({ beatId: beat.id, title })
+  }
+  const commitKind = (kind: string) => {
+    if (kind !== beat.kind) update.mutate({ beatId: beat.id, kind })
+  }
+  const commitSummary = () => {
+    const next = summary.trim() === '' ? null : summary
+    if (next !== (beat.summary ?? null)) {
+      update.mutate({ beatId: beat.id, summary: next })
+    }
+  }
+
+  return (
+    <div
+      style={{
+        border: '1px solid var(--line)',
+        background: 'var(--paper)',
+        padding: '8px 10px',
+      }}
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: '34px 90px 1fr 20px', gap: 8, alignItems: 'center' }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.04em' }}>
+          B{String(beat.n).padStart(2, '0')}
+        </span>
+        <select
+          value={beat.kind}
+          onChange={(e) => commitKind(e.target.value)}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            padding: '2px 6px',
+            border: '1px solid var(--line)',
+            background: 'var(--paper)',
+          }}
+        >
+          {BEAT_KINDS.includes(beat.kind as (typeof BEAT_KINDS)[number])
+            ? null
+            : <option value={beat.kind}>{beat.kind}</option>}
+          {BEAT_KINDS.map((k) => (
+            <option key={k} value={k}>{k}</option>
+          ))}
+        </select>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={commitTitle}
+          placeholder="Beat title — one short line"
+          style={{
+            fontFamily: 'var(--font-serif)',
+            fontSize: 14,
+            border: 'none',
+            borderBottom: '1px solid var(--line)',
+            background: 'transparent',
+            padding: '3px 0',
+            outline: 'none',
+            minWidth: 0,
+          }}
+        />
+        <button
+          type="button"
+          aria-label="Delete beat"
+          disabled={remove.isPending}
+          onClick={() => remove.mutate(beat.id)}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--ink-3)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 12,
+            cursor: remove.isPending ? 'default' : 'pointer',
+          }}
+          title="Delete beat"
+        >
+          ×
+        </button>
+      </div>
+
+      <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 9,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'var(--ink-3)',
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+          }}
+        >
+          {expanded ? '− Hide summary' : '+ Add summary'}
+        </button>
+      </div>
+
+      {expanded && (
+        <textarea
+          value={summary}
+          onChange={(e) => setSummary(e.target.value)}
+          onBlur={commitSummary}
+          placeholder="Optional — what happens in this beat, in prose."
+          rows={2}
+          style={{
+            width: '100%',
+            marginTop: 4,
+            fontFamily: 'var(--font-serif)',
+            fontSize: 13,
+            lineHeight: 1.45,
+            border: '1px solid var(--line)',
+            background: 'var(--paper-2)',
+            padding: 6,
+            outline: 'none',
+            resize: 'vertical',
+          }}
+        />
+      )}
     </div>
   )
 }

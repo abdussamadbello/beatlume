@@ -4,6 +4,7 @@ from app.api.auth import router as auth_router
 from app.api.users import router as users_router
 from app.api.stories import router as stories_router
 from app.api.scenes import router as scenes_router
+from app.api.beats import router as beats_router
 from app.api.characters import router as characters_router
 from app.api.graph import router as graph_router
 from app.api.insights import router as insights_router
@@ -21,6 +22,7 @@ api_router.include_router(auth_router)
 api_router.include_router(users_router)
 api_router.include_router(stories_router)
 api_router.include_router(scenes_router)
+api_router.include_router(beats_router)
 api_router.include_router(characters_router)
 api_router.include_router(graph_router)
 api_router.include_router(insights_router)
