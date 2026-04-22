@@ -124,3 +124,40 @@ async def test_beats_on_nonexistent_scene_returns_404(client):
         f"/api/stories/{story_id}/scenes/{fake_scene}/beats", headers=headers
     )
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_reorder_beats(client):
+    token, story_id, scene_id = await setup_scene(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    base = f"/api/stories/{story_id}/scenes/{scene_id}/beats"
+
+    a = (await client.post(base, json={"title": "A"}, headers=headers)).json()
+    b = (await client.post(base, json={"title": "B"}, headers=headers)).json()
+    c = (await client.post(base, json={"title": "C"}, headers=headers)).json()
+
+    # Reverse: C, B, A → n = 1, 2, 3
+    resp = await client.patch(
+        f"{base}/reorder",
+        json={"ordered_ids": [c["id"], b["id"], a["id"]]},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert [item["title"] for item in body] == ["C", "B", "A"]
+    assert [item["n"] for item in body] == [1, 2, 3]
+
+
+@pytest.mark.asyncio
+async def test_reorder_beats_rejects_foreign_id(client):
+    token, story_id, scene_id = await setup_scene(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    base = f"/api/stories/{story_id}/scenes/{scene_id}/beats"
+    await client.post(base, json={"title": "A"}, headers=headers)
+
+    resp = await client.patch(
+        f"{base}/reorder",
+        json={"ordered_ids": [str(uuid.uuid4())]},
+        headers=headers,
+    )
+    assert resp.status_code == 400

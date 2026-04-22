@@ -1,14 +1,32 @@
 import { useMemo, useState } from 'react'
 import { createFileRoute, useNavigate, Outlet } from '@tanstack/react-router'
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Btn, Label } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
-import { useCreateScene, useScenes } from '../api/scenes'
+import { useCreateScene, useReorderScenes, useScenes } from '../api/scenes'
 import { useChapters } from '../api/manuscript'
 import type { Scene } from '../types'
 
 export const Route = createFileRoute('/stories/$storyId/scenes')({
   component: SceneBoard,
 })
+
+const MIDDOT = '·'
+const CARET_DOWN = '▾'
 
 function povColor(pov: string): string {
   const map: Record<string, string> = {
@@ -23,6 +41,58 @@ function povColor(pov: string): string {
 const filterCycle: (string | null)[] = [null, 'Iris', 'Jon', 'Cole', 'Fen'];
 const sortCycle: ('order' | 'tension' | 'pov')[] = ['order', 'tension', 'pov'];
 
+function SceneCard({
+  scene: s,
+  storyId,
+  onSceneClick,
+  draggable,
+}: {
+  scene: Scene
+  storyId: string
+  onSceneClick: (storyId: string, sceneId: string) => void
+  draggable: boolean
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: s.id,
+    disabled: !draggable,
+  })
+  const style: React.CSSProperties = {
+    border: '1px solid var(--ink)',
+    background: 'var(--paper)',
+    padding: 10,
+    position: 'relative',
+    cursor: draggable ? 'grab' : 'pointer',
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    touchAction: draggable ? 'none' : undefined,
+  }
+  const handlers = draggable ? { ...attributes, ...listeners } : {}
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...handlers}
+      onClick={() => {
+        if (isDragging) return
+        onSceneClick(storyId, s.id)
+      }}
+    >
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: povColor(s.pov) }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+        <Label>S{String(s.n).padStart(2, '0')} {MIDDOT} {s.pov}</Label>
+        <span style={{ display: 'inline-block', padding: '2px 7px', border: '1px solid var(--ink)', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>T {s.tension}</span>
+      </div>
+      <div style={{ fontFamily: 'var(--font-serif)', fontSize: 16, lineHeight: 1.2 }}>{s.title}</div>
+      <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+        {Array.from({ length: 10 }).map((_, k) => (
+          <span key={k} style={{ flex: 1, height: 3, background: k < s.tension ? 'var(--ink)' : 'var(--line-2)' }} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function ActColumn({
   act,
   label,
@@ -30,6 +100,7 @@ function ActColumn({
   storyId,
   onSceneClick,
   onCreateScene,
+  draggable = false,
 }: {
   act: number
   label: string
@@ -37,8 +108,20 @@ function ActColumn({
   storyId: string
   onSceneClick: (storyId: string, sceneId: string) => void
   onCreateScene: (act: number) => void
+  draggable?: boolean
 }) {
   const items = scenes.filter((s) => s.act === act)
+  const itemIds = items.map((s) => s.id)
+
+  const cards = items.map((s) => (
+    <SceneCard
+      key={s.id}
+      scene={s}
+      storyId={storyId}
+      onSceneClick={onSceneClick}
+      draggable={draggable}
+    />
+  ))
 
   return (
     <div style={{ flex: 1, minWidth: 0, border: '1px solid var(--line)', background: 'var(--paper)', display: 'flex', flexDirection: 'column' }}>
@@ -47,25 +130,13 @@ function ActColumn({
         <Label>{items.length} scenes</Label>
       </div>
       <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
-        {items.map((s) => (
-          <div
-            key={s.id}
-            onClick={() => onSceneClick(storyId, s.id)}
-            style={{ border: '1px solid var(--ink)', background: 'var(--paper)', padding: 10, position: 'relative', cursor: 'pointer' }}
-          >
-            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: povColor(s.pov) }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-              <Label>S{String(s.n).padStart(2, '0')} {'\u00B7'} {s.pov}</Label>
-              <span style={{ display: 'inline-block', padding: '2px 7px', border: '1px solid var(--ink)', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>T {s.tension}</span>
-            </div>
-            <div style={{ fontFamily: 'var(--font-serif)', fontSize: 16, lineHeight: 1.2 }}>{s.title}</div>
-            <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
-              {Array.from({ length: 10 }).map((_, k) => (
-                <span key={k} style={{ flex: 1, height: 3, background: k < s.tension ? 'var(--ink)' : 'var(--line-2)' }} />
-              ))}
-            </div>
-          </div>
-        ))}
+        {draggable ? (
+          <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+            {cards}
+          </SortableContext>
+        ) : (
+          cards
+        )}
         <div
           onClick={() => onCreateScene(act)}
           style={{ border: '1px dashed var(--ink-3)', padding: 10, textAlign: 'center', color: 'var(--ink-3)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer' }}
@@ -84,10 +155,13 @@ function SceneBoard() {
   const { data, isLoading } = useScenes(storyId)
   const { data: chaptersData } = useChapters(storyId)
   const createScene = useCreateScene(storyId)
+  const reorderScenes = useReorderScenes(storyId)
   const navigate = useNavigate()
   const [filterPov, setFilterPov] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<'order' | 'tension' | 'pov'>('order')
   const [groupBy, setGroupBy] = useState<GroupBy>('act')
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   if (isLoading) return <LoadingState />
   const scenes = data?.items ?? []
@@ -127,20 +201,56 @@ function SceneBoard() {
     navigate({ to: '/stories/$storyId/scenes/$id', params: { storyId, id: scene.id } })
   }
 
-  return (
+  // Drag only enabled when showing in n-order (no filter, no alt sort, act grouping).
+  const dragEnabled = groupBy === 'act' && sortBy === 'order' && !filterPov
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const activeScene = scenes.find((s) => s.id === active.id)
+    const overScene = scenes.find((s) => s.id === over.id)
+    if (!activeScene || !overScene) return
+    // Within-column only. Cross-column drag would also change scene.act —
+    // keeping that out of v1.
+    if (activeScene.act !== overScene.act) return
+
+    const actItems = scenes
+      .filter((s) => s.act === activeScene.act)
+      .sort((a, b) => a.n - b.n)
+    const fromIndex = actItems.findIndex((s) => s.id === active.id)
+    const toIndex = actItems.findIndex((s) => s.id === over.id)
+    if (fromIndex === -1 || toIndex === -1) return
+
+    const newActOrder = arrayMove(actItems, fromIndex, toIndex)
+
+    // Rebuild full list: same relative positions, Act items replaced with
+    // their new order. Preserves other acts' ordering.
+    const sortedFull = [...scenes].sort((a, b) => a.n - b.n)
+    let cursor = 0
+    const newFullOrder = sortedFull.map((s) =>
+      s.act === activeScene.act ? newActOrder[cursor++] : s,
+    )
+    const orderedIds = newFullOrder.map((s) => s.id)
+    reorderScenes.mutate(orderedIds)
+  }
+
+  const board = (
     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid var(--ink)' }}>
         <div>
           <Label>Scene Board</Label>
-          <div className="title-serif" style={{ fontSize: 26 }}>{scenes.length} scenes {'\u00B7'} drag to reorder</div>
+          <div className="title-serif" style={{ fontSize: 26 }}>
+            {scenes.length} scenes {MIDDOT} {dragEnabled ? 'drag to reorder' : 'sort/filter active — reorder disabled'}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Btn variant="ghost" onClick={cycleFilter}>Filter: {filterPov || 'All'} {'\u25BE'}</Btn>
+          <Btn variant="ghost" onClick={cycleFilter}>Filter: {filterPov || 'All'} {CARET_DOWN}</Btn>
           <Btn variant="ghost" onClick={() => setGroupBy((g) => (g === 'act' ? 'chapter' : 'act'))}>
             Group: {groupBy === 'act' ? 'Act' : 'Chapter'}
           </Btn>
-          <Btn variant="ghost" onClick={cycleSort}>Sort: {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)} {'\u25BE'}</Btn>
+          <Btn variant="ghost" onClick={cycleSort}>Sort: {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)} {CARET_DOWN}</Btn>
           <Btn variant="solid" onClick={() => createSceneInAct(1)} disabled={createScene.isPending}>
             {createScene.isPending ? 'Creating...' : '+ Scene'}
           </Btn>
@@ -151,9 +261,9 @@ function SceneBoard() {
       <div style={{ flex: 1, padding: 16, display: 'flex', gap: 12, overflow: 'auto' }}>
         {groupBy === 'act' ? (
           <>
-            <ActColumn act={1} label="I" scenes={filteredScenes} storyId={storyId} onSceneClick={openScene} onCreateScene={createSceneInAct} />
-            <ActColumn act={2} label="II" scenes={filteredScenes} storyId={storyId} onSceneClick={openScene} onCreateScene={createSceneInAct} />
-            <ActColumn act={3} label="III" scenes={filteredScenes} storyId={storyId} onSceneClick={openScene} onCreateScene={createSceneInAct} />
+            <ActColumn act={1} label="I" scenes={filteredScenes} storyId={storyId} onSceneClick={openScene} onCreateScene={createSceneInAct} draggable={dragEnabled} />
+            <ActColumn act={2} label="II" scenes={filteredScenes} storyId={storyId} onSceneClick={openScene} onCreateScene={createSceneInAct} draggable={dragEnabled} />
+            <ActColumn act={3} label="III" scenes={filteredScenes} storyId={storyId} onSceneClick={openScene} onCreateScene={createSceneInAct} draggable={dragEnabled} />
           </>
         ) : (
           <ChapterColumns scenes={filteredScenes} chapters={chapters} storyId={storyId} onSceneClick={openScene} />
@@ -163,6 +273,13 @@ function SceneBoard() {
       {/* Scene detail modal renders here when /scenes/$id is matched */}
       <Outlet />
     </div>
+  )
+
+  if (!dragEnabled) return board
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      {board}
+    </DndContext>
   )
 }
 

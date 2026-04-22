@@ -13,7 +13,28 @@ import {
 } from '../api/core'
 import type { Beat, CoreConfigNode, Scene, SceneMetric } from '../types'
 import { BEAT_KINDS, SCENE_METRICS } from '../types'
-import { useBeats, useCreateBeat, useDeleteBeat, useUpdateBeat } from '../api/beats'
+import {
+  useBeats,
+  useCreateBeat,
+  useDeleteBeat,
+  useReorderBeats,
+  useUpdateBeat,
+} from '../api/beats'
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 function SceneDetailPage() {
   const navigate = useNavigate()
@@ -678,24 +699,45 @@ function TensionFacets({ storyId, scene }: { storyId: string; scene: Scene }) {
 function Beats({ storyId, scene }: { storyId: string; scene: Scene }) {
   const { data: beats } = useBeats(storyId, scene.id)
   const create = useCreateBeat(storyId, scene.id)
+  const reorder = useReorderBeats(storyId, scene.id)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  const items = beats ?? []
+  const itemIds = items.map((b) => b.id)
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const fromIndex = items.findIndex((b) => b.id === active.id)
+    const toIndex = items.findIndex((b) => b.id === over.id)
+    if (fromIndex === -1 || toIndex === -1) return
+    const next = arrayMove(items, fromIndex, toIndex)
+    reorder.mutate(next.map((b) => b.id))
+  }
 
   return (
     <div style={{ marginTop: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <Label>Beats</Label>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)' }}>
-          {beats?.length ?? 0} beat{beats?.length === 1 ? '' : 's'}
+          {items.length} beat{items.length === 1 ? '' : 's'}
         </span>
       </div>
       <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4, marginBottom: 10 }}>
-        The smallest units inside this scene — setup, action, reaction, decision, reveal, turn. One line each.
+        The smallest units inside this scene — setup, action, reaction, decision, reveal, turn. Grab the handle to reorder.
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {beats?.map((b) => (
-          <BeatRow key={b.id} storyId={storyId} sceneId={scene.id} beat={b} />
-        ))}
-        {beats && beats.length === 0 && (
+        {items.length > 0 && (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+              {items.map((b) => (
+                <BeatRow key={b.id} storyId={storyId} sceneId={scene.id} beat={b} />
+              ))}
+            </SortableContext>
+          </DndContext>
+        )}
+        {items.length === 0 && (
           <div style={{ fontSize: 11, color: 'var(--ink-3)', fontStyle: 'italic', padding: '4px 0' }}>
             No beats yet. Add the first one to sketch what moves inside this scene.
           </div>
@@ -740,6 +782,18 @@ function BeatRow({
   const [summary, setSummary] = useState(beat.summary ?? '')
   const [expanded, setExpanded] = useState(false)
 
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: beat.id,
+  })
+  const rowStyle: React.CSSProperties = {
+    border: '1px solid var(--line)',
+    background: 'var(--paper)',
+    padding: '8px 10px',
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  }
+
   const commitTitle = () => {
     if (title !== beat.title) update.mutate({ beatId: beat.id, title })
   }
@@ -754,14 +808,24 @@ function BeatRow({
   }
 
   return (
-    <div
-      style={{
-        border: '1px solid var(--line)',
-        background: 'var(--paper)',
-        padding: '8px 10px',
-      }}
-    >
-      <div style={{ display: 'grid', gridTemplateColumns: '34px 90px 1fr 20px', gap: 8, alignItems: 'center' }}>
+    <div ref={setNodeRef} style={rowStyle}>
+      <div style={{ display: 'grid', gridTemplateColumns: '14px 34px 90px 1fr 20px', gap: 8, alignItems: 'center' }}>
+        <span
+          {...attributes}
+          {...listeners}
+          title="Drag to reorder"
+          style={{
+            cursor: 'grab',
+            color: 'var(--ink-3)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            lineHeight: 1,
+            userSelect: 'none',
+            touchAction: 'none',
+          }}
+        >
+          ⋮⋮
+        </span>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.04em' }}>
           B{String(beat.n).padStart(2, '0')}
         </span>

@@ -55,3 +55,12 @@ export function useDeleteBeat(storyId: string, sceneId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: beatsKey(storyId, sceneId) }),
   })
 }
+
+export function useReorderBeats(storyId: string, sceneId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ordered_ids: string[]) =>
+      api.patch<Beat[]>(`${beatsUrl(storyId, sceneId)}/reorder`, { ordered_ids }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: beatsKey(storyId, sceneId) }),
+  })
+}

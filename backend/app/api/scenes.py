@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_org, get_db, get_story
@@ -11,6 +12,23 @@ from app.schemas.common import PaginatedResponse
 from app.services import scene as scene_service
 
 router = APIRouter(prefix="/api/stories/{story_id}/scenes", tags=["scenes"])
+
+
+class ReorderRequest(BaseModel):
+    ordered_ids: list[uuid.UUID]
+
+
+@router.patch("/reorder", response_model=list[SceneRead])
+async def reorder_scenes(
+    body: ReorderRequest,
+    story: Story = Depends(get_story),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        scenes = await scene_service.reorder_scenes(db, story.id, body.ordered_ids)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return scenes
 
 
 @router.get("", response_model=PaginatedResponse[SceneRead])

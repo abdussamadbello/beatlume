@@ -58,3 +58,41 @@ async def update_beat(db: AsyncSession, beat: Beat, patch: dict) -> Beat:
 async def delete_beat(db: AsyncSession, beat: Beat) -> None:
     await db.delete(beat)
     await db.commit()
+
+
+async def reorder_beats(
+    db: AsyncSession,
+    scene_id: uuid.UUID,
+    ordered_ids: list[uuid.UUID],
+) -> list[Beat]:
+    """Rewrite beat.n to match the given order.
+
+    Two-phase write around UniqueConstraint(scene_id, n) — same pattern
+    as scene reorder. Stays positive because CHECK(n >= 1) applies.
+    """
+    result = await db.execute(
+        select(Beat).where(
+            Beat.scene_id == scene_id,
+            Beat.id.in_(ordered_ids),
+        )
+    )
+    beats_by_id = {b.id: b for b in result.scalars().all()}
+
+    missing = [i for i in ordered_ids if i not in beats_by_id]
+    if missing:
+        raise ValueError(f"Beat ids not in scene: {missing}")
+
+    staging_base = 1_000_000
+    for i, bid in enumerate(ordered_ids):
+        beats_by_id[bid].n = staging_base + i
+    await db.flush()
+
+    for i, bid in enumerate(ordered_ids):
+        beats_by_id[bid].n = i + 1
+
+    await db.commit()
+
+    refreshed = await db.execute(
+        select(Beat).where(Beat.scene_id == scene_id).order_by(Beat.n)
+    )
+    return list(refreshed.scalars().all())

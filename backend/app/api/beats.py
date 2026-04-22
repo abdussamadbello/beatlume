@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_org, get_db, get_story
@@ -14,6 +15,10 @@ router = APIRouter(
     prefix="/api/stories/{story_id}/scenes/{scene_id}/beats",
     tags=["beats"],
 )
+
+
+class BeatReorderRequest(BaseModel):
+    ordered_ids: list[uuid.UUID]
 
 
 async def _require_scene(
@@ -38,6 +43,20 @@ async def list_beats(
 ):
     await _require_scene(story, scene_id, db)
     return await beat_service.list_beats(db, scene_id)
+
+
+@router.patch("/reorder", response_model=list[BeatRead])
+async def reorder_beats(
+    scene_id: uuid.UUID,
+    body: BeatReorderRequest,
+    story: Story = Depends(get_story),
+    db: AsyncSession = Depends(get_db),
+):
+    await _require_scene(story, scene_id, db)
+    try:
+        return await beat_service.reorder_beats(db, scene_id, body.ordered_ids)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("", response_model=BeatRead, status_code=status.HTTP_201_CREATED)

@@ -82,3 +82,17 @@ export function useDeleteScene(storyId: string) {
     }),
   })
 }
+
+export function useReorderScenes(storyId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ordered_ids: string[]) =>
+      api.patch<Scene[]>(`/api/stories/${storyId}/scenes/reorder`, { ordered_ids }),
+    onSuccess: () => qc.invalidateQueries({
+      predicate: (query) => {
+        const key = query.queryKey
+        return key[0] === 'stories' && key[1] === storyId && key[2] === 'scenes'
+      },
+    }),
+  })
+}

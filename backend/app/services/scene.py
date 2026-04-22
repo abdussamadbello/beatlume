@@ -140,6 +140,52 @@ async def delete_scene(db: AsyncSession, scene: Scene) -> None:
     await db.commit()
 
 
+async def reorder_scenes(
+    db: AsyncSession,
+    story_id: uuid.UUID,
+    ordered_ids: list[uuid.UUID],
+) -> list[Scene]:
+    """Rewrite scene.n to match the given order.
+
+    Two-phase write to sidestep UniqueConstraint(story_id, n): first
+    shift affected scenes into a high staging range (current_max_n +
+    1_000_000 + i), then assign final positions 1..N. Scenes not in
+    `ordered_ids` keep their current n values.
+    """
+    result = await db.execute(
+        select(Scene).where(
+            Scene.story_id == story_id,
+            Scene.id.in_(ordered_ids),
+        )
+    )
+    scenes_by_id = {s.id: s for s in result.scalars().all()}
+
+    missing = [i for i in ordered_ids if i not in scenes_by_id]
+    if missing:
+        raise ValueError(f"Scene ids not in story: {missing}")
+
+    # Phase 1: move out of the way.
+    staging_base = 1_000_000
+    for i, sid in enumerate(ordered_ids):
+        scenes_by_id[sid].n = staging_base + i
+    await db.flush()
+
+    # Phase 2: assign final positions.
+    for i, sid in enumerate(ordered_ids):
+        scenes_by_id[sid].n = i + 1
+
+    await db.commit()
+
+    # Return fresh list in new order.
+    refreshed = await db.execute(
+        select(Scene)
+        .where(Scene.story_id == story_id)
+        .options(selectinload(Scene.participants))
+        .order_by(Scene.n)
+    )
+    return list(refreshed.scalars().all())
+
+
 async def _sync_pov_participant(
     db: AsyncSession,
     scene: Scene,
