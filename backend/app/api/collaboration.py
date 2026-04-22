@@ -15,6 +15,7 @@ from app.schemas.collaboration import (
     InviteRequest,
 )
 from app.services import collaboration as collab_service
+from app.services.collaboration import safe_log_activity
 
 router = APIRouter(prefix="/api/stories/{story_id}", tags=["collaboration"])
 
@@ -33,6 +34,7 @@ async def invite_collaborator(
     body: InviteRequest,
     story: Story = Depends(get_story),
     org: Organization = Depends(get_current_org),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     collaborator = await collab_service.invite_collaborator(
@@ -43,6 +45,14 @@ async def invite_collaborator(
             status_code=400,
             detail="No user with that email, or already a collaborator.",
         )
+    await safe_log_activity(
+        db, story.id, org.id, user.id, "collaborator.invite",
+        {
+            "collaborator_id": str(collaborator.id),
+            "email": body.email,
+            "role": body.role,
+        },
+    )
     return collaborator
 
 
@@ -53,11 +63,17 @@ async def invite_collaborator(
 async def delete_collaborator(
     collaborator_id: uuid.UUID,
     story: Story = Depends(get_story),
+    org: Organization = Depends(get_current_org),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     ok = await collab_service.delete_collaborator(db, story.id, collaborator_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Collaborator not found")
+    await safe_log_activity(
+        db, story.id, org.id, user.id, "collaborator.remove",
+        {"collaborator_id": str(collaborator_id)},
+    )
     return None
 
 

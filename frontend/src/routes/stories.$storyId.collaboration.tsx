@@ -292,8 +292,8 @@ function CollaborationPage() {
                 }}
               >
                 <div style={{ fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.4 }}>
-                  <span style={{ fontWeight: 500, color: 'var(--ink)' }}>{a.user_id}</span>{' '}
-                  {a.action}
+                  <span style={{ fontWeight: 500, color: 'var(--ink)' }}>{a.user_id.slice(0, 8)}</span>{' '}
+                  {formatActivityAction(a.action, a.detail)}
                 </div>
                 <span
                   style={{
@@ -303,8 +303,9 @@ function CollaborationPage() {
                     whiteSpace: 'nowrap',
                     marginLeft: 12,
                   }}
+                  title={new Date(a.created_at).toLocaleString()}
                 >
-                  {a.created_at}
+                  {formatRelativeTime(a.created_at)}
                 </span>
               </div>
             ))}
@@ -466,4 +467,41 @@ function CollaborationPage() {
       </div>
     </div>
   )
+}
+
+const ACTION_VERBS: Record<string, string> = {
+  'scene.create': 'created a scene',
+  'scene.delete': 'deleted a scene',
+  'character.create': 'added a character',
+  'beat.create': 'added a beat',
+  'story.update': 'updated the story',
+  'story.archive': 'archived the story',
+  'story.unarchive': 'unarchived the story',
+  'story.duplicate': 'duplicated the story',
+  'collaborator.invite': 'invited a collaborator',
+  'collaborator.remove': 'removed a collaborator',
+}
+
+function formatActivityAction(action: string, detail: Record<string, unknown>): string {
+  const verb = ACTION_VERBS[action] ?? action
+  // Try to surface a useful secondary string without cluttering the feed.
+  const title = typeof detail?.title === 'string' ? detail.title : null
+  const name = typeof detail?.name === 'string' ? detail.name : null
+  const email = typeof detail?.email === 'string' ? detail.email : null
+  const suffix = title ?? name ?? email
+  return suffix ? `${verb} · ${suffix}` : verb
+}
+
+function formatRelativeTime(iso: string): string {
+  const now = Date.now()
+  const then = new Date(iso).getTime()
+  const deltaSec = Math.round((now - then) / 1000)
+  if (deltaSec < 60) return 'just now'
+  const deltaMin = Math.round(deltaSec / 60)
+  if (deltaMin < 60) return `${deltaMin}m ago`
+  const deltaHr = Math.round(deltaMin / 60)
+  if (deltaHr < 24) return `${deltaHr}h ago`
+  const deltaDay = Math.round(deltaHr / 24)
+  if (deltaDay < 7) return `${deltaDay}d ago`
+  return new Date(iso).toLocaleDateString()
 }
