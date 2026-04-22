@@ -1,10 +1,16 @@
-import { Fragment } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { GraphRenderer } from '../components/charts'
 import { Tag, Btn, Label, TensionBar } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { useDeleteScene, useScenes, useScene } from '../api/scenes'
-import type { SceneNode, GraphEdge } from '../types'
+import {
+  useCoreTree,
+  useCoreSettings,
+  useCreateCoreSetting,
+  useUpdateCoreSetting,
+} from '../api/core'
+import type { CoreConfigNode, SceneNode, GraphEdge, Scene } from '../types'
 
 const graphNodes: SceneNode[] = [
   { id: 'iris', character_id: 'iris', x: 180, y: 100, label: 'Iris', initials: 'IR', node_type: 'hub', first_appearance_scene: 1 },
@@ -184,6 +190,8 @@ function SceneDetailPage() {
                 </div>
               </div>
 
+              <DramaticStructure storyId={storyId} scene={scene} />
+
               <div style={{ marginTop: 20 }}>
                 <Label>Beats (3 &middot; optional)</Label>
                 <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
@@ -276,3 +284,149 @@ function SceneDetailPage() {
 export const Route = createFileRoute('/stories/$storyId/scenes/$id')({
   component: SceneDetailPage,
 })
+
+const DRAMATIC_FIELDS = [
+  { key: 'Goal', hint: 'What the POV character wants in this scene.' },
+  { key: 'Conflict', hint: 'What gets in the way?' },
+  { key: 'Obstacle', hint: 'The specific impediment or opposition.' },
+  { key: 'Outcome', hint: 'How it ends — success, failure, reversal.' },
+  { key: 'Emotional turn', hint: 'The shift in feeling from start to end.' },
+] as const
+
+const SCENE_LABEL_RE = /^S?0*(\d+)/i
+
+function findSceneNode(tree: CoreConfigNode[] | undefined, n: number): CoreConfigNode | undefined {
+  if (!tree) return undefined
+  for (const node of tree) {
+    if (node.kind !== 'scene') continue
+    const matched = node.label.match(SCENE_LABEL_RE)
+    if (matched && Number(matched[1]) === n) return node
+  }
+  return undefined
+}
+
+function DramaticStructure({ storyId, scene }: { storyId: string; scene: Scene }) {
+  const { data: tree } = useCoreTree(storyId)
+  const node = useMemo(() => findSceneNode(tree, scene.n), [tree, scene.n])
+  const { data: settings } = useCoreSettings(storyId, node?.id ?? null)
+  const createSetting = useCreateCoreSetting(storyId)
+  const updateSetting = useUpdateCoreSetting(storyId)
+
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const pending = createSetting.isPending || updateSetting.isPending
+
+  function getValue(key: string): string | null {
+    if (!settings) return null
+    const s = settings.find((x) => x.key.toLowerCase() === key.toLowerCase())
+    return s?.is_override ? s.value : null
+  }
+
+  function startEdit(key: string, current: string | null) {
+    if (!node) return
+    setEditingKey(key)
+    setDraft(current ?? '')
+    setError(null)
+  }
+
+  function cancelEdit() {
+    setEditingKey(null)
+    setDraft('')
+    setError(null)
+  }
+
+  function save(key: string) {
+    if (!node) return
+    const trimmed = draft.trim()
+    if (!trimmed) {
+      setError('Value cannot be empty')
+      return
+    }
+    const existing = settings?.find((x) => x.key.toLowerCase() === key.toLowerCase())
+    const onDone = () => { setEditingKey(null); setDraft(''); setError(null) }
+    const onErr = (err: unknown) => setError(err instanceof Error ? err.message : 'Failed to save')
+
+    if (existing?.is_override) {
+      updateSetting.mutate({ key, nodeId: node.id, value: trimmed }, { onSuccess: onDone, onError: onErr })
+    } else {
+      createSetting.mutate(
+        { key, value: trimmed, source: 'user', config_node_id: node.id },
+        { onSuccess: onDone, onError: onErr },
+      )
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <Label>Dramatic structure</Label>
+      <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column' }}>
+        {DRAMATIC_FIELDS.map(({ key, hint }) => {
+          const value = getValue(key)
+          const isEditing = editingKey === key
+          return (
+            <div
+              key={key}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '110px 1fr',
+                gap: 12,
+                padding: '6px 0',
+                borderBottom: '1px dashed var(--line-2)',
+                alignItems: 'start',
+              }}
+            >
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--ink-3)', paddingTop: 3 }}>
+                {key}
+              </div>
+              {isEditing ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <input
+                    value={draft}
+                    onChange={(ev) => setDraft(ev.target.value)}
+                    autoFocus
+                    onKeyDown={(ev) => {
+                      if (ev.key === 'Enter') save(key)
+                      if (ev.key === 'Escape') cancelEdit()
+                    }}
+                    placeholder={hint}
+                    style={{
+                      padding: '4px 6px',
+                      border: '1px solid var(--ink-3)',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 12,
+                      background: 'var(--paper)',
+                      color: 'var(--ink)',
+                    }}
+                  />
+                  {error && <span style={{ color: 'var(--red)', fontSize: 10, fontFamily: 'var(--font-mono)' }}>{error}</span>}
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <Btn variant="ghost" onClick={() => save(key)} disabled={pending}>Save</Btn>
+                    <Btn variant="ghost" onClick={cancelEdit}>Cancel</Btn>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => startEdit(key, value)}
+                  style={{
+                    fontFamily: 'var(--font-serif)',
+                    fontSize: 14,
+                    lineHeight: 1.45,
+                    color: value ? 'var(--ink)' : 'var(--ink-3)',
+                    cursor: node ? 'pointer' : 'default',
+                    padding: '2px 0',
+                    minHeight: 20,
+                  }}
+                  title={node ? (value ? 'Click to edit' : hint) : 'No config node for this scene'}
+                >
+                  {value ?? '—'}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}

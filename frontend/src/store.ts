@@ -14,8 +14,6 @@ interface AppState {
   selectNode: (id: string | null) => void
   activeSceneN: number
   setActiveSceneN: (n: number) => void
-  activeCoreIndex: number
-  setActiveCoreIndex: (i: number) => void
   editMode: boolean
   toggleEditMode: () => void
 
@@ -40,8 +38,6 @@ export const useStore = create<AppState>()(
       selectNode: (id) => set({ selectedNodeId: id }),
       activeSceneN: 1,
       setActiveSceneN: (n) => set({ activeSceneN: n }),
-      activeCoreIndex: 0,
-      setActiveCoreIndex: (i) => set({ activeCoreIndex: i }),
       editMode: false,
       toggleEditMode: () => set((s) => ({ editMode: !s.editMode })),
 

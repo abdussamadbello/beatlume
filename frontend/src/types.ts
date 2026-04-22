@@ -81,7 +81,7 @@ export interface DraftContent {
   word_count: number
 }
 
-// --- Core ---
+// --- Chapter + Scene planning (stored as core_settings on their tree node) ---
 export interface CoreConfigNode {
   id: string
   parent_id: string | null
@@ -92,17 +92,6 @@ export interface CoreConfigNode {
   sort_order: number
 }
 
-export interface CoreSetting {
-  id: string
-  key: string
-  value: string
-  source: string
-  tag?: string | null
-  config_node_id?: string | null
-}
-
-/** A setting after walk-up resolution for a particular tree node.
- *  Returned by `GET /core/settings?node_id=...`. */
 export interface ResolvedCoreSetting {
   key: string
   value: string

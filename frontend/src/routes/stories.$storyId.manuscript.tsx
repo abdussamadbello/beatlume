@@ -1,10 +1,17 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Btn, Label } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { useChapters } from '../api/manuscript'
 import { useTriggerExport } from '../api/export'
+import {
+  useCoreTree,
+  useCoreSettings,
+  useCreateCoreSetting,
+  useUpdateCoreSetting,
+} from '../api/core'
 import { useStore } from '../store'
+import type { CoreConfigNode } from '../types'
 
 function ManuscriptPage() {
   const { storyId } = Route.useParams()
@@ -46,13 +53,6 @@ function ManuscriptPage() {
 
     setActiveChapter(closestChapter)
   }, [])
-
-  useEffect(() => {
-    const container = scrollContainerRef.current
-    if (!container) return
-    container.addEventListener('scroll', handleScroll)
-    return () => container.removeEventListener('scroll', handleScroll)
-  }, [handleScroll])
 
   const setChapterRef = useCallback((num: string, el: HTMLDivElement | null) => {
     if (el) {
@@ -125,8 +125,12 @@ function ManuscriptPage() {
         </div>
       </div>
 
+      {/* Body: plan rail + manuscript page */}
+      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        <ChapterPlanRail storyId={storyId} chapterNum={activeChapter} />
+
       {/* Page */}
-      <div ref={scrollContainerRef} style={{ overflow: 'auto', flex: 1, padding: '48px 0' }}>
+      <div ref={scrollContainerRef} onScroll={handleScroll} style={{ overflow: 'auto', flex: 1, padding: '48px 0' }}>
         <div
           style={{
             maxWidth: 640,
@@ -243,6 +247,7 @@ function ManuscriptPage() {
           )}
         </div>
       </div>
+      </div>
 
       {/* Footer reader bar */}
       <div
@@ -272,3 +277,227 @@ export const Route = createFileRoute('/stories/$storyId/manuscript')({
   }),
   component: ManuscriptPage,
 })
+
+const PHASES = ['Setup', 'Escalation', 'Fallout', 'Reveal', 'Resolution'] as const
+
+const CHAPTER_PLAN_FIELDS = [
+  { key: 'Purpose', hint: 'One-line description of what this chapter does.' },
+  { key: 'Phase', hint: 'Structural role.' },
+  { key: 'Tension band', hint: 'Expected range, e.g. 4–7.' },
+  { key: 'Time window', hint: 'When does the chapter happen?' },
+] as const
+
+const CHAPTER_LABEL_RE = /Ch\s*0*(\d+)/i
+
+function findChapterNode(tree: CoreConfigNode[] | undefined, num: string): CoreConfigNode | undefined {
+  if (!tree) return undefined
+  const target = Number(num)
+  for (const node of tree) {
+    if (node.kind !== 'chap') continue
+    const matched = node.label.match(CHAPTER_LABEL_RE)
+    if (matched && Number(matched[1]) === target) return node
+  }
+  return undefined
+}
+
+function ChapterPlanRail({ storyId, chapterNum }: { storyId: string; chapterNum: string }) {
+  const { data: tree } = useCoreTree(storyId)
+  const node = useMemo(() => findChapterNode(tree, chapterNum), [tree, chapterNum])
+  const { data: settings } = useCoreSettings(storyId, node?.id ?? null)
+  const createSetting = useCreateCoreSetting(storyId)
+  const updateSetting = useUpdateCoreSetting(storyId)
+
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const pending = createSetting.isPending || updateSetting.isPending
+
+  function getOwnValue(key: string): string | null {
+    if (!settings) return null
+    const s = settings.find((x) => x.key.toLowerCase() === key.toLowerCase())
+    return s?.is_override ? s.value : null
+  }
+
+  function getResolvedPOV() {
+    if (!settings) return null
+    return settings.find((x) => x.key.toLowerCase() === 'pov') ?? null
+  }
+
+  function startEdit(key: string, current: string | null) {
+    if (!node) return
+    setEditingKey(key)
+    setDraft(current ?? '')
+    setError(null)
+  }
+
+  function cancelEdit() {
+    setEditingKey(null)
+    setDraft('')
+    setError(null)
+  }
+
+  function save(key: string) {
+    if (!node) return
+    const trimmed = draft.trim()
+    if (!trimmed) {
+      setError('Value cannot be empty')
+      return
+    }
+    const existing = settings?.find((x) => x.key.toLowerCase() === key.toLowerCase())
+    const onDone = () => { setEditingKey(null); setDraft(''); setError(null) }
+    const onErr = (err: unknown) => setError(err instanceof Error ? err.message : 'Failed to save')
+
+    if (existing?.is_override) {
+      updateSetting.mutate({ key, nodeId: node.id, value: trimmed }, { onSuccess: onDone, onError: onErr })
+    } else {
+      createSetting.mutate(
+        { key, value: trimmed, source: 'user', config_node_id: node.id },
+        { onSuccess: onDone, onError: onErr },
+      )
+    }
+  }
+
+  const pov = getResolvedPOV()
+  const povInheritance =
+    pov && !pov.is_override
+      ? pov.defined_at_node_id === null
+        ? 'from story'
+        : `from ${pov.defined_at_label}`
+      : null
+
+  return (
+    <aside
+      style={{
+        width: 260,
+        flexShrink: 0,
+        borderRight: '1px solid var(--line)',
+        background: 'var(--paper)',
+        padding: '20px 16px',
+        overflow: 'auto',
+        fontFamily: 'var(--font-mono)',
+        fontSize: 11,
+      }}
+    >
+      <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 4 }}>
+        Chapter plan
+      </div>
+      <div style={{ fontFamily: 'var(--font-serif)', fontSize: 18, lineHeight: 1.2, marginBottom: 14 }}>
+        {node?.label ?? `Chapter ${chapterNum}`}
+      </div>
+
+      {!node && (
+        <div style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 11 }}>
+          No plan node found for this chapter.
+        </div>
+      )}
+
+      {node && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {CHAPTER_PLAN_FIELDS.map(({ key, hint }) => {
+            const value = getOwnValue(key)
+            const isEditing = editingKey === key
+            const isPhase = key === 'Phase'
+
+            return (
+              <div key={key}>
+                <div style={{ fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 3 }}>
+                  {key}
+                </div>
+                {isEditing ? (
+                  isPhase ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <select
+                        value={draft}
+                        onChange={(ev) => setDraft(ev.target.value)}
+                        autoFocus
+                        style={railInputStyle}
+                      >
+                        <option value="">—</option>
+                        {PHASES.map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                      {error && <span style={{ color: 'var(--red)', fontSize: 10 }}>{error}</span>}
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <Btn variant="ghost" onClick={() => save(key)} disabled={pending}>Save</Btn>
+                        <Btn variant="ghost" onClick={cancelEdit}>Cancel</Btn>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <input
+                        value={draft}
+                        onChange={(ev) => setDraft(ev.target.value)}
+                        autoFocus
+                        onKeyDown={(ev) => {
+                          if (ev.key === 'Enter') save(key)
+                          if (ev.key === 'Escape') cancelEdit()
+                        }}
+                        placeholder={hint}
+                        style={railInputStyle}
+                      />
+                      {error && <span style={{ color: 'var(--red)', fontSize: 10 }}>{error}</span>}
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <Btn variant="ghost" onClick={() => save(key)} disabled={pending}>Save</Btn>
+                        <Btn variant="ghost" onClick={cancelEdit}>Cancel</Btn>
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <div
+                    onClick={() => startEdit(key, value)}
+                    style={{
+                      fontFamily: 'var(--font-serif)',
+                      fontSize: 14,
+                      lineHeight: 1.3,
+                      color: value ? 'var(--ink)' : 'var(--ink-3)',
+                      cursor: 'pointer',
+                      minHeight: 18,
+                    }}
+                    title={value ? 'Click to edit' : hint}
+                  >
+                    {value ?? '—'}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          {/* Dominant POV (resolved, inheritance shown) */}
+          <div>
+            <div style={{ fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 3 }}>
+              Dominant POV
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <div
+                style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: 14,
+                  color: pov ? (pov.is_override ? 'var(--ink)' : 'var(--ink-3)') : 'var(--ink-3)',
+                }}
+              >
+                {pov?.value ?? '—'}
+              </div>
+              {povInheritance && (
+                <span style={{ fontSize: 9, color: 'var(--ink-3)', padding: '1px 5px', border: '1px dashed var(--line)' }}>
+                  {povInheritance}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </aside>
+  )
+}
+
+const railInputStyle = {
+  padding: '4px 6px',
+  border: '1px solid var(--ink-3)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 11,
+  background: 'var(--paper)',
+  color: 'var(--ink)',
+  width: '100%',
+} as const

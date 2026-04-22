@@ -28,7 +28,6 @@ import { Route as StoriesStoryIdGraphRouteImport } from './routes/stories.$story
 import { Route as StoriesStoryIdFlagshipRouteImport } from './routes/stories.$storyId.flagship'
 import { Route as StoriesStoryIdExportRouteImport } from './routes/stories.$storyId.export'
 import { Route as StoriesStoryIdDraftRouteImport } from './routes/stories.$storyId.draft'
-import { Route as StoriesStoryIdCoreRouteImport } from './routes/stories.$storyId.core'
 import { Route as StoriesStoryIdCollaborationRouteImport } from './routes/stories.$storyId.collaboration'
 import { Route as StoriesStoryIdAiRouteImport } from './routes/stories.$storyId.ai'
 import { Route as StoriesStoryIdCharactersIndexRouteImport } from './routes/stories.$storyId.characters.index'
@@ -132,11 +131,6 @@ const StoriesStoryIdDraftRoute = StoriesStoryIdDraftRouteImport.update({
   path: '/draft',
   getParentRoute: () => StoriesStoryIdRoute,
 } as any)
-const StoriesStoryIdCoreRoute = StoriesStoryIdCoreRouteImport.update({
-  id: '/core',
-  path: '/core',
-  getParentRoute: () => StoriesStoryIdRoute,
-} as any)
 const StoriesStoryIdCollaborationRoute =
   StoriesStoryIdCollaborationRouteImport.update({
     id: '/collaboration',
@@ -186,7 +180,6 @@ export interface FileRoutesByFullPath {
   '/stories/$storyId': typeof StoriesStoryIdRouteWithChildren
   '/stories/$storyId/ai': typeof StoriesStoryIdAiRoute
   '/stories/$storyId/collaboration': typeof StoriesStoryIdCollaborationRoute
-  '/stories/$storyId/core': typeof StoriesStoryIdCoreRoute
   '/stories/$storyId/draft': typeof StoriesStoryIdDraftRouteWithChildren
   '/stories/$storyId/export': typeof StoriesStoryIdExportRoute
   '/stories/$storyId/flagship': typeof StoriesStoryIdFlagshipRoute
@@ -213,7 +206,6 @@ export interface FileRoutesByTo {
   '/welcome': typeof WelcomeRoute
   '/stories/$storyId/ai': typeof StoriesStoryIdAiRoute
   '/stories/$storyId/collaboration': typeof StoriesStoryIdCollaborationRoute
-  '/stories/$storyId/core': typeof StoriesStoryIdCoreRoute
   '/stories/$storyId/draft': typeof StoriesStoryIdDraftRouteWithChildren
   '/stories/$storyId/export': typeof StoriesStoryIdExportRoute
   '/stories/$storyId/flagship': typeof StoriesStoryIdFlagshipRoute
@@ -242,7 +234,6 @@ export interface FileRoutesById {
   '/stories/$storyId': typeof StoriesStoryIdRouteWithChildren
   '/stories/$storyId/ai': typeof StoriesStoryIdAiRoute
   '/stories/$storyId/collaboration': typeof StoriesStoryIdCollaborationRoute
-  '/stories/$storyId/core': typeof StoriesStoryIdCoreRoute
   '/stories/$storyId/draft': typeof StoriesStoryIdDraftRouteWithChildren
   '/stories/$storyId/export': typeof StoriesStoryIdExportRoute
   '/stories/$storyId/flagship': typeof StoriesStoryIdFlagshipRoute
@@ -272,7 +263,6 @@ export interface FileRouteTypes {
     | '/stories/$storyId'
     | '/stories/$storyId/ai'
     | '/stories/$storyId/collaboration'
-    | '/stories/$storyId/core'
     | '/stories/$storyId/draft'
     | '/stories/$storyId/export'
     | '/stories/$storyId/flagship'
@@ -299,7 +289,6 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/stories/$storyId/ai'
     | '/stories/$storyId/collaboration'
-    | '/stories/$storyId/core'
     | '/stories/$storyId/draft'
     | '/stories/$storyId/export'
     | '/stories/$storyId/flagship'
@@ -327,7 +316,6 @@ export interface FileRouteTypes {
     | '/stories/$storyId'
     | '/stories/$storyId/ai'
     | '/stories/$storyId/collaboration'
-    | '/stories/$storyId/core'
     | '/stories/$storyId/draft'
     | '/stories/$storyId/export'
     | '/stories/$storyId/flagship'
@@ -491,13 +479,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoriesStoryIdDraftRouteImport
       parentRoute: typeof StoriesStoryIdRoute
     }
-    '/stories/$storyId/core': {
-      id: '/stories/$storyId/core'
-      path: '/core'
-      fullPath: '/stories/$storyId/core'
-      preLoaderRoute: typeof StoriesStoryIdCoreRouteImport
-      parentRoute: typeof StoriesStoryIdRoute
-    }
     '/stories/$storyId/collaboration': {
       id: '/stories/$storyId/collaboration'
       path: '/collaboration'
@@ -568,7 +549,6 @@ const StoriesStoryIdScenesRouteWithChildren =
 interface StoriesStoryIdRouteChildren {
   StoriesStoryIdAiRoute: typeof StoriesStoryIdAiRoute
   StoriesStoryIdCollaborationRoute: typeof StoriesStoryIdCollaborationRoute
-  StoriesStoryIdCoreRoute: typeof StoriesStoryIdCoreRoute
   StoriesStoryIdDraftRoute: typeof StoriesStoryIdDraftRouteWithChildren
   StoriesStoryIdExportRoute: typeof StoriesStoryIdExportRoute
   StoriesStoryIdFlagshipRoute: typeof StoriesStoryIdFlagshipRoute
@@ -584,7 +564,6 @@ interface StoriesStoryIdRouteChildren {
 const StoriesStoryIdRouteChildren: StoriesStoryIdRouteChildren = {
   StoriesStoryIdAiRoute: StoriesStoryIdAiRoute,
   StoriesStoryIdCollaborationRoute: StoriesStoryIdCollaborationRoute,
-  StoriesStoryIdCoreRoute: StoriesStoryIdCoreRoute,
   StoriesStoryIdDraftRoute: StoriesStoryIdDraftRouteWithChildren,
   StoriesStoryIdExportRoute: StoriesStoryIdExportRoute,
   StoriesStoryIdFlagshipRoute: StoriesStoryIdFlagshipRoute,

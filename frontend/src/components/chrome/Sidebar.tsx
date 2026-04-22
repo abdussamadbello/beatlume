@@ -14,7 +14,6 @@ function planningItems(storyId: string): NavItem[] {
     { label: 'Graph', to: `/stories/${storyId}/graph` },
     { label: 'Timeline', to: `/stories/${storyId}/timeline` },
     { label: 'Characters', to: `/stories/${storyId}/characters`, count: '14' },
-    { label: 'Narrative Core', to: `/stories/${storyId}/core` },
   ];
 }
 
