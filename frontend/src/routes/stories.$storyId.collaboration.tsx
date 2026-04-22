@@ -2,7 +2,14 @@ import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Btn, Tag, Label, Panel, PanelHead } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
-import { useCollaborators, useComments, useActivity } from '../api/collaboration'
+import {
+  useCollaborators,
+  useComments,
+  useActivity,
+  useInviteCollaborator,
+  useRemoveCollaborator,
+  useCreateComment,
+} from '../api/collaboration'
 
 export const Route = createFileRoute('/stories/$storyId/collaboration')({
   component: CollaborationPage,
@@ -32,16 +39,44 @@ function CollaborationPage() {
   const { data: collaboratorsData, isLoading: collabLoading } = useCollaborators(storyId)
   const { data: commentsData, isLoading: commentsLoading } = useComments(storyId)
   const { data: activityData, isLoading: activityLoading } = useActivity(storyId)
+  const invite = useInviteCollaborator(storyId)
+  const remove = useRemoveCollaborator(storyId)
+  const createComment = useCreateComment(storyId)
 
   const [showInvite, setShowInvite] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('reader')
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [commentDraft, setCommentDraft] = useState('')
 
   if (collabLoading || commentsLoading || activityLoading) return <LoadingState />
 
   const collaborators = collaboratorsData ?? []
   const comments = commentsData ?? []
   const activities = activityData ?? []
+
+  const submitInvite = async () => {
+    setInviteError(null)
+    if (!inviteEmail.trim()) {
+      setInviteError('Email is required')
+      return
+    }
+    try {
+      await invite.mutateAsync({ email: inviteEmail.trim(), role: inviteRole })
+      setInviteEmail('')
+      setShowInvite(false)
+    } catch (err) {
+      setInviteError(
+        err instanceof Error ? err.message : 'Invite failed — user may not exist yet',
+      )
+    }
+  }
+
+  const submitComment = async () => {
+    if (!commentDraft.trim()) return
+    await createComment.mutateAsync({ body: commentDraft.trim() })
+    setCommentDraft('')
+  }
 
   return (
     <div style={{ padding: '32px 36px', overflow: 'auto' }}>
@@ -108,9 +143,28 @@ function CollaborationPage() {
                 <option value="reader">Reader</option>
               </select>
             </div>
-            <Btn variant="solid" style={{ padding: '8px 16px' }}>
-              Send invite
+            <Btn
+              variant="solid"
+              style={{ padding: '8px 16px' }}
+              onClick={submitInvite}
+              disabled={invite.isPending}
+            >
+              {invite.isPending ? 'Sending…' : 'Send invite'}
             </Btn>
+          </div>
+        )}
+
+        {inviteError && (
+          <div
+            style={{
+              padding: '10px 20px',
+              borderBottom: '1px solid var(--line)',
+              color: 'var(--red)',
+              fontSize: 12,
+              background: 'var(--red-soft, #fce8e8)',
+            }}
+          >
+            {inviteError}
           </div>
         )}
 
@@ -119,7 +173,7 @@ function CollaborationPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '48px 1fr 100px 120px',
+              gridTemplateColumns: '48px 1fr 90px 100px 120px 60px',
               gap: 12,
               padding: '10px 20px',
               borderBottom: '1px solid var(--line)',
@@ -128,8 +182,10 @@ function CollaborationPage() {
           >
             <Label>&nbsp;</Label>
             <Label>User ID</Label>
+            <Label>Status</Label>
             <Label>Role</Label>
-            <Label>Invited At</Label>
+            <Label>Invited</Label>
+            <Label>&nbsp;</Label>
           </div>
 
           {/* Table rows */}
@@ -138,7 +194,7 @@ function CollaborationPage() {
               key={collab.id}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '48px 1fr 100px 120px',
+                gridTemplateColumns: '48px 1fr 90px 100px 120px 60px',
                 gap: 12,
                 padding: '12px 20px',
                 borderBottom: '1px solid var(--line-2)',
@@ -163,6 +219,9 @@ function CollaborationPage() {
               <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13 }}>
                 {collab.user_id}
               </span>
+              <Tag variant={collab.accepted_at ? 'solid' : 'blue'}>
+                {collab.accepted_at ? 'Accepted' : 'Pending'}
+              </Tag>
               <Tag>{collab.role}</Tag>
               <span
                 style={{
@@ -171,8 +230,26 @@ function CollaborationPage() {
                   color: 'var(--ink-3)',
                 }}
               >
-                {collab.invited_at}
+                {new Date(collab.invited_at).toLocaleDateString()}
               </span>
+              <button
+                type="button"
+                onClick={() => remove.mutate(collab.id)}
+                disabled={remove.isPending}
+                title="Remove collaborator"
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--ink-3)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  cursor: remove.isPending ? 'default' : 'pointer',
+                  padding: 4,
+                  justifySelf: 'end',
+                }}
+              >
+                Remove
+              </button>
             </div>
           ))}
           {collaborators.length === 0 && (
@@ -234,6 +311,29 @@ function CollaborationPage() {
         {/* Comments */}
         <Panel>
           <PanelHead left="Comments" right={<Label>{comments.length} comments</Label>} />
+          <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--line-2)', display: 'flex', gap: 8 }}>
+            <textarea
+              value={commentDraft}
+              onChange={(e) => setCommentDraft(e.target.value)}
+              placeholder="Leave a comment for the team…"
+              rows={2}
+              style={{
+                flex: 1,
+                ...inputStyle,
+                fontFamily: 'var(--font-serif)',
+                fontSize: 13,
+                resize: 'vertical',
+              }}
+            />
+            <Btn
+              variant="solid"
+              onClick={submitComment}
+              disabled={createComment.isPending || !commentDraft.trim()}
+              style={{ alignSelf: 'flex-end', padding: '8px 14px' }}
+            >
+              {createComment.isPending ? 'Posting…' : 'Post'}
+            </Btn>
+          </div>
           <div style={{ padding: '8px 0' }}>
             {comments.map((c) => (
               <div

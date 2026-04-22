@@ -3,12 +3,78 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.collaboration import ActivityEvent, Collaborator, Comment
+from app.models.collaboration import ActivityEvent, Collaborator, CollaboratorRole, Comment
+from app.models.user import User
 
 
 async def list_collaborators(db: AsyncSession, story_id: uuid.UUID) -> list[Collaborator]:
     result = await db.execute(select(Collaborator).where(Collaborator.story_id == story_id))
     return list(result.scalars().all())
+
+
+async def invite_collaborator(
+    db: AsyncSession,
+    story_id: uuid.UUID,
+    org_id: uuid.UUID,
+    email: str,
+    role: str,
+) -> Collaborator | None:
+    """Invite a user by email. Returns None if no user exists with that email
+    or if they're already a collaborator on this story.
+
+    A real product would send an email with a signup-and-accept link. For
+    now, we require the invitee to have an account — the Collaborator row
+    is created with accepted_at=NULL so the UI can distinguish pending from
+    accepted (which is expected to flip once an /accept endpoint lands).
+    """
+    try:
+        role_enum = CollaboratorRole(role)
+    except ValueError:
+        role_enum = CollaboratorRole.reader
+
+    user_row = await db.execute(
+        select(User).where(User.email == email.strip().lower())
+    )
+    user = user_row.scalar_one_or_none()
+    if user is None:
+        return None
+
+    existing = await db.execute(
+        select(Collaborator).where(
+            Collaborator.story_id == story_id,
+            Collaborator.user_id == user.id,
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
+        return None
+
+    collaborator = Collaborator(
+        story_id=story_id,
+        org_id=org_id,
+        user_id=user.id,
+        role=role_enum,
+    )
+    db.add(collaborator)
+    await db.commit()
+    await db.refresh(collaborator)
+    return collaborator
+
+
+async def delete_collaborator(
+    db: AsyncSession, story_id: uuid.UUID, collaborator_id: uuid.UUID
+) -> bool:
+    result = await db.execute(
+        select(Collaborator).where(
+            Collaborator.id == collaborator_id,
+            Collaborator.story_id == story_id,
+        )
+    )
+    collaborator = result.scalar_one_or_none()
+    if collaborator is None:
+        return False
+    await db.delete(collaborator)
+    await db.commit()
+    return True
 
 
 async def list_comments(db: AsyncSession, story_id: uuid.UUID, scene_id: uuid.UUID | None = None) -> list[Comment]:

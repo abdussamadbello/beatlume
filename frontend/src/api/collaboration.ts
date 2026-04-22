@@ -10,6 +10,26 @@ export function useCollaborators(storyId: string) {
   })
 }
 
+export function useInviteCollaborator(storyId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { email: string; role: string }) =>
+      api.post<Collaborator>(`/api/stories/${storyId}/collaborators`, data),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['stories', storyId, 'collaborators'] }),
+  })
+}
+
+export function useRemoveCollaborator(storyId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (collaboratorId: string) =>
+      api.delete(`/api/stories/${storyId}/collaborators/${collaboratorId}`),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['stories', storyId, 'collaborators'] }),
+  })
+}
+
 export function useComments(storyId: string, sceneId?: string) {
   const qs = sceneId ? `?scene_id=${sceneId}` : ''
   return useQuery({
