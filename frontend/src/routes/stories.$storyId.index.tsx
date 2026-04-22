@@ -55,14 +55,28 @@ function Overview() {
           <h1 className="title-serif" style={{ margin: '4px 0 8px', fontSize: 44 }}>
             {story?.title ?? 'Untitled story'}
           </h1>
+          {story?.logline && (
+            <div style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 15, color: 'var(--ink-2)', maxWidth: '62ch', lineHeight: 1.5 }}>
+              {story.logline}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
             {(story?.genres ?? []).length > 0 && (
               <Tag>{(story?.genres ?? []).join(` ${MIDDOT} `)}</Tag>
             )}
+            {story?.subgenre && <Tag>{story.subgenre}</Tag>}
             {povCount > 1 && <Tag>Multi-POV {MIDDOT} {povCount}</Tag>}
             {povCount === 1 && <Tag>Single POV</Tag>}
             {story && <Tag variant="blue">{story.target_words.toLocaleString()} words target</Tag>}
           </div>
+          {(story?.themes ?? []).length > 0 && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+              <Label>Themes</Label>
+              {(story?.themes ?? []).map((t) => (
+                <Tag key={t}>{t}</Tag>
+              ))}
+            </div>
+          )}
         </div>
         <div style={{ textAlign: 'right' }}>
           <Label>Status</Label>

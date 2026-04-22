@@ -57,10 +57,14 @@ function EditCharacterModal({
   const update = useUpdateCharacter(storyId)
   const [name, setName] = useState(character.name)
   const [role, setRole] = useState(character.role)
+  const [archetype, setArchetype] = useState(character.archetype ?? '')
   const [description, setDescription] = useState(character.description)
   const [bio, setBio] = useState(character.bio)
   const [desire, setDesire] = useState(character.desire)
+  const [fear, setFear] = useState(character.fear ?? '')
   const [flaw, setFlaw] = useState(character.flaw)
+  const [arcSummary, setArcSummary] = useState(character.arc_summary ?? '')
+  const [relationshipNotes, setRelationshipNotes] = useState(character.relationship_notes ?? '')
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: FormEvent) => {
@@ -75,10 +79,14 @@ function EditCharacterModal({
         characterId: character.id,
         name: name.trim(),
         role: role.trim(),
+        archetype: archetype.trim(),
         description: description.trim(),
         bio: bio.trim(),
         desire: desire.trim(),
+        fear: fear.trim(),
         flaw: flaw.trim(),
+        arc_summary: arcSummary.trim(),
+        relationship_notes: relationshipNotes.trim(),
       })
       onClose()
     } catch (err) {
@@ -98,9 +106,15 @@ function EditCharacterModal({
             <Label>Name *</Label>
             <input autoFocus value={name} onChange={(e) => setName(e.target.value)} style={{ ...inputStyle, marginTop: 4 }} />
           </div>
-          <div>
-            <Label>Role</Label>
-            <input value={role} onChange={(e) => setRole(e.target.value)} style={{ ...inputStyle, marginTop: 4 }} placeholder="e.g. Protagonist" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <Label>Role</Label>
+              <input value={role} onChange={(e) => setRole(e.target.value)} style={{ ...inputStyle, marginTop: 4 }} placeholder="Protagonist" />
+            </div>
+            <div>
+              <Label>Archetype</Label>
+              <input value={archetype} onChange={(e) => setArchetype(e.target.value)} style={{ ...inputStyle, marginTop: 4 }} placeholder="Hero, Mentor" />
+            </div>
           </div>
           <div>
             <Label>Description</Label>
@@ -121,13 +135,27 @@ function EditCharacterModal({
               placeholder="Backstory and key history"
             />
           </div>
-          <div>
-            <Label>Desire</Label>
-            <textarea value={desire} onChange={(e) => setDesire(e.target.value)} style={{ ...textareaStyle, marginTop: 4 }} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <Label>Desire</Label>
+              <textarea value={desire} onChange={(e) => setDesire(e.target.value)} style={{ ...textareaStyle, marginTop: 4 }} placeholder="What do they want?" />
+            </div>
+            <div>
+              <Label>Fear</Label>
+              <textarea value={fear} onChange={(e) => setFear(e.target.value)} style={{ ...textareaStyle, marginTop: 4 }} placeholder="What scares them?" />
+            </div>
           </div>
           <div>
             <Label>Flaw</Label>
-            <textarea value={flaw} onChange={(e) => setFlaw(e.target.value)} style={{ ...textareaStyle, marginTop: 4 }} />
+            <textarea value={flaw} onChange={(e) => setFlaw(e.target.value)} style={{ ...textareaStyle, marginTop: 4 }} placeholder="What holds them back?" />
+          </div>
+          <div>
+            <Label>Arc summary</Label>
+            <textarea value={arcSummary} onChange={(e) => setArcSummary(e.target.value)} style={{ ...textareaStyle, marginTop: 4 }} placeholder="How do they change?" />
+          </div>
+          <div>
+            <Label>Relationship notes</Label>
+            <textarea value={relationshipNotes} onChange={(e) => setRelationshipNotes(e.target.value)} style={{ ...textareaStyle, marginTop: 4 }} placeholder="Key dynamics with other characters" />
           </div>
           {error && <div style={{ fontSize: 11, color: 'var(--red)', fontFamily: 'var(--font-mono)' }}>{error}</div>}
         </div>

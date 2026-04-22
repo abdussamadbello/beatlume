@@ -4,7 +4,10 @@ from pydantic import BaseModel
 
 class StoryCreate(BaseModel):
     title: str
+    logline: str = ""
     genres: list[str] = []
+    subgenre: str = ""
+    themes: list[str] = []
     target_words: int = 80000
     structure_type: str = "3-act"
 
@@ -12,7 +15,10 @@ class StoryCreate(BaseModel):
 class StoryRead(BaseModel):
     id: uuid.UUID
     title: str
+    logline: str
     genres: list[str]
+    subgenre: str
+    themes: list[str]
     target_words: int
     draft_number: int
     status: str
@@ -23,7 +29,10 @@ class StoryRead(BaseModel):
 
 class StoryUpdate(BaseModel):
     title: str | None = None
+    logline: str | None = None
     genres: list[str] | None = None
+    subgenre: str | None = None
+    themes: list[str] | None = None
     target_words: int | None = None
     draft_number: int | None = None
     status: str | None = None

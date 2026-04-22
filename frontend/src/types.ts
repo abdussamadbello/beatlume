@@ -2,7 +2,10 @@
 export interface Story {
   id: string
   title: string
+  logline: string
   genres: string[]
+  subgenre: string
+  themes: string[]
   target_words: number
   draft_number: number
   status: 'not_started' | 'in_progress' | 'completed'
@@ -29,10 +32,14 @@ export interface Character {
   story_id: string
   name: string
   role: string
+  archetype: string
   description: string
   bio: string
   desire: string
+  fear: string
   flaw: string
+  arc_summary: string
+  relationship_notes: string
   scene_count: number
   longest_gap: number
 }

@@ -3,6 +3,25 @@ import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { Tag, Label, Btn, Placeholder } from '../components/primitives'
 import { useStore } from '../store'
 
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 12px',
+  border: '1px solid var(--ink)',
+  background: 'var(--paper)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 12,
+  color: 'var(--ink)',
+}
+
+const textareaStyle: React.CSSProperties = {
+  ...inputStyle,
+  fontFamily: 'var(--font-serif)',
+  fontSize: 15,
+  lineHeight: 1.5,
+  resize: 'vertical',
+  minHeight: 90,
+}
+
 const steps: [string, string, boolean][] = [
   ['01', 'Premise', true],
   ['02', 'Structure', true],
@@ -19,16 +38,7 @@ function StepContent({ step }: { step: number }) {
   const removeSetupCharacter = useStore(s => s.removeSetupCharacter)
 
   if (step === 1) {
-    return (
-      <div>
-        <Label>Step 01 of 04</Label>
-        <div className="title-serif" style={{ fontSize: 38, margin: '4px 0 8px' }}>What&rsquo;s your story about?</div>
-        <div style={{ fontSize: 13, color: 'var(--ink-2)', maxWidth: '58ch', lineHeight: 1.6 }}>
-          Write a short logline or premise. Just a sentence or two is fine.
-        </div>
-        <Placeholder label="Logline input" style={{ height: 120, marginTop: 24, maxWidth: 720 }} />
-      </div>
-    )
+    return <StepPremise />
   }
   if (step === 2) {
     return (
@@ -234,6 +244,76 @@ function StepContent({ step }: { step: number }) {
           <Tag variant="blue">Iris &harr; Wren &middot; unresolved</Tag>
           <Tag variant="blue">Iris &harr; Kai &middot; mentor</Tag>
           <Tag>Add your own</Tag>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function StepPremise() {
+  // Local-only state for now — setup doesn't POST to /api/stories yet.
+  // When the create flow is wired, these will feed into useCreateStory.
+  const [title, setTitle] = useState('')
+  const [logline, setLogline] = useState('')
+  const [genres, setGenres] = useState('')
+  const [subgenre, setSubgenre] = useState('')
+  const [themes, setThemes] = useState('')
+
+  return (
+    <div>
+      <Label>Step 01 of 04</Label>
+      <div className="title-serif" style={{ fontSize: 38, margin: '4px 0 8px' }}>What&rsquo;s your story about?</div>
+      <div style={{ fontSize: 13, color: 'var(--ink-2)', maxWidth: '58ch', lineHeight: 1.6 }}>
+        Start with a title and a logline. You can refine everything from inside the workspace.
+      </div>
+      <div style={{ marginTop: 24, maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div>
+          <Label>Title *</Label>
+          <input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            style={{ ...inputStyle, marginTop: 6, fontFamily: 'var(--font-serif)', fontSize: 22 }}
+            placeholder="A Stranger in the Orchard"
+          />
+        </div>
+        <div>
+          <Label>Logline</Label>
+          <textarea
+            value={logline}
+            onChange={(e) => setLogline(e.target.value)}
+            style={{ ...textareaStyle, marginTop: 6 }}
+            placeholder="A widow returning to her family's failing orchard discovers the stranger who appears at harvest may be the one who buried her sister."
+          />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div>
+            <Label>Genres (comma-separated)</Label>
+            <input
+              value={genres}
+              onChange={(e) => setGenres(e.target.value)}
+              style={{ ...inputStyle, marginTop: 6 }}
+              placeholder="Literary, Mystery"
+            />
+          </div>
+          <div>
+            <Label>Subgenre</Label>
+            <input
+              value={subgenre}
+              onChange={(e) => setSubgenre(e.target.value)}
+              style={{ ...inputStyle, marginTop: 6 }}
+              placeholder="Domestic noir"
+            />
+          </div>
+        </div>
+        <div>
+          <Label>Themes (comma-separated)</Label>
+          <input
+            value={themes}
+            onChange={(e) => setThemes(e.target.value)}
+            style={{ ...inputStyle, marginTop: 6 }}
+            placeholder="Grief, inheritance, return"
+          />
         </div>
       </div>
     </div>

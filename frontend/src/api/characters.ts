@@ -16,10 +16,14 @@ export function useCreateCharacter(storyId: string) {
     mutationFn: (data: {
       name: string
       role?: string
+      archetype?: string
       description?: string
       bio?: string
       desire?: string
+      fear?: string
       flaw?: string
+      arc_summary?: string
+      relationship_notes?: string
     }) =>
       api.post<Character>(`/api/stories/${storyId}/characters`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['stories', storyId, 'characters'] }),

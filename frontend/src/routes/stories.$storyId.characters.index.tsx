@@ -40,19 +40,27 @@ function CreateCharacterModal({
   const create = useCreateCharacter(storyId)
   const [name, setName] = useState('')
   const [role, setRole] = useState('')
+  const [archetype, setArchetype] = useState('')
   const [description, setDescription] = useState('')
   const [bio, setBio] = useState('')
   const [desire, setDesire] = useState('')
+  const [fear, setFear] = useState('')
   const [flaw, setFlaw] = useState('')
+  const [arcSummary, setArcSummary] = useState('')
+  const [relationshipNotes, setRelationshipNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const reset = () => {
     setName('')
     setRole('')
+    setArchetype('')
     setDescription('')
     setBio('')
     setDesire('')
+    setFear('')
     setFlaw('')
+    setArcSummary('')
+    setRelationshipNotes('')
     setError(null)
     create.reset()
   }
@@ -68,10 +76,14 @@ function CreateCharacterModal({
       await create.mutateAsync({
         name: name.trim(),
         role: role.trim() || undefined,
+        archetype: archetype.trim() || undefined,
         description: description.trim() || undefined,
         bio: bio.trim() || undefined,
         desire: desire.trim() || undefined,
+        fear: fear.trim() || undefined,
         flaw: flaw.trim() || undefined,
+        arc_summary: arcSummary.trim() || undefined,
+        relationship_notes: relationshipNotes.trim() || undefined,
       })
       reset()
       onClose()
@@ -105,14 +117,25 @@ function CreateCharacterModal({
               placeholder="e.g. Mara Holloway"
             />
           </div>
-          <div>
-            <Label>Role</Label>
-            <input
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              style={{ ...inputStyle, marginTop: 4 }}
-              placeholder="e.g. Protagonist, Antagonist, Family"
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <Label>Role</Label>
+              <input
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                style={{ ...inputStyle, marginTop: 4 }}
+                placeholder="Protagonist, Antagonist, Family"
+              />
+            </div>
+            <div>
+              <Label>Archetype</Label>
+              <input
+                value={archetype}
+                onChange={(e) => setArchetype(e.target.value)}
+                style={{ ...inputStyle, marginTop: 4 }}
+                placeholder="Hero, Mentor, Trickster"
+              />
+            </div>
           </div>
           <div>
             <Label>Description</Label>
@@ -133,14 +156,25 @@ function CreateCharacterModal({
               placeholder="Backstory, role in the world, key history. A paragraph or two."
             />
           </div>
-          <div>
-            <Label>Desire</Label>
-            <textarea
-              value={desire}
-              onChange={(e) => setDesire(e.target.value)}
-              style={{ ...textareaStyle, marginTop: 4 }}
-              placeholder="What do they want?"
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <Label>Desire</Label>
+              <textarea
+                value={desire}
+                onChange={(e) => setDesire(e.target.value)}
+                style={{ ...textareaStyle, marginTop: 4 }}
+                placeholder="What do they want?"
+              />
+            </div>
+            <div>
+              <Label>Fear</Label>
+              <textarea
+                value={fear}
+                onChange={(e) => setFear(e.target.value)}
+                style={{ ...textareaStyle, marginTop: 4 }}
+                placeholder="What are they afraid of?"
+              />
+            </div>
           </div>
           <div>
             <Label>Flaw</Label>
@@ -149,6 +183,24 @@ function CreateCharacterModal({
               onChange={(e) => setFlaw(e.target.value)}
               style={{ ...textareaStyle, marginTop: 4 }}
               placeholder="What holds them back?"
+            />
+          </div>
+          <div>
+            <Label>Arc summary</Label>
+            <textarea
+              value={arcSummary}
+              onChange={(e) => setArcSummary(e.target.value)}
+              style={{ ...textareaStyle, marginTop: 4 }}
+              placeholder="How do they change across the story?"
+            />
+          </div>
+          <div>
+            <Label>Relationship notes</Label>
+            <textarea
+              value={relationshipNotes}
+              onChange={(e) => setRelationshipNotes(e.target.value)}
+              style={{ ...textareaStyle, marginTop: 4 }}
+              placeholder="Key relationships and how they evolve."
             />
           </div>
           {error && (
