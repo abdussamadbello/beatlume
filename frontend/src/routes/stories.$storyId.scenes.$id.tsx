@@ -20,6 +20,7 @@ import {
   useReorderBeats,
   useUpdateBeat,
 } from '../api/beats'
+import { useComments, useCreateComment } from '../api/collaboration'
 import {
   DndContext,
   PointerSensor,
@@ -195,6 +196,8 @@ function SceneDetailPage() {
             <ChapterAssignment storyId={storyId} scene={scene} />
 
             <Participants storyId={storyId} scene={scene} />
+
+            <SceneComments storyId={storyId} sceneId={scene.id} />
           </div>
 
           {/* Footer */}
@@ -924,6 +927,99 @@ function BeatRow({
           }}
         />
       )}
+    </div>
+  )
+}
+
+function SceneComments({ storyId, sceneId }: { storyId: string; sceneId: string }) {
+  const { data: comments } = useComments(storyId, sceneId)
+  const create = useCreateComment(storyId)
+  const [draft, setDraft] = useState('')
+
+  const submit = async () => {
+    if (!draft.trim()) return
+    await create.mutateAsync({ body: draft.trim(), scene_id: sceneId })
+    setDraft('')
+  }
+
+  const list = comments ?? []
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <Label>Comments</Label>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)' }}>
+          {list.length} comment{list.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {list.map((c) => (
+          <div
+            key={c.id}
+            style={{
+              border: '1px solid var(--line)',
+              background: 'var(--paper)',
+              padding: '8px 10px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.04em' }}>
+                {c.user_id.slice(0, 8)}
+              </span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)' }}>
+                {new Date(c.created_at).toLocaleString()}
+              </span>
+            </div>
+            <div style={{ fontFamily: 'var(--font-serif)', fontSize: 14, lineHeight: 1.5, color: 'var(--ink)' }}>
+              {c.body}
+            </div>
+          </div>
+        ))}
+        {list.length === 0 && (
+          <div style={{ fontSize: 11, color: 'var(--ink-3)', fontStyle: 'italic', padding: '4px 0' }}>
+            No comments on this scene yet.
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Leave a note on this scene…"
+          rows={2}
+          style={{
+            flex: 1,
+            fontFamily: 'var(--font-serif)',
+            fontSize: 13,
+            padding: '6px 8px',
+            border: '1px solid var(--ink-3)',
+            background: 'var(--paper)',
+            outline: 'none',
+            resize: 'vertical',
+          }}
+        />
+        <button
+          type="button"
+          onClick={submit}
+          disabled={create.isPending || !draft.trim()}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            padding: '6px 12px',
+            border: '1px solid var(--ink)',
+            background: create.isPending || !draft.trim() ? 'var(--paper-2)' : 'var(--ink)',
+            color: create.isPending || !draft.trim() ? 'var(--ink-3)' : 'var(--paper)',
+            cursor: create.isPending || !draft.trim() ? 'default' : 'pointer',
+            alignSelf: 'flex-end',
+          }}
+        >
+          {create.isPending ? 'Posting…' : 'Post'}
+        </button>
+      </div>
     </div>
   )
 }
