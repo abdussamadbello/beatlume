@@ -188,12 +188,20 @@ async def _prose_continuation_in_session(
                 seq += 1
         except Exception as exc:
             stream_failed = True
-            from app.ai.errors import classify_error
+            from app.ai.errors import classify_error, format_error_for_frontend
             error_info = classify_error(exc)
             logger.warning(
                 "Streaming failed mid-pass %d for scene %s [%s]: %s",
                 pass_num + 1, scene_id, error_info.category, str(exc)[:200],
             )
+            publish_event(story_id, "ai.error", {
+                "task_id": task_id,
+                "type": event_type,
+                "scene_id": scene_id,
+                "scene_n": scene_n,
+                "pass": pass_num + 1,
+                **format_error_for_frontend(error_info),
+            })
 
         full_text = "".join(chunks)
         if not full_text and not stream_failed:
