@@ -13,6 +13,7 @@ interface Premise {
   subgenre: string
   themes: string
   structure_type: string
+  story_type: string
   target_words: number
 }
 
@@ -21,6 +22,22 @@ interface StructureOption {
   label: string
   summary: string
   acts: string
+}
+
+const STORY_TYPES = [
+  { value: 'short', label: 'Short Story', words: '1k–7k', desc: 'Single scene, focused narrative' },
+  { value: 'novelette', label: 'Novelette', words: '7k–17k', desc: 'Extended short story' },
+  { value: 'novella', label: 'Novella', words: '17k–40k', desc: 'Medium-length, 1-2 character arcs' },
+  { value: 'novel', label: 'Novel', words: '40k–100k', desc: 'Full-length, multiple arcs' },
+  { value: 'epic', label: 'Epic', words: '100k+', desc: 'Sprawling, worldbuilding-heavy' },
+] as const
+
+const wordMap: Record<string, number> = {
+  short: 5000,
+  novelette: 12000,
+  novella: 30000,
+  novel: 80000,
+  epic: 120000,
 }
 
 const structureOptions: StructureOption[] = [
@@ -111,7 +128,7 @@ function StepContent({
                 {structureOptions.find((o) => o.value === premise.structure_type)?.label ?? 'Three-Act'}
               </div>
               <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-                Target {(premise.target_words / 1000).toFixed(0)}k words
+                {STORY_TYPES.find(t => t.value === premise.story_type)?.label ?? 'Novel'} · Target {(premise.target_words / 1000).toFixed(0)}k words
               </div>
             </div>
             <div style={{ border: '1px solid var(--ink)', padding: '14px 16px' }}>
@@ -362,6 +379,40 @@ function StepStructure({ premise, setPremise }: { premise: Premise; setPremise: 
       </div>
 
       <div style={{ marginTop: 24, maxWidth: 720 }}>
+        <Label>Story type</Label>
+        <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          {STORY_TYPES.map((t) => {
+            const selected = premise.story_type === t.value
+            return (
+              <div
+                key={t.value}
+                onClick={() => {
+                  setPremise({ story_type: t.value, target_words: wordMap[t.value] ?? premise.target_words })
+                }}
+                style={{
+                  border: selected ? '1.5px solid var(--ink)' : '1px solid var(--line)',
+                  background: selected ? 'var(--paper-2)' : 'var(--paper)',
+                  padding: '14px 16px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: 18 }}>{t.label}</div>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.06em' }}>
+                    {t.words}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.4 }}>{t.desc}</div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 24, maxWidth: 720 }}>
         <Label>Act structure</Label>
         <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {structureOptions.map((opt) => {
@@ -457,6 +508,7 @@ function SetupPage() {
     subgenre: '',
     themes: '',
     structure_type: '3-act',
+    story_type: 'novel',
     target_words: 80000,
   })
   const setPremise = (patch: Partial<Premise>) => setPremiseState((p) => ({ ...p, ...patch }))
@@ -487,6 +539,7 @@ function SetupPage() {
         subgenre: premise.subgenre.trim(),
         themes: parseList(premise.themes),
         structure_type: premise.structure_type,
+        story_type: premise.story_type,
         target_words: premise.target_words,
       })
       const namedCharacters = setupCharacters.filter((c) => c.name.trim())

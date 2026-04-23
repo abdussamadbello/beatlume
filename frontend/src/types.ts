@@ -1,3 +1,35 @@
+// --- AI Tasks (ephemeral client-side progress state) ---
+export type AITaskKind =
+  | 'insight_generation'
+  | 'insight_apply'
+  | 'prose_continuation'
+  | 'relationship_inference'
+  | 'scene_summarization'
+  | 'story_scaffolding'
+  | 'full_manuscript'
+
+export type AITaskStatus = 'queued' | 'running' | 'completed' | 'error'
+
+export interface AITask {
+  task_id: string
+  kind: AITaskKind
+  status: AITaskStatus
+  started_at: number
+  completed_at?: number
+  error?: string
+  streaming_text?: string
+  scene_id?: string
+  chunk_count?: number
+  /** full_manuscript batch progress (from SSE ai.current / ai.total) */
+  progress_current?: number
+  progress_total?: number
+  scene_n?: number
+  /** full_manuscript completion summary (from SSE ai.complete) */
+  manuscript_scenes_written?: number
+  manuscript_scenes_targeted?: number
+  manuscript_scenes_skipped?: number
+}
+
 // --- Story ---
 export interface Story {
   id: string
@@ -10,6 +42,7 @@ export interface Story {
   draft_number: number
   status: 'not_started' | 'in_progress' | 'completed'
   structure_type: string
+  story_type: string
   archived: boolean
 }
 
@@ -33,7 +66,7 @@ export interface Scene {
   act: number
   location: string
   tag: string
-  summary?: string
+  summary: string
   participants?: SceneParticipant[]
   emotional: number
   stakes: number
