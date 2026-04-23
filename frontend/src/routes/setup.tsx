@@ -552,6 +552,18 @@ function SetupPage() {
           }),
         ),
       )
+      await api.post(`/api/stories/${story.id}/ai/scaffold`, {
+        premise: premise.logline.trim() || premise.title.trim(),
+        structure_type: premise.structure_type,
+        target_words: premise.target_words,
+        genres: parseList(premise.genres),
+        characters: namedCharacters.map((c) => ({
+          name: c.name.trim(),
+          role: c.role,
+          description: c.description,
+        })),
+        replace_existing: false,
+      })
       navigate({ to: '/stories/$storyId', params: { storyId: story.id } })
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to create story')
