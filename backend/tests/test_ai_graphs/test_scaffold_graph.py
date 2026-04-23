@@ -1,3 +1,4 @@
+import litellm
 """Tests for the scaffold LangGraph."""
 import pytest
 from app.ai.graphs.scaffold_graph import build_scaffold_graph
@@ -26,7 +27,7 @@ async def test_scaffold_graph_handles_llm_error():
     async def failing_acompletion(*args, **kwargs):
         raise Exception("LLM connection failed")
 
-    with patch("app.ai.llm.acompletion", new_callable=AsyncMock, side_effect=failing_acompletion):
+    with patch("litellm.acompletion", new_callable=AsyncMock, side_effect=failing_acompletion):
         graph = build_scaffold_graph()
         result = await graph.ainvoke({
             "premise": "Test premise",

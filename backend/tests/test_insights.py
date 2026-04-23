@@ -6,6 +6,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.insight import Insight
 
 
+class StubAsyncResult:
+    id = "mock-apply-task"
+
+
+class StubApplyTask:
+    def __init__(self):
+        self.calls: list[tuple] = []
+
+    def delay(self, *args):
+        self.calls.append(tuple(args))
+        return StubAsyncResult()
+
+
 async def _setup_story(client) -> tuple[str, str]:
     suffix = uuid.uuid4().hex[:8]
     signup = await client.post(
@@ -84,3 +97,29 @@ async def test_dismiss_then_restore(client, db_session):
 
     active_final = await client.get(f"/api/stories/{story_id}/insights", headers=headers)
     assert active_final.json()["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_apply_insight_enqueues_task(client, db_session, monkeypatch):
+    token, story_id = await _setup_story(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    from app.models.story import Story
+    from sqlalchemy import select
+
+    row = (
+        await db_session.execute(select(Story).where(Story.id == uuid.UUID(story_id)))
+    ).scalar_one()
+    insight_id = await _seed_insight(db_session, row.id, row.org_id)
+
+    stub = StubApplyTask()
+    monkeypatch.setattr("app.api.insights.apply_insight_task", stub)
+
+    res = await client.post(
+        f"/api/stories/{story_id}/insights/{insight_id}/apply", headers=headers
+    )
+    assert res.status_code == 202
+    assert res.json() == {"task_id": "mock-apply-task"}
+    assert len(stub.calls) == 1
+    assert stub.calls[0][0] == story_id
+    assert str(stub.calls[0][2]) == str(insight_id)

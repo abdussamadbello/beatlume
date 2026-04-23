@@ -8,7 +8,7 @@ import {
   useRestoreInsight,
   type InsightScope,
 } from '../api/insights'
-import { useTriggerInsights } from '../api/ai'
+import { useTriggerApplyInsight, useTriggerInsights } from '../api/ai'
 
 export const Route = createFileRoute('/stories/$storyId/ai')({
   component: AIPage,
@@ -22,11 +22,16 @@ function AIPage() {
   const dismissMutation = useDismissInsight(storyId)
   const restoreMutation = useRestoreInsight(storyId)
   const generateMutation = useTriggerInsights(storyId)
+  const applyMutation = useTriggerApplyInsight(storyId)
   const navigate = useNavigate()
 
   if (isLoading) return <LoadingState />
 
   const insights = data?.items ?? []
+  const applyingId =
+    applyMutation.isPending && applyMutation.variables
+      ? (applyMutation.variables as string)
+      : null
 
   const categoryRouteMap: Record<string, string> = {
     Pacing: `/stories/${storyId}/timeline`,
@@ -68,6 +73,10 @@ function AIPage() {
 
   const handleDismiss = (insight: typeof insights[0]) => {
     dismissMutation.mutate(insight.id)
+  }
+
+  const handleApply = (insight: typeof insights[0]) => {
+    applyMutation.mutate(insight.id)
   }
 
   return (
@@ -196,7 +205,19 @@ function AIPage() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <Btn style={{ fontSize: 10 }} onClick={() => handleInspect(c.category)}>Inspect &rarr;</Btn>
-                <Btn variant="ghost" style={{ fontSize: 10 }}>Apply</Btn>
+                <Btn
+                  variant="ghost"
+                  style={{ fontSize: 10 }}
+                  onClick={() => handleApply(c)}
+                  disabled={
+                    c.dismissed ||
+                    dismissMutation.isPending ||
+                    applyMutation.isPending ||
+                    generateMutation.isPending
+                  }
+                >
+                  {applyingId === c.id ? 'Applying…' : 'Apply'}
+                </Btn>
                 {c.dismissed ? (
                   <Btn
                     variant="ghost"

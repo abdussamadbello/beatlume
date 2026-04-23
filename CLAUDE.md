@@ -4,6 +4,15 @@
 
 BeatLume is a graph-driven AI fiction planner SaaS. Monorepo with two apps:
 
+### Product guarantee (non-negotiable)
+
+**Every user must be able to go from setup through to a complete, exportable story (full manuscript) generated in the product using AI**—not only planning, scene cards, or partial draft continuation. “Planner” and graph/timeline are supporting surfaces; the **guaranteed feature** is **end-to-end whole-story generation** the user can run, review, revise, and export. Work that only improves planning or single-scene tools without a path to **full-story output** is secondary to that guarantee.
+
+In practice, “guaranteed” means: a **defined, testable product path** (trigger → job(s) or workflow → all scenes/chapters filled → manuscript present → export) that ships and stays green—not a marketing claim about literary quality. Model choice, cost caps, and safety rails are implementation details; the **outcome** the app promises is a **full generated story** the user can iterate on.
+
+**Implication for agents and contributors:** new UX after setup, new AI entry points, and new backend flows should default toward **storyline + expansion + full pass** (or an equivalent chunked pipeline with the same end state), not a dead end at “insights only” or “one scene at a time” unless that is explicitly an intermediate step toward the same guarantee.
+
+
 - `frontend/` — React 19 + Vite + TanStack Router + TanStack Query + Zustand
 - `backend/` — FastAPI + SQLAlchemy 2 (async) + PostgreSQL + LangGraph + Celery + Redis
 

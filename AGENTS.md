@@ -6,6 +6,8 @@ Instructions for AI agents (Claude Code, Copilot, Codex, etc.) working on this p
 
 BeatLume is a graph-driven AI fiction planner. Monorepo: `frontend/` (React + TanStack) and `backend/` (FastAPI + PostgreSQL + LangGraph + Celery).
 
+**Product guarantee:** the app’s committed outcome is that a user can **generate a full, exportable story (whole manuscript)** via AI after setup—not only planning or single-scene features. See `CLAUDE.md` → *Product guarantee*.
+
 Read `CLAUDE.md` for full project docs. This file covers agent-specific workflow guidance.
 
 ## Before You Start
@@ -91,11 +93,26 @@ PYTHONPATH=. uv run pytest tests/ -k "test_name"  # specific test
 
 Tests use real PostgreSQL (localhost:5432). The conftest creates/drops all tables per test.
 
-### Frontend (TypeScript only — no test framework yet)
+### Frontend
 ```bash
 cd frontend
 npx tsc --noEmit   # type check all files
 ```
+
+**E2E (Playwright)** — needs PostgreSQL, Redis, migrated DB, seed (`make migrate seed`), and the API on `http://localhost:8000`. For a full stack (API + Celery + Vite), use `make dev` in one terminal; stop with `make dev-stop`. Or run only the API (`make dev-backend` or `PYTHONPATH=. uv run uvicorn app.main:app --reload --port 8000`), then:
+
+The suite uses a **setup** project that logs in once and saves `playwright/.auth/user.json` so repeated tests do not hit the backend **5/min** limit on `POST /auth/login`. Auth tests run in a separate project without that session.
+
+```bash
+cd frontend
+npm run test:e2e          # headless
+npm run test:e2e:headed  # with browser
+npm run test:e2e:ui      # Playwright UI
+# or from repo root:
+make test-e2e
+```
+
+Playwright starts (or reuses) the Vite dev server with `VITE_API_URL=http://localhost:8000` (see `frontend/playwright.config.ts`). Login for seeded data: `elena@beatlume.io` / `beatlume123`.
 
 ## Infrastructure
 

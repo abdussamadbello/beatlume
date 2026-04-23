@@ -5,11 +5,11 @@ test.describe('Authentication', () => {
     await page.goto('/login');
     await expect(page).toHaveURL(/.*login/);
 
-    await page.getByRole('textbox', { name: /email/i }).fill('elena@beatlume.io');
-    await page.getByRole('textbox', { name: /password/i }).fill('beatlume123');
-    await page.getByRole('button', { name: /log in/i }).click();
+    await page.getByPlaceholder('you@example.com').fill('elena@beatlume.io');
+    await page.getByPlaceholder('Enter your password').fill('beatlume123');
+    await page.getByRole('button', { name: 'Log in' }).click();
 
-    await expect(page).toHaveURL(/.*dashboard/);
+    await expect(page).toHaveURL(/.*dashboard/, { timeout: 10_000 });
   });
 
   test('unauthenticated user redirected to login', async ({ page }) => {

@@ -2,6 +2,7 @@ import json
 
 from app.ai.prompts import (
     insight_analysis,
+    insight_apply,
     insight_synthesis,
     prose_continuation,
     relationship_inference,
@@ -57,6 +58,52 @@ def test_insight_analysis_validation():
     assert result[0]["severity"] == "red"
 
 
+def test_insight_apply_collect_scene_numbers():
+    assert insight_apply.collect_scene_numbers(["S3", "S12"], "") == [3, 12]
+    assert insight_apply.collect_scene_numbers([], "See S5 and S7.") == [5, 7]
+
+
+def test_insight_apply_validation():
+    raw = json.dumps(
+        {
+            "operations": [
+                {
+                    "kind": "append_draft",
+                    "scene_n": 2,
+                    "text": "She shut the door.",
+                }
+            ]
+        }
+    )
+    ops = insight_apply.validate_output(raw)
+    assert len(ops) == 1
+    assert ops[0]["kind"] == "append_draft"
+
+
+def test_insight_apply_prompt_builds():
+    insight = {
+        "severity": "amber",
+        "category": "Pacing",
+        "title": "Lull",
+        "body": "Tension flattens in S2.",
+        "refs": ["S2"],
+    }
+    blocks = [
+        {
+            "n": 2,
+            "title": "Field",
+            "act": 1,
+            "tension": 4,
+            "summary": "Iris walks.",
+            "draft_excerpt": "The grass was wet.",
+        }
+    ]
+    messages = insight_apply.build_prompt(insight, blocks)
+    assert len(messages) == 2
+    assert "S2" in messages[1]["content"]
+    assert "append_draft" in messages[0]["content"]
+
+
 def test_insight_analysis_validation_rejects_bad_severity():
     invalid = json.dumps([{
         "severity": "green", "category": "Pacing",
@@ -104,6 +151,25 @@ def test_story_scaffolding_validation():
     })
     result = story_scaffolding.validate_output(valid)
     assert len(result["acts"]) == 1
+
+
+def test_story_scaffolding_validation_rejects_missing_summary():
+    missing_summary = json.dumps({
+        "title_suggestion": "Test",
+        "genre": ["Literary"],
+        "themes": ["Identity"],
+        "acts": [{"act": 1, "label": "Setup", "scenes": [
+            {"n": 1, "title": "Test", "pov": "Iris", "location": "Town",
+             "tension": 2, "tag": "setup"}
+        ]}],
+        "characters": [],
+        "relationships": [],
+    })
+    try:
+        story_scaffolding.validate_output(missing_summary)
+        assert False, "expected ValueError for missing scene summary"
+    except ValueError as e:
+        assert "summary" in str(e).lower()
 
 
 def test_relationship_inference_prompt_builds():

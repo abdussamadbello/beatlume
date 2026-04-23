@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Tag, Btn, Label } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
@@ -38,21 +38,137 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
+const SLIDE_TRANSITION = '0.22s ease'
+
+type SceneTab = 'overview' | 'structure' | 'placement' | 'comments'
+
+const TABS: { id: SceneTab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'structure', label: 'Structure' },
+  { id: 'placement', label: 'Placement' },
+  { id: 'comments', label: 'Comments' },
+]
+
+function useNarrowSlideout(): boolean {
+  const [fullWidth, setFullWidth] = useState(() => {
+    if (typeof globalThis === 'undefined' || !('matchMedia' in globalThis)) return false
+    return (globalThis as unknown as { matchMedia: (q: string) => MediaQueryList }).matchMedia('(max-width: 640px)').matches
+  })
+  useEffect(() => {
+    const w = globalThis as unknown as { matchMedia?: (q: string) => MediaQueryList }
+    if (typeof w.matchMedia !== 'function') return
+    const m = w.matchMedia('(max-width: 640px)')
+    const f = () => setFullWidth(m.matches)
+    m.addEventListener('change', f)
+    return () => m.removeEventListener('change', f)
+  }, [])
+  return fullWidth
+}
+
+function SceneSlideoutShell({
+  storyId,
+  slideKey,
+  children,
+}: {
+  storyId: string
+  slideKey: string
+  children: ReactNode
+}) {
+  const navigate = useNavigate()
+  const fullWidth = useNarrowSlideout()
+  const [panelIn, setPanelIn] = useState(false)
+  useEffect(() => {
+    setPanelIn(false)
+    let inner: number | undefined
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setPanelIn(true))
+    })
+    return () => {
+      cancelAnimationFrame(outer)
+      if (inner !== undefined) cancelAnimationFrame(inner)
+    }
+  }, [slideKey])
+
+  return (
+    <div
+      data-scene-slideout
+      style={{ position: 'fixed', inset: 0, zIndex: 999, pointerEvents: 'none' as const }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'rgba(26,29,36,0.35)',
+          backdropFilter: 'blur(0.5px)',
+          pointerEvents: 'auto' as const,
+        }}
+        onClick={() => navigate({ to: '/stories/$storyId/scenes', params: { storyId } })}
+        aria-hidden
+      />
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          justifyContent: 'flex-end',
+          alignItems: 'stretch',
+          pointerEvents: 'none' as const,
+        }}
+      >
+        <div
+          style={{
+            width: fullWidth ? '100%' : 'min(560px, 50vw)',
+            minWidth: fullWidth ? 0 : 280,
+            maxWidth: '100%',
+            maxHeight: '100dvh',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column' as const,
+            background: 'var(--paper)',
+            border: '2px solid var(--ink)',
+            borderRight: fullWidth ? undefined : 'none',
+            boxShadow: fullWidth ? 'none' : '-6px 0 24px rgba(26,29,36,0.12)',
+            boxSizing: 'border-box' as const,
+            pointerEvents: 'auto' as const,
+            transform: panelIn ? 'translateX(0)' : 'translateX(100%)',
+            transition: `transform ${SLIDE_TRANSITION}`,
+            overflow: 'hidden',
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function SceneDetailPage() {
   const navigate = useNavigate()
   const { storyId, id } = Route.useParams()
   const { data: sceneData, isLoading: sceneLoading } = useScene(storyId, id)
   const { data: scenesData, isLoading: scenesLoading } = useScenes(storyId)
   const deleteScene = useDeleteScene(storyId)
+  const [tab, setTab] = useState<SceneTab>('overview')
+  useEffect(() => {
+    setTab('overview')
+  }, [id])
 
   if (sceneLoading || scenesLoading) {
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(26,29,36,0.35)', backdropFilter: 'blur(0.5px)' }} />
-        <div style={{ position: 'relative', background: 'var(--paper)', border: '2px solid var(--ink)', boxShadow: '8px 8px 0 var(--ink)', padding: '40px 60px' }}>
+      <SceneSlideoutShell storyId={storyId} slideKey={`load-${id}`}>
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 32,
+          }}
+        >
           <LoadingState />
         </div>
-      </div>
+      </SceneSlideoutShell>
     )
   }
 
@@ -61,16 +177,24 @@ function SceneDetailPage() {
 
   if (!scene) {
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <SceneSlideoutShell storyId={storyId} slideKey="notfound">
         <div
-          style={{ position: 'absolute', inset: 0, background: 'rgba(26,29,36,0.35)', backdropFilter: 'blur(0.5px)' }}
-          onClick={() => navigate({ to: '/stories/$storyId/scenes', params: { storyId } })}
-        />
-        <div style={{ position: 'relative', background: 'var(--paper)', border: '2px solid var(--ink)', boxShadow: '8px 8px 0 var(--ink)', padding: '40px 60px', textAlign: 'center' }}>
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 32,
+            textAlign: 'center' as const,
+            gap: 12,
+          }}
+        >
           <div className="title-serif" style={{ fontSize: 24, marginBottom: 12 }}>Scene not found</div>
           <Btn onClick={() => navigate({ to: '/stories/$storyId/scenes', params: { storyId } })}>Back to scenes</Btn>
         </div>
-      </div>
+      </SceneSlideoutShell>
     )
   }
 
@@ -98,72 +222,92 @@ function SceneDetailPage() {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 999 }}>
-      {/* Blurred background */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'rgba(26,29,36,0.35)',
-          backdropFilter: 'blur(0.5px)',
-        }}
-        onClick={() => navigate({ to: '/stories/$storyId/scenes', params: { storyId } })}
-      />
-
-      {/* Modal dialog */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          pointerEvents: 'none',
-        }}
-      >
+    <SceneSlideoutShell storyId={storyId} slideKey={id}>
+        {/* Header */}
         <div
           style={{
-            width: 720,
-            maxWidth: '96%',
-            background: 'var(--paper)',
-            border: '2px solid var(--ink)',
-            boxShadow: '8px 8px 0 var(--ink)',
-            position: 'relative',
-            pointerEvents: 'auto',
+            padding: '16px 24px',
+            borderBottom: '1px solid var(--ink)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start' as const,
+            gap: 12,
+            flexShrink: 0,
           }}
         >
-          {/* Header */}
-          <div
-            style={{
-              padding: '16px 24px',
-              borderBottom: '1px solid var(--ink)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-start' as const, gap: 8, minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap' as const, alignItems: 'baseline' as const, gap: 12 }}>
               <Label>Scene {String(scene.n).padStart(2, '0')} &middot; Act {scene.act === 1 ? 'I' : scene.act === 2 ? 'II' : 'III'}</Label>
-              <span style={{ fontFamily: 'var(--font-serif)', fontSize: 26 }}>{scene.title}</span>
-              <Tag variant="blue">{scene.tag}</Tag>
+              <span style={{ fontFamily: 'var(--font-serif)', fontSize: 20, lineHeight: 1.3 }}>{scene.title}</span>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {prevScene && (
-                <Btn variant="ghost" onClick={() => navigate({ to: '/stories/$storyId/scenes/$id', params: { storyId, id: prevScene.id } })}>
-                  &laquo; S{String(prevScene.n).padStart(2, '0')}
-                </Btn>
-              )}
-              {nextScene && (
-                <Btn variant="ghost" onClick={() => navigate({ to: '/stories/$storyId/scenes/$id', params: { storyId, id: nextScene.id } })}>
-                  S{String(nextScene.n).padStart(2, '0')} &raquo;
-                </Btn>
-              )}
-              <Btn variant="ghost" onClick={() => navigate({ to: '/stories/$storyId/scenes', params: { storyId } })}>&#x2715;</Btn>
-            </div>
+            <Tag variant="blue" style={{ alignSelf: 'flex-start' as const }}>{scene.tag}</Tag>
           </div>
+          <div style={{ display: 'flex', flexShrink: 0, gap: 8, flexWrap: 'wrap' as const, justifyContent: 'flex-end' as const }}>
+            {prevScene && (
+              <Btn variant="ghost" onClick={() => navigate({ to: '/stories/$storyId/scenes/$id', params: { storyId, id: prevScene.id } })}>
+                &laquo; S{String(prevScene.n).padStart(2, '0')}
+              </Btn>
+            )}
+            {nextScene && (
+              <Btn variant="ghost" onClick={() => navigate({ to: '/stories/$storyId/scenes/$id', params: { storyId, id: nextScene.id } })}>
+                S{String(nextScene.n).padStart(2, '0')} &raquo;
+              </Btn>
+            )}
+            <Btn variant="ghost" onClick={() => navigate({ to: '/stories/$storyId/scenes', params: { storyId } })}>&#x2715;</Btn>
+          </div>
+        </div>
 
-          {/* Body */}
-          <div style={{ padding: '22px 24px' }}>
+        <div
+          role="tablist"
+          aria-label="Scene details"
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap' as const,
+            gap: 4,
+            padding: '8px 24px 0',
+            borderBottom: '1px solid var(--ink)',
+            flexShrink: 0,
+          }}
+        >
+          {TABS.map(t => {
+            const selected = tab === t.id
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                id={`scene-tab-control-${t.id}`}
+                aria-selected={selected}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => setTab(t.id)}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 10,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase' as const,
+                  padding: '8px 10px',
+                  border: '1px solid transparent',
+                  borderBottom: selected ? '1px solid var(--paper)' : '1px solid transparent',
+                  marginBottom: -1,
+                  background: selected ? 'var(--paper)' : 'transparent',
+                  color: selected ? 'var(--ink)' : 'var(--ink-3)',
+                  cursor: 'pointer',
+                }}
+              >
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
+
+        <div
+          role="tabpanel"
+          id={`scene-tabpanel-${tab}`}
+          aria-labelledby={`scene-tab-control-${tab}`}
+          style={{ flex: 1, minHeight: 0, overflowY: 'auto' as const, padding: '22px 24px' }}
+        >
+          {tab === 'overview' && (
+            <>
             <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '10px 16px', fontSize: 12, lineHeight: 1.6 }}>
               {fields.map(([k, v]) => (
                 <Fragment key={k}>
@@ -187,44 +331,53 @@ function SceneDetailPage() {
                 {scene.summary || `Scene ${scene.n}: ${scene.title}. POV: ${scene.pov}, Location: ${scene.location}.`}
               </div>
             </div>
+            </>
+          )}
 
+          {tab === 'structure' && (
+            <>
             <DramaticStructure storyId={storyId} scene={scene} />
-
             <TensionFacets storyId={storyId} scene={scene} />
-
             <Beats storyId={storyId} scene={scene} />
+            </>
+          )}
 
+          {tab === 'placement' && (
+            <>
             <ChapterAssignment storyId={storyId} scene={scene} />
-
             <Participants storyId={storyId} scene={scene} />
+            </>
+          )}
 
+          {tab === 'comments' && (
             <SceneComments storyId={storyId} sceneId={scene.id} />
-          </div>
+          )}
+        </div>
 
-          {/* Footer */}
-          <div
-            style={{
-              padding: '12px 24px',
-              borderTop: '1px solid var(--ink)',
-              background: 'var(--paper-2)',
-              display: 'flex',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Btn onClick={() => navigate({ to: '/stories/$storyId/draft', params: { storyId } })}>Open in Draft</Btn>
-              <Btn variant="ghost" onClick={() => navigate({ to: '/stories/$storyId/ai', params: { storyId } })}>Linked AI</Btn>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Btn variant="ghost" onClick={handleDelete} disabled={deleteScene.isPending}>
-                {deleteScene.isPending ? 'Deleting...' : 'Delete'}
-              </Btn>
-              <Btn variant="solid" disabled>Saved</Btn>
-            </div>
+        <div
+          style={{
+            padding: '12px 24px',
+            borderTop: '1px solid var(--ink)',
+            background: 'var(--paper-2)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap' as const,
+            gap: 8,
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+            <Btn onClick={() => navigate({ to: '/stories/$storyId/draft', params: { storyId } })}>Open in Draft</Btn>
+            <Btn variant="ghost" onClick={() => navigate({ to: '/stories/$storyId/ai', params: { storyId } })}>Linked AI</Btn>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+            <Btn variant="ghost" onClick={handleDelete} disabled={deleteScene.isPending}>
+              {deleteScene.isPending ? 'Deleting...' : 'Delete'}
+            </Btn>
+            <Btn variant="solid" disabled>Saved</Btn>
           </div>
         </div>
-      </div>
-    </div>
+    </SceneSlideoutShell>
   )
 }
 

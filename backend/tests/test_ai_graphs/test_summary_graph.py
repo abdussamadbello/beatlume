@@ -1,3 +1,4 @@
+import litellm
 """Tests for the summary LangGraph."""
 import pytest
 from app.ai.graphs.summary_graph import build_summary_graph
@@ -28,7 +29,7 @@ async def test_summary_graph_handles_llm_error():
     async def failing_acompletion(*args, **kwargs):
         raise Exception("Timeout")
 
-    with patch("app.ai.llm.acompletion", new_callable=AsyncMock, side_effect=failing_acompletion):
+    with patch("litellm.acompletion", new_callable=AsyncMock, side_effect=failing_acompletion):
         graph = build_summary_graph()
         result = await graph.ainvoke({
             "scene": {"n": 1, "title": "Test", "pov": "", "tension": 0, "act": 1, "location": ""},

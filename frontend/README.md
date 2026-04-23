@@ -47,6 +47,9 @@ If you change the API port, set `VITE_API_URL` to the same origin (e.g. `http://
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | ESLint |
 | `npx tsc --noEmit` | Typecheck only (used in CI / `make test-frontend`) |
+| `npm run test:e2e` | Playwright E2E (requires backend on :8000; see repo `AGENTS.md`) |
+| `npm run test:e2e:headed` | E2E with visible browser |
+| `npm run test:e2e:ui` | Playwright UI mode |
 
 ## Local development
 

@@ -59,35 +59,58 @@ function SceneCard({
   const style: React.CSSProperties = {
     border: '1px solid var(--ink)',
     background: 'var(--paper)',
-    padding: 10,
+    display: 'flex',
+    minHeight: 44,
     position: 'relative',
-    cursor: draggable ? 'grab' : 'pointer',
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
-    touchAction: draggable ? 'none' : undefined,
   }
-  const handlers = draggable ? { ...attributes, ...listeners } : {}
+  // Listeners on the full card block native click; use a narrow drag handle when reordering.
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...handlers}
-      onClick={() => {
-        if (isDragging) return
-        onSceneClick(storyId, s.id)
-      }}
-    >
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: povColor(s.pov) }} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-        <Label>S{String(s.n).padStart(2, '0')} {MIDDOT} {s.pov}</Label>
-        <span style={{ display: 'inline-block', padding: '2px 7px', border: '1px solid var(--ink)', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>T {s.tension}</span>
-      </div>
-      <div style={{ fontFamily: 'var(--font-serif)', fontSize: 16, lineHeight: 1.2 }}>{s.title}</div>
-      <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
-        {Array.from({ length: 10 }).map((_, k) => (
-          <span key={k} style={{ flex: 1, height: 3, background: k < s.tension ? 'var(--ink)' : 'var(--line-2)' }} />
-        ))}
+    <div ref={setNodeRef} style={style}>
+      {draggable ? (
+        <div
+          {...attributes}
+          {...listeners}
+          title="Drag to reorder"
+          style={{
+            flex: '0 0 12px',
+            background: povColor(s.pov),
+            cursor: 'grab',
+            touchAction: 'none',
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            flex: '0 0 3px',
+            background: povColor(s.pov),
+          }}
+        />
+      )}
+      <div
+        onClick={() => {
+          if (isDragging) return
+          onSceneClick(storyId, s.id)
+        }}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          padding: 10,
+          cursor: 'pointer',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+          <Label>S{String(s.n).padStart(2, '0')} {MIDDOT} {s.pov}</Label>
+          <span style={{ display: 'inline-block', padding: '2px 7px', border: '1px solid var(--ink)', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>T {s.tension}</span>
+        </div>
+        <div style={{ fontFamily: 'var(--font-serif)', fontSize: 16, lineHeight: 1.2 }}>{s.title}</div>
+        <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+          {Array.from({ length: 10 }).map((_, k) => (
+            <span key={k} style={{ flex: 1, height: 3, background: k < s.tension ? 'var(--ink)' : 'var(--line-2)' }} />
+          ))}
+        </div>
       </div>
     </div>
   )

@@ -47,6 +47,7 @@ async def test_full_writing_flow(client, auth_headers, mock_ai):
             "structure_type": "3-act",
             "target_words": 80000,
             "genres": ["Literary"],
+            "replace_existing": True,
         },
         headers=auth_headers,
     )

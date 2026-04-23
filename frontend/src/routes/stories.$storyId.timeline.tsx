@@ -318,6 +318,10 @@ function ScenePreview({
   onClose: () => void
 }) {
   const metaBits = [scene.pov && `POV: ${scene.pov}`, `Act ${scene.act}`, scene.location].filter(Boolean)
+  const summaryText = scene.summary?.trim() ?? ''
+  const headline = summaryText || scene.title
+  const showTitleWhenSummaryIsHeadline =
+    Boolean(summaryText) && scene.title && scene.title.trim() !== summaryText
 
   return (
     <div style={{ padding: '18px 22px' }}>
@@ -342,8 +346,13 @@ function ScenePreview({
       </div>
 
       <div className="title-serif" style={{ fontSize: 22, marginBottom: 6 }}>
-        {scene.title}
+        {headline}
       </div>
+      {showTitleWhenSummaryIsHeadline && (
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.04em', color: 'var(--ink-2)', marginBottom: 4 }}>
+          {scene.title}
+        </div>
+      )}
 
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.04em', color: 'var(--ink-3)', marginBottom: 14, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         {metaBits.flatMap((bit, i) =>
@@ -359,15 +368,6 @@ function ScenePreview({
 
       <Label style={{ display: 'block', marginBottom: 6 }}>Tension</Label>
       <TensionBar value={scene.tension} />
-
-      {scene.summary && (
-        <>
-          <Label style={{ display: 'block', marginTop: 16, marginBottom: 6 }}>Summary</Label>
-          <div style={{ fontFamily: 'var(--font-serif)', fontSize: 14, lineHeight: 1.6, color: 'var(--ink-2)' }}>
-            {scene.summary}
-          </div>
-        </>
-      )}
 
       <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
         <Btn variant="ghost" onClick={onClose}>Close</Btn>

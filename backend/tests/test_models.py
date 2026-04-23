@@ -65,6 +65,7 @@ def test_scene_model_fields():
     required = ["id", "org_id", "story_id", "n", "title", "pov", "tension", "act", "location", "tag", "summary"]
     for col in required:
         assert col in column_names, f"Scene missing column: {col}"
+    assert table.c.summary.nullable is False
 
 
 def test_edge_kind_enum_values():

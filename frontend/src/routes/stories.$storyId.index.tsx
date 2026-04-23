@@ -1,25 +1,91 @@
+import { useMemo, useState, type CSSProperties } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { TensionCurve } from '../components/charts'
 import { Panel, PanelHead, Tag, Label, PresenceStrip } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
+import { Modal } from '../components/Modal'
 import { useStory } from '../api/stories'
 import { useScenes } from '../api/scenes'
 import { useCharacters } from '../api/characters'
 import { useInsights } from '../api/insights'
 import { useTensionCurve } from '../api/analytics'
+import { useTriggerScaffold, useTriggerGenerateManuscript } from '../api/ai'
+import { useStore } from '../store'
 
 export const Route = createFileRoute('/stories/$storyId/')({
   component: Overview,
 })
 
+const calloutBox: CSSProperties = {
+  border: '2px solid var(--ink)',
+  background: 'var(--paper-2)',
+  padding: '18px 20px',
+  marginBottom: 24,
+  display: 'grid',
+  gap: 10,
+  maxWidth: 720,
+}
+
+const primaryBtn: React.CSSProperties = {
+  display: 'inline-block',
+  padding: '10px 16px',
+  border: '1px solid var(--ink)',
+  background: 'var(--ink)',
+  color: 'var(--paper)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 12,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  cursor: 'pointer',
+  width: 'fit-content',
+}
+
+const primaryBtnDisabled: React.CSSProperties = {
+  ...primaryBtn,
+  opacity: 0.55,
+  cursor: 'not-allowed',
+}
+
+const ghostLink: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  color: 'var(--ink-2)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  textDecoration: 'underline',
+  cursor: 'pointer',
+  textAlign: 'left',
+  padding: 0,
+}
+
 function Overview() {
   const { storyId } = Route.useParams()
   const navigate = useNavigate()
+  const aiTasks = useStore((s) => s.aiTasks)
   const { data: story, isLoading: storyLoading } = useStory(storyId)
   const { data: scenesData, isLoading: scenesLoading } = useScenes(storyId)
   const { data: charsData, isLoading: charsLoading } = useCharacters(storyId)
   const { data: insightsData, isLoading: insightsLoading } = useInsights(storyId)
   const { data: tensionCurveData } = useTensionCurve(storyId)
+  const triggerScaffold = useTriggerScaffold(storyId)
+  const triggerManuscript = useTriggerGenerateManuscript(storyId)
+  const [manuscriptModalOpen, setManuscriptModalOpen] = useState(false)
+  const [manuscriptAck, setManuscriptAck] = useState(false)
+  /** false = skip scenes that already have draft (default); true = overwrite every scene */
+  const [manuscriptRegenerate, setManuscriptRegenerate] = useState(false)
+  const [manuscriptOverwriteAck, setManuscriptOverwriteAck] = useState(false)
+  const [regenOpen, setRegenOpen] = useState(false)
+
+  const lastManuscriptError = useMemo(
+    () => aiTasks.find((t) => t.kind === 'full_manuscript' && t.status === 'error'),
+    [aiTasks],
+  )
+  const scaffoldRunning = aiTasks.some(
+    (t) => t.kind === 'story_scaffolding' && (t.status === 'queued' || t.status === 'running'),
+  )
+  const manuscriptRunning = aiTasks.some(
+    (t) => t.kind === 'full_manuscript' && (t.status === 'queued' || t.status === 'running'),
+  )
 
   if (storyLoading || scenesLoading || charsLoading || insightsLoading) return <LoadingState />
 
@@ -85,6 +151,254 @@ function Overview() {
           </div>
         </div>
       </div>
+
+      {story && (
+        <>
+          {lastManuscriptError && (
+            <div
+              style={{
+                ...calloutBox,
+                borderColor: 'var(--red)',
+                background: 'rgba(180, 60, 50, 0.06)',
+              }}
+            >
+              <Label style={{ color: 'var(--red)' }}>Full draft paused</Label>
+              <div style={{ fontSize: 13, color: 'var(--ink)' }}>{lastManuscriptError.error ?? 'The last run did not finish.'}</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-2)' }}>
+                Run again to continue (skips scenes that already have prose), or use Generate full draft below and choose
+                Regenerate every scene to overwrite existing drafts.
+              </div>
+              <button
+                type="button"
+                style={manuscriptRunning ? primaryBtnDisabled : primaryBtn}
+                disabled={manuscriptRunning}
+                onClick={() => triggerManuscript.mutate({ skip_non_empty: true })}
+              >
+                {manuscriptRunning ? 'Resuming…' : 'Resume full draft'}
+              </button>
+            </div>
+          )}
+
+          {scenes.length === 0 ? (
+            <div style={calloutBox}>
+              <Label>Start with a storyline</Label>
+              <div style={{ fontSize: 14, fontFamily: 'var(--font-serif)', lineHeight: 1.5 }}>
+                Generate an AI scene map from your premise and setup—then you can draft scene by scene or run a full pass.
+              </div>
+              <button
+                type="button"
+                style={scaffoldRunning || triggerScaffold.isPending ? primaryBtnDisabled : primaryBtn}
+                disabled={scaffoldRunning || triggerScaffold.isPending}
+                onClick={() =>
+                  triggerScaffold.mutate({
+                    premise: [story.title, story.logline].filter((x) => x?.trim()).join('\n\n') || story.title,
+                    structure_type: story.structure_type,
+                    target_words: story.target_words,
+                    genres: story.genres,
+                    characters: characters.map((c) => ({
+                      name: c.name,
+                      role: c.role,
+                      description: c.description ?? '',
+                    })),
+                    replace_existing: false,
+                  })
+                }
+              >
+                {scaffoldRunning || triggerScaffold.isPending ? 'Scaffolding…' : 'Generate story structure'}
+              </button>
+              <button
+                type="button"
+                style={ghostLink}
+                onClick={() => navigate({ to: '/stories/$storyId/scenes', params: { storyId } })}
+              >
+                Or add scenes manually on the Scene board →
+              </button>
+            </div>
+          ) : (
+            <div style={calloutBox}>
+              <Label>Next: draft the manuscript</Label>
+              <div style={{ fontSize: 14, fontFamily: 'var(--font-serif)', lineHeight: 1.5 }}>
+                You have {scenes.length} scene{scenes.length === 1 ? '' : 's'}. Run AI prose for every scene in order, or work
+                scene-by-scene from the Draft view.
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  style={manuscriptRunning ? primaryBtnDisabled : primaryBtn}
+                  disabled={manuscriptRunning}
+                  onClick={() => {
+                    setManuscriptModalOpen(true)
+                    setManuscriptAck(false)
+                    setManuscriptRegenerate(false)
+                    setManuscriptOverwriteAck(false)
+                  }}
+                >
+                  {manuscriptRunning ? 'Drafting all scenes…' : 'Generate full draft'}
+                </button>
+                <button
+                  type="button"
+                  style={ghostLink}
+                  onClick={() => navigate({ to: '/stories/$storyId/draft', params: { storyId } })}
+                >
+                  Open Draft workspace
+                </button>
+              </div>
+              <button type="button" style={ghostLink} onClick={() => setRegenOpen(true)}>
+                Regenerate story structure (replaces all current scenes) →
+              </button>
+            </div>
+          )}
+
+          <Modal
+            open={manuscriptModalOpen}
+            onClose={() => {
+              setManuscriptModalOpen(false)
+              setManuscriptRegenerate(false)
+              setManuscriptOverwriteAck(false)
+            }}
+            width={480}
+          >
+            <div style={{ padding: 20 }}>
+              <h2 className="title-serif" style={{ fontSize: 24, margin: '0 0 8px' }}>
+                Generate full draft
+              </h2>
+              <p style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>
+                This will request prose for about <strong>{scenes.length}</strong> scene{scenes.length === 1 ? '' : 's'}. A rough
+                order-of-magnitude is {Math.max(1, Math.round(scenes.length * 0.4))}k–{Math.max(1, Math.round(scenes.length * 0.7))}
+                k output tokens, depending on the model. It can take several minutes; watch progress in the AI panel.
+              </p>
+              <div style={{ display: 'grid', gap: 10, marginTop: 14, fontSize: 12, color: 'var(--ink)' }}>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="manuscript-mode"
+                    checked={!manuscriptRegenerate}
+                    onChange={() => {
+                      setManuscriptRegenerate(false)
+                      setManuscriptOverwriteAck(false)
+                    }}
+                  />
+                  <span>
+                    <strong>Fill empty only</strong> — skip scenes that already have draft text (saves time and tokens).
+                  </span>
+                </label>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="manuscript-mode"
+                    checked={manuscriptRegenerate}
+                    onChange={() => setManuscriptRegenerate(true)}
+                  />
+                  <span>
+                    <strong>Regenerate every scene</strong> — run AI prose for all scenes and <em>replace</em> existing draft
+                    text.
+                  </span>
+                </label>
+              </div>
+              {manuscriptRegenerate && (
+                <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 10, lineHeight: 1.45 }}>
+                  Overwrite mode cannot be undone from here; export or copy any prose you need before running.
+                </p>
+              )}
+              <label style={{ display: 'flex', gap: 8, fontSize: 12, marginTop: 12, alignItems: 'flex-start' }}>
+                <input type="checkbox" checked={manuscriptAck} onChange={(e) => setManuscriptAck(e.target.checked)} />
+                <span>I understand this uses AI and may take a while.</span>
+              </label>
+              {manuscriptRegenerate && (
+                <label style={{ display: 'flex', gap: 8, fontSize: 12, marginTop: 10, alignItems: 'flex-start' }}>
+                  <input
+                    type="checkbox"
+                    checked={manuscriptOverwriteAck}
+                    onChange={(e) => setManuscriptOverwriteAck(e.target.checked)}
+                  />
+                  <span>I understand existing scene drafts will be replaced.</span>
+                </label>
+              )}
+              <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  style={ghostLink}
+                  onClick={() => {
+                    setManuscriptModalOpen(false)
+                    setManuscriptRegenerate(false)
+                    setManuscriptOverwriteAck(false)
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  style={
+                    !manuscriptAck ||
+                    manuscriptRunning ||
+                    (manuscriptRegenerate && !manuscriptOverwriteAck)
+                      ? primaryBtnDisabled
+                      : manuscriptRegenerate
+                        ? { ...primaryBtn, background: 'var(--red)', borderColor: 'var(--red)' }
+                        : primaryBtn
+                  }
+                  disabled={
+                    !manuscriptAck ||
+                    manuscriptRunning ||
+                    (manuscriptRegenerate && !manuscriptOverwriteAck)
+                  }
+                  onClick={() => {
+                    triggerManuscript.mutate({ skip_non_empty: !manuscriptRegenerate })
+                    setManuscriptModalOpen(false)
+                    setManuscriptRegenerate(false)
+                    setManuscriptOverwriteAck(false)
+                  }}
+                >
+                  {manuscriptRegenerate ? 'Start (regenerate all)' : 'Start'}
+                </button>
+              </div>
+            </div>
+          </Modal>
+
+          <Modal open={regenOpen} onClose={() => setRegenOpen(false)} width={440}>
+            <div style={{ padding: 20 }}>
+              <h2 className="title-serif" style={{ fontSize: 22, margin: '0 0 8px' }}>
+                Regenerate structure?
+              </h2>
+              <p style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>
+                This removes all current scenes and relationship edges from the scaffold, then runs AI scaffolding again. Your
+                story title and logline stay as they are; draft text tied to old scene ids will be removed with those scenes.
+              </p>
+              <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
+                <button type="button" style={ghostLink} onClick={() => setRegenOpen(false)}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  style={
+                    scaffoldRunning || triggerScaffold.isPending
+                      ? primaryBtnDisabled
+                      : { ...primaryBtn, background: 'var(--red)', borderColor: 'var(--red)' }
+                  }
+                  disabled={scaffoldRunning || triggerScaffold.isPending}
+                  onClick={() => {
+                    setRegenOpen(false)
+                    triggerScaffold.mutate({
+                      premise: [story.title, story.logline].filter((x) => x?.trim()).join('\n\n') || story.title,
+                      structure_type: story.structure_type,
+                      target_words: story.target_words,
+                      genres: story.genres,
+                      characters: characters.map((c) => ({
+                        name: c.name,
+                        role: c.role,
+                        description: c.description ?? '',
+                      })),
+                      replace_existing: true,
+                    })
+                  }}
+                >
+                  Replace all scenes
+                </button>
+              </div>
+            </div>
+          </Modal>
+        </>
+      )}
 
       {/* Tension curve + AI flag */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>

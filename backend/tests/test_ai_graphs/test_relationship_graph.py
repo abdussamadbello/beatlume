@@ -1,3 +1,4 @@
+import litellm
 """Tests for the relationship LangGraph."""
 import pytest
 from app.ai.graphs.relationship_graph import build_relationship_graph
@@ -33,7 +34,7 @@ async def test_relationship_graph_handles_llm_error():
     async def failing_acompletion(*args, **kwargs):
         raise Exception("LLM timeout")
 
-    with patch("app.ai.llm.acompletion", new_callable=AsyncMock, side_effect=failing_acompletion):
+    with patch("litellm.acompletion", new_callable=AsyncMock, side_effect=failing_acompletion):
         graph = build_relationship_graph()
         result = await graph.ainvoke({
             "pairs": [

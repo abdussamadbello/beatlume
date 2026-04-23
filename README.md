@@ -51,8 +51,11 @@ This installs all dependencies, creates the database, runs migrations, and seeds
 ### Development
 
 ```bash
-# Start both servers
+# Start API, all Celery workers + beat, and Vite (backend + Celery in background)
 make dev
+
+# Stop API + Vite on dev ports and BeatLume Celery workers/beat
+make dev-stop
 
 # Or start separately
 make dev-frontend    # localhost:5173
@@ -208,7 +211,8 @@ See `backend/.env.example` for all configuration options. Key groups:
 
 ```
 make setup              Full setup: install, create DB, migrate, seed
-make dev                Start frontend + backend dev servers
+make dev                Start API + Celery (all queues) + Vite
+make dev-stop           Stop API + Vite on dev ports and Celery for this app
 make test               Run all tests (backend + frontend)
 make lint               Lint everything (ruff + eslint)
 make db-reset           Drop, recreate, migrate, seed

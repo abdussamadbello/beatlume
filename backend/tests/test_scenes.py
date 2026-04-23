@@ -22,6 +22,7 @@ async def test_create_scene(client):
     assert resp.status_code == 201
     data = resp.json()
     assert data["title"] == "Opening"
+    assert data["summary"] == "Opening"
     assert data["n"] == 1
     assert data["pov"] == "Iris"
 

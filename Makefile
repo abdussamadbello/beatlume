@@ -1,9 +1,9 @@
 # BeatLume Makefile
 # Usage: make <target>
 
-.PHONY: help install dev dev-frontend dev-backend test test-backend test-frontend lint lint-backend lint-frontend \
+.PHONY: help install dev dev-stop dev-frontend dev-backend test test-backend test-frontend test-e2e test-e2e-live lint lint-backend lint-frontend \
         migrate migrate-new seed db-create db-reset db-fresh db-clear-alembic build clean \
-        celery-fast celery-heavy celery-export celery-beat \
+        celery-fast celery-heavy celery-export celery-beat celery-all \
         docker-up docker-down
 
 # Load local env files when present
@@ -40,10 +40,15 @@ install-backend: ## Install backend dependencies
 # Development
 # ============================================================================
 
-dev: ## Start both frontend and backend dev servers
-	@echo "Starting backend on :$(BACKEND_PORT) and frontend on :$(FRONTEND_PORT)..."
+dev: ## Start backend, all Celery workers + beat, and frontend (backend + Celery run in background)
+	@echo "Starting backend on :$(BACKEND_PORT), Celery (fast/heavy/export/beat), and frontend on :$(FRONTEND_PORT)..."
 	@make dev-backend &
+	@make celery-all
 	@make dev-frontend
+
+# Script avoids pkill -f matching the shell that runs make (see scripts/dev-stop.sh).
+dev-stop: ## Stop dev stack: Celery workers/beat, then uvicorn + Vite on dev ports
+	@BACKEND_PORT=$(BACKEND_PORT) FRONTEND_PORT=$(FRONTEND_PORT) bash scripts/dev-stop.sh
 
 dev-frontend: ## Start frontend dev server (port 5173)
 	cd frontend && FRONTEND_PORT=$(FRONTEND_PORT) npm run dev
@@ -65,6 +70,14 @@ test-backend-quick: ## Run backend tests (no verbose)
 
 test-frontend: ## Type-check frontend (TypeScript)
 	cd frontend && npx tsc --noEmit
+
+# E2E: requires PostgreSQL, Redis, migrated DB, seed, backend on :8000, then runs Playwright (starts Vite via config if needed).
+test-e2e: ## Run frontend Playwright E2E (start backend first: make dev-backend)
+	cd frontend && npm run test:e2e
+
+# Live AI: needs Postgres, Redis, seed, OPENROUTER in backend/.env — `make dev` supplies API + Celery + Vite.
+test-e2e-live: ## Playwright live scaffold E2E (set LIVE_AI_E2E via npm script; start stack with `make dev`)
+	cd frontend && npm run test:e2e:live
 
 # ============================================================================
 # Linting
@@ -121,24 +134,25 @@ seed: ## Seed sample story data
 # Celery Workers
 # ============================================================================
 
+# Unique -n avoids DuplicateNodenameWarning when several workers run on one machine.
 celery-fast: ## Start Celery worker for ai_fast queue
-	cd backend && PYTHONPATH=. uv run celery -A app.tasks.celery_app worker -Q ai_fast -c 4 -l info
+	cd backend && PYTHONPATH=. uv run celery -A app.tasks.celery_app worker -n fast@$$(hostname) -Q ai_fast -c 4 -l info
 
 celery-heavy: ## Start Celery worker for ai_heavy queue
-	cd backend && PYTHONPATH=. uv run celery -A app.tasks.celery_app worker -Q ai_heavy -c 2 -l info
+	cd backend && PYTHONPATH=. uv run celery -A app.tasks.celery_app worker -n heavy@$$(hostname) -Q ai_heavy -c 2 -l info
 
 celery-export: ## Start Celery worker for export queue
-	cd backend && PYTHONPATH=. uv run celery -A app.tasks.celery_app worker -Q export -c 2 -l info
+	cd backend && PYTHONPATH=. uv run celery -A app.tasks.celery_app worker -n export@$$(hostname) -Q export -c 2 -l info
 
 celery-beat: ## Start Celery Beat scheduler
 	cd backend && PYTHONPATH=. uv run celery -A app.tasks.celery_app beat -l info
 
-celery-all: ## Start all Celery workers + beat
-	@echo "Starting Celery workers..."
+celery-all: ## Start all Celery workers + beat (background; logs in same terminal)
+	@echo "Starting Celery workers (ai_fast, ai_heavy, export, beat)..."
 	@make celery-fast &
 	@make celery-heavy &
 	@make celery-export &
-	@make celery-beat
+	@make celery-beat &
 
 # ============================================================================
 # Docker (optional services: MinIO, Jaeger)

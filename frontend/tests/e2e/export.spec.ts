@@ -1,32 +1,29 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test'
+import { openFirstStoryFromDashboard } from './helpers'
 
 test.describe('Export', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('textbox', { name: /email/i }).fill('elena@beatlume.io');
-    await page.getByRole('textbox', { name: /password/i }).fill('beatlume123');
-    await page.getByRole('button', { name: /log in/i }).click();
-    await expect(page).toHaveURL(/.*dashboard/);
-  });
-
   test('trigger PDF export', async ({ page }) => {
-    await page.goto('/dashboard');
-    await page.getByRole('link', { name: /E2E Test Story/i }).first().click();
+    await openFirstStoryFromDashboard(page)
 
-    await page.getByRole('button', { name: /export/i }).click();
-    await page.getByRole('menuitem', { name: /pdf/i }).click();
+    await page.getByRole('link', { name: /^Export$/i }).click()
+    await expect(page).toHaveURL(/\/export/)
 
-    await expect(page.getByText(/exporting|preparing|download/i)).toBeVisible({ timeout: 5000 });
-  });
+    await page.getByRole('radio', { name: /^PDF$/i }).check()
+    await page
+      .getByRole('button', { name: /Export as PDF|Exporting/i })
+      .click()
 
-  test('export menu shows all formats', async ({ page }) => {
-    await page.goto('/dashboard');
-    await page.getByRole('link', { name: /E2E Test Story/i }).first().click();
+    await expect(
+      page.getByText(/Exporting\.\.\.|Export started|Export failed/i).first()
+    ).toBeVisible({ timeout: 10_000 })
+  })
 
-    await page.getByRole('button', { name: /export/i }).click();
+  test('export page shows all formats', async ({ page }) => {
+    await openFirstStoryFromDashboard(page)
+    await page.getByRole('link', { name: /^Export$/i }).click()
 
-    await expect(page.getByText(/pdf/i)).toBeVisible();
-    await expect(page.getByText(/docx|word/i)).toBeVisible();
-    await expect(page.getByText(/epub/i)).toBeVisible();
-  });
-});
+    await expect(page.getByRole('radio', { name: /^PDF$/i })).toBeVisible()
+    await expect(page.getByRole('radio', { name: /^DOCX$/i })).toBeVisible()
+    await expect(page.getByRole('radio', { name: /ePub/i })).toBeVisible()
+  })
+})

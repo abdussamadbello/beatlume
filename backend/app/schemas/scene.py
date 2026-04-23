@@ -33,7 +33,7 @@ class SceneRead(BaseModel):
     act: int
     location: str
     tag: str
-    summary: str | None = None
+    summary: str
     participants: list[SceneParticipantRead] = []
     emotional: int = 0
     stakes: int = 0

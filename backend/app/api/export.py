@@ -10,9 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_db, get_story
-from app.models.manuscript import ManuscriptChapter
 from app.models.core import CoreSetting
 from app.models.story import Story
+from app.services import manuscript_assembly
 
 router = APIRouter(
     prefix="/api/stories/{story_id}/export",
@@ -53,13 +53,8 @@ async def trigger_export(
             detail=f"Invalid format. Must be one of: {', '.join(sorted(valid_formats))}",
         )
 
-    # Load chapters
-    result = await db.execute(
-        select(ManuscriptChapter)
-        .where(ManuscriptChapter.story_id == story.id)
-        .order_by(ManuscriptChapter.sort_order)
-    )
-    chapters = result.scalars().all()
+    # Chapters: prefer `manuscript_chapters`; if empty, assemble from scene drafts (AI draft-only path).
+    chapter_data = await manuscript_assembly.chapter_dicts_for_export(db, story.id)
 
     # Load settings
     settings_result = await db.execute(
@@ -69,10 +64,6 @@ async def trigger_export(
 
     # Prepare data for Celery task
     story_data = {"id": str(story.id), "title": story.title}
-    chapter_data = [
-        {"num": ch.num, "title": ch.title, "content": ch.content}
-        for ch in chapters
-    ]
     settings_data = [
         {"key": s.key, "value": s.value}
         for s in story_settings

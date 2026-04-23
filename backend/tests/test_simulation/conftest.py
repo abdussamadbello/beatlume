@@ -1,3 +1,4 @@
+import litellm
 """Shared fixtures for simulation/integration tests."""
 import json
 import pytest
@@ -85,5 +86,5 @@ def mock_ai():
                 return MockLLMResponse(AI_RESPONSES[key])
         return MockLLMResponse("Default AI response.")
 
-    with patch("app.ai.llm.acompletion", new_callable=AsyncMock, side_effect=fake_acompletion):
+    with patch("litellm.acompletion", new_callable=AsyncMock, side_effect=fake_acompletion):
         yield

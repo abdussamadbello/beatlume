@@ -1,15 +1,40 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.deps import get_db, get_story
+from app.deps import get_current_org, get_db, get_story
 from app.models.story import Story
+from app.models.user import Organization
 from app.schemas.insight import InsightRead
 from app.schemas.common import PaginatedResponse
 from app.services import insight as insight_service
+from app.tasks.ai_tasks import apply_insight as apply_insight_task
 
 router = APIRouter(prefix="/api/stories/{story_id}/insights", tags=["insights"])
+
+
+class TaskResponse(BaseModel):
+    task_id: str
+
+
+@router.post(
+    "/{insight_id}/apply",
+    response_model=TaskResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def apply_insight(
+    insight_id: uuid.UUID,
+    story: Story = Depends(get_story),
+    org: Organization = Depends(get_current_org),
+    db: AsyncSession = Depends(get_db),
+):
+    ins = await insight_service.get_insight(db, story.id, insight_id)
+    if ins is None:
+        raise HTTPException(status_code=404, detail="Insight not found")
+    task = apply_insight_task.delay(str(story.id), str(org.id), str(insight_id))
+    return TaskResponse(task_id=task.id)
 
 
 @router.get("", response_model=PaginatedResponse[InsightRead])

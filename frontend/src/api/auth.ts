@@ -1,7 +1,7 @@
 import { useStore } from '../store'
 import type { UserProfile } from '../types'
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const BASE_URL = ''
 
 interface TokenResponse {
   access_token: string

@@ -6,6 +6,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.insight import Insight
 
 
+async def get_insight(
+    db: AsyncSession, story_id: uuid.UUID, insight_id: uuid.UUID
+) -> Insight | None:
+    result = await db.execute(
+        select(Insight).where(Insight.id == insight_id, Insight.story_id == story_id)
+    )
+    return result.scalar_one_or_none()
+
+
 async def list_insights(
     db: AsyncSession,
     story_id: uuid.UUID,

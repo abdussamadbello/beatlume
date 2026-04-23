@@ -71,6 +71,7 @@ def build_prompt(
 
                 RULES:
                 - Every scene has a distinct purpose. No filler.
+                - Every scene MUST include a non-empty "summary" (1–2 sentences; the story beat, not only the title).
                 - Alternate POVs if multiple POV characters.
                 - Evocative scene titles, not "Chapter 1".
                 - Output ONLY the JSON object.
@@ -107,4 +108,6 @@ def validate_output(raw: str) -> dict:
         for scene in act["scenes"]:
             if "title" not in scene or "pov" not in scene:
                 raise ValueError("Scene missing required fields")
+            if "summary" not in scene or not str(scene.get("summary", "")).strip():
+                raise ValueError("Every scene must include a non-empty summary")
     return data

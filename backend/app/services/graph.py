@@ -122,6 +122,16 @@ async def update_edge(db: AsyncSession, story_id: uuid.UUID, edge_id: uuid.UUID,
     return edge
 
 
+async def delete_all_edges_for_story(db: AsyncSession, story_id: uuid.UUID) -> int:
+    edges = (await db.execute(select(CharacterEdge).where(CharacterEdge.story_id == story_id))).scalars().all()
+    n = 0
+    for edge in list(edges):
+        await db.delete(edge)
+        n += 1
+    await db.commit()
+    return n
+
+
 async def delete_edge(db: AsyncSession, story_id: uuid.UUID, edge_id: uuid.UUID) -> bool:
     result = await db.execute(select(CharacterEdge).where(CharacterEdge.id == edge_id, CharacterEdge.story_id == story_id))
     edge = result.scalar_one_or_none()

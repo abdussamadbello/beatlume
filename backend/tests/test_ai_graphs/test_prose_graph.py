@@ -1,3 +1,4 @@
+import litellm
 """Tests for the prose LangGraph."""
 import pytest
 from app.ai.graphs.prose_graph import build_prose_graph
@@ -46,7 +47,7 @@ async def test_prose_graph_handles_llm_error():
     async def failing_acompletion(*args, **kwargs):
         raise Exception("LLM unavailable")
 
-    with patch("app.ai.llm.acompletion", new_callable=AsyncMock, side_effect=failing_acompletion):
+    with patch("litellm.acompletion", new_callable=AsyncMock, side_effect=failing_acompletion):
         graph = build_prose_graph()
         result = await graph.ainvoke({
             "story_id": "test-story-id",

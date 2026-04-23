@@ -1,3 +1,4 @@
+import litellm
 """Tests for the insight LangGraph."""
 import pytest
 from app.ai.graphs.insight_graph import build_insight_graph
@@ -28,7 +29,7 @@ async def test_insight_graph_handles_empty_findings():
     async def failing_acompletion(*args, **kwargs):
         raise Exception("LLM failed")
 
-    with patch("app.ai.llm.acompletion", new_callable=AsyncMock, side_effect=failing_acompletion):
+    with patch("litellm.acompletion", new_callable=AsyncMock, side_effect=failing_acompletion):
         graph = build_insight_graph()
         result = await graph.ainvoke({
             "story_id": "test-story-id",

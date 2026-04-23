@@ -1,40 +1,37 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test'
+import { openFirstStoryFromDashboard } from './helpers'
 
 test.describe('Scene Editing', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('textbox', { name: /email/i }).fill('elena@beatlume.io');
-    await page.getByRole('textbox', { name: /password/i }).fill('beatlume123');
-    await page.getByRole('button', { name: /log in/i }).click();
-    await expect(page).toHaveURL(/.*dashboard/);
-  });
-
   test('add scene to story', async ({ page }) => {
-    await page.goto('/dashboard');
-    await page.getByRole('link', { name: /E2E Test Story|My Novel/i }).first().click();
-    await expect(page).toHaveURL(/.*stories\/.*/);
+    await openFirstStoryFromDashboard(page)
 
-    await page.getByRole('button', { name: /add scene|new scene/i }).click();
+    await page.getByRole('link', { name: /Scene Board/i }).click()
 
-    await page.getByRole('textbox', { name: /title/i }).fill('Test Scene');
+    await page.getByRole('button', { name: /\+ Scene/ }).click()
 
-    await page.getByRole('button', { name: /save|create/i }).click();
-
-    await expect(page.getByText('Test Scene')).toBeVisible();
-  });
+    await expect(page).toHaveURL(/\/stories\/[^/]+\/scenes\/[^/]+/)
+    await expect(page.getByText('Untitled scene').first()).toBeVisible()
+  })
 
   test('edit scene content', async ({ page }) => {
-    await page.goto('/dashboard');
-    await page.getByRole('link', { name: /E2E Test Story/i }).first().click();
+    await openFirstStoryFromDashboard(page)
 
-    await page.getByRole('link', { name: /scene/i }).first().click();
+    await page.getByRole('link', { name: /Draft/i }).click()
+    // Left rail: ensure first scene is active (debounced save needs active scene + hydrated draft)
+    await page.getByText(/S01/).first().click()
 
-    const editor = page.getByRole('textbox').first();
-    await editor.fill('This is edited scene content for E2E testing.');
+    const text = 'This is edited scene content for E2E testing.'
+    const editor = page.locator('textarea').first()
+    await editor.fill(text)
+    // Debounced save in Draft (~800ms); allow margin so PUT completes.
+    await page.waitForTimeout(3000)
 
-    await page.keyboard.press('Control+s');
+    await page.reload()
+    await page.getByRole('link', { name: /Draft/i }).click()
+    await page.getByText(/S01/).first().click()
 
-    await page.reload();
-    await expect(editor).toHaveValue(/edited scene content/);
-  });
-});
+    await expect(page.locator('textarea').first()).toHaveValue(/edited scene content/, {
+      timeout: 15_000,
+    })
+  })
+})

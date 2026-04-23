@@ -623,6 +623,7 @@ def seed() -> None:
                 act=s["act"],
                 location=s["location"],
                 tag=s["tag"],
+                summary=s.get("summary") or s["title"],
             )
             db.add(scene)
             scene_objects[s["n"]] = scene

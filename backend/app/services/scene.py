@@ -69,6 +69,13 @@ async def create_scene(
     next_n = (max_n.scalar() or 0) + 1
 
     participants_data = data.pop("participants", None) or []
+    # Beat-level line for timeline / exports: never leave empty when we have a title.
+    title = (data.get("title") or "").strip()
+    raw_summary = data.get("summary")
+    if raw_summary is None or not str(raw_summary).strip():
+        data["summary"] = title
+    else:
+        data["summary"] = str(raw_summary).strip()
     scene = Scene(story_id=story_id, org_id=org_id, n=next_n, **data)
     db.add(scene)
     await db.flush()  # assign scene.id
@@ -130,6 +137,9 @@ async def update_scene(
     if "pov" in patch and patch["pov"] is not None:
         await _sync_pov_participant(db, scene, scene.org_id)
 
+    if not (str(scene.summary or "")).strip():
+        scene.summary = (scene.title or "").strip()
+
     await db.commit()
     refreshed = await get_scene(db, scene.story_id, scene.id)
     return refreshed or scene
@@ -138,6 +148,16 @@ async def update_scene(
 async def delete_scene(db: AsyncSession, scene: Scene) -> None:
     await db.delete(scene)
     await db.commit()
+
+
+async def delete_all_scenes_for_story(db: AsyncSession, story_id: uuid.UUID) -> int:
+    """Remove every scene in a story (cascades draft contents and participants)."""
+    result = await db.execute(select(Scene).where(Scene.story_id == story_id))
+    scenes = list(result.scalars().all())
+    for s in scenes:
+        await db.delete(s)
+    await db.commit()
+    return len(scenes)
 
 
 async def reorder_scenes(

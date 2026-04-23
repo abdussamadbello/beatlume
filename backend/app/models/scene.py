@@ -37,7 +37,7 @@ class Scene(Base, OrgScopedMixin, TimestampMixin):
     act: Mapped[int] = mapped_column(default=1)
     location: Mapped[str] = mapped_column(String(500), default="")
     tag: Mapped[str] = mapped_column(String(100), default="")
-    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
     # Per-scene multi-metric scoring (0=absent, 10=peak). tension is the
     # overall scalar; these six are the layered facets the Timeline chart renders.
     emotional: Mapped[int] = mapped_column(default=0, server_default="0")

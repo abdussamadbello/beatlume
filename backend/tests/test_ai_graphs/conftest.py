@@ -1,3 +1,4 @@
+import litellm
 """Shared fixtures for AI graph unit tests."""
 import json
 import pytest
@@ -78,7 +79,7 @@ def mock_llm():
     async def fake_acompletion(model, messages, **kwargs):
         return MockLLMResponse(GRAPH_RESPONSES["story_scaffolding"])
 
-    with patch("app.ai.llm.acompletion", new_callable=AsyncMock, side_effect=fake_acompletion) as mock:
+    with patch("litellm.acompletion", new_callable=AsyncMock, side_effect=fake_acompletion) as mock:
         yield mock
 
 
@@ -100,7 +101,7 @@ def mock_llm_for():
             return response
 
         m = AsyncMock(side_effect=fake_acompletion)
-        patcher = patch("app.ai.llm.acompletion", new=m)
+        patcher = patch("litellm.acompletion", new=m)
         patcher.start()
         mocks.append(patcher)
         return m
@@ -125,5 +126,5 @@ def mock_llm_for_graph():
     mock = AsyncMock(side_effect=fake_acompletion)
     mock.set_response = set_response
 
-    with patch("app.ai.llm.acompletion", new=mock):
+    with patch("litellm.acompletion", new=mock):
         yield mock

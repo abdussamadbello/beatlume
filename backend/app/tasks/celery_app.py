@@ -21,7 +21,14 @@ celery_app.conf.task_routes = {
     "app.tasks.ai_tasks.continue_prose": {"queue": "ai_fast"},
     "app.tasks.ai_tasks.summarize_scene": {"queue": "ai_fast"},
     "app.tasks.ai_tasks.generate_insights": {"queue": "ai_heavy"},
+    "app.tasks.ai_tasks.apply_insight": {"queue": "ai_heavy"},
     "app.tasks.ai_tasks.infer_relationships": {"queue": "ai_heavy"},
     "app.tasks.ai_tasks.scaffold_story": {"queue": "ai_heavy"},
+    "app.tasks.ai_tasks.generate_full_manuscript": {"queue": "ai_heavy"},
     "app.tasks.export_tasks.run_export": {"queue": "export"},
 }
+
+# Import side effect: register @celery_app.task functions with the worker.
+# Without this, workers only load celery_app and report "unregistered task" for every job.
+import app.tasks.ai_tasks  # noqa: E402, F401
+import app.tasks.export_tasks  # noqa: E402, F401

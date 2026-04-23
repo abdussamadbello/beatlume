@@ -37,7 +37,7 @@ async def generate_prose(state: ProseState) -> dict:
         ctx, state["scene"], state["story_context"], state.get("pov_character")
     )
     try:
-        result = await call_llm("prose_continuation", messages, temperature=0.8, max_tokens=500)
+        result = await call_llm("prose_continuation", messages, temperature=0.8, max_tokens=4000)
         validated = prose_continuation.validate_output(result)
         return {"result": validated}
     except Exception as e:
