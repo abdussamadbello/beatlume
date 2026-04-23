@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     # AI / LLM
     openai_api_key: str = ""
     anthropic_api_key: str = ""
+    openrouter_api_key: str = ""
     ai_model_fast: str = "gpt-4o-mini"
     ai_model_standard: str = "gpt-4o"
     ai_model_powerful: str = "claude-sonnet-4-6"
