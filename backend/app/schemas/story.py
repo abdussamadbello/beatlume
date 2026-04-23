@@ -10,6 +10,7 @@ class StoryCreate(BaseModel):
     themes: list[str] = []
     target_words: int = 80000
     structure_type: str = "3-act"
+    story_type: str = "novel"
 
 
 class StoryRead(BaseModel):
@@ -23,6 +24,7 @@ class StoryRead(BaseModel):
     draft_number: int
     status: str
     structure_type: str
+    story_type: str
     archived: bool = False
 
     model_config = {"from_attributes": True}
@@ -38,4 +40,5 @@ class StoryUpdate(BaseModel):
     draft_number: int | None = None
     status: str | None = None
     structure_type: str | None = None
+    story_type: str | None = None
     archived: bool | None = None

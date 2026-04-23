@@ -30,4 +30,5 @@ class Story(Base, OrgScopedMixin, TimestampMixin):
     draft_number: Mapped[int] = mapped_column(default=1)
     status: Mapped[StoryStatus] = mapped_column(default=StoryStatus.not_started)
     structure_type: Mapped[str] = mapped_column(String(50), default="3-act")
+    story_type: Mapped[str] = mapped_column(String, default="novel")
     archived: Mapped[bool] = mapped_column(default=False, server_default="false")

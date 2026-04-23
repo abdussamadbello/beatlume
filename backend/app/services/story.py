@@ -87,6 +87,7 @@ async def duplicate_story(db: AsyncSession, original: Story) -> Story:
         draft_number=original.draft_number,
         status=original.status,
         structure_type=original.structure_type,
+        story_type=original.story_type,
         archived=False,
     )
     db.add(new_story)
@@ -157,7 +158,7 @@ async def duplicate_story(db: AsyncSession, original: Story) -> Story:
             act=s.act,
             location=s.location,
             tag=s.tag,
-            summary=s.summary,
+            summary=(s.summary or "").strip() or s.title,
             emotional=s.emotional,
             stakes=s.stakes,
             mystery=s.mystery,
