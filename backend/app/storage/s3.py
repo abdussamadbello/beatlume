@@ -8,7 +8,14 @@ from app.config import settings
 
 
 class S3Storage:
-    """Thin wrapper around boto3 S3 client."""
+    """Thin wrapper around boto3 S3 client.
+
+    Uses two clients when a public endpoint is configured: the internal client for
+    server-side I/O (uploads, deletes) and a public client whose presigned URLs are
+    rooted at a host-reachable URL. This avoids the classic Docker/MinIO problem
+    where the worker hands back http://minio:9000/... that the user's browser
+    cannot resolve.
+    """
 
     def __init__(self):
         self.client = boto3.client(
@@ -17,6 +24,16 @@ class S3Storage:
             aws_access_key_id=settings.s3_access_key,
             aws_secret_access_key=settings.s3_secret_key,
         )
+        public_endpoint = settings.s3_public_endpoint_url or settings.s3_endpoint_url
+        if public_endpoint == settings.s3_endpoint_url:
+            self.public_client = self.client
+        else:
+            self.public_client = boto3.client(
+                "s3",
+                endpoint_url=public_endpoint,
+                aws_access_key_id=settings.s3_access_key,
+                aws_secret_access_key=settings.s3_secret_key,
+            )
 
     def upload(self, bucket: str, key: str, data: bytes, content_type: str) -> None:
         """Upload bytes to S3."""
@@ -28,8 +45,11 @@ class S3Storage:
         )
 
     def get_presigned_url(self, bucket: str, key: str, expiry: int = 3600) -> str:
-        """Generate a presigned download URL."""
-        return self.client.generate_presigned_url(
+        """Generate a presigned download URL.
+
+        Uses the public client so the URL host is one the user's browser can resolve.
+        """
+        return self.public_client.generate_presigned_url(
             "get_object",
             Params={"Bucket": bucket, "Key": key},
             ExpiresIn=expiry,

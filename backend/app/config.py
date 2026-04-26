@@ -11,6 +11,11 @@ class Settings(BaseSettings):
 
     # S3 — keep defaults for dev (MinIO)
     s3_endpoint_url: str = "http://localhost:9000"
+    # Endpoint used in presigned URLs returned to browsers. Inside Docker, internal hostnames
+    # like "minio:9000" don't resolve from the host; this lets the worker use minio:9000 for
+    # uploads while handing back a host-reachable URL (e.g. http://localhost:9000) to clients.
+    # Empty = use s3_endpoint_url for both.
+    s3_public_endpoint_url: str = ""
     s3_access_key: str = "beatlume"
     s3_secret_key: str = "beatlume_dev"
     s3_bucket_exports: str = "beatlume-exports"
