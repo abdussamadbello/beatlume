@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.chat_message import ChatMessage, ChatMessageRole, ToolCallStatus
 from app.models.chat_thread import ChatThread
+from app.ai.tools.chat_tools import WRITE_TOOL_APPLIERS
 
 
 async def create_thread(
@@ -95,3 +96,51 @@ async def list_messages(
 
 async def get_message(db: AsyncSession, message_id: uuid.UUID) -> ChatMessage | None:
     return (await db.execute(select(ChatMessage).where(ChatMessage.id == message_id))).scalar_one_or_none()
+
+
+async def apply_tool_call(
+    db: AsyncSession, message_id: uuid.UUID, org_id: uuid.UUID, story_id: uuid.UUID,
+) -> dict:
+    msg = await get_message(db, message_id)
+    if msg is None or msg.tool_call_status != ToolCallStatus.proposed:
+        return {"applied": False, "error": "not_proposed_or_missing"}
+    if not msg.tool_calls:
+        return {"applied": False, "error": "no_tool_calls"}
+    tc = msg.tool_calls[0]
+    applier = WRITE_TOOL_APPLIERS.get(tc["name"])
+    if applier is None:
+        return {"applied": False, "error": "unknown_tool"}
+
+    # Coerce UUID-shaped strings to uuid.UUID for the applier signature
+    args = {**tc.get("arguments", {})}
+    for k, v in list(args.items()):
+        if isinstance(v, str) and len(v) == 36 and v.count("-") == 4:
+            try:
+                args[k] = uuid.UUID(v)
+            except ValueError:
+                pass
+
+    result = await applier(db, story_id, org_id, **args)
+
+    # If the applier reports failure (e.g., apply_summarize_scene fallback), don't mark as applied.
+    if result.get("applied") is False:
+        return result
+
+    msg.tool_call_status = ToolCallStatus.applied
+    msg.tool_call_result = {**(msg.tool_call_result or {}), "applied_result": result}
+    await db.commit()
+    await db.refresh(msg)
+    return result
+
+
+async def reject_tool_call(
+    db: AsyncSession, message_id: uuid.UUID, reason: str | None = None,
+) -> bool:
+    msg = await get_message(db, message_id)
+    if msg is None or msg.tool_call_status != ToolCallStatus.proposed:
+        return False
+    msg.tool_call_status = ToolCallStatus.rejected
+    if reason:
+        msg.tool_call_result = {**(msg.tool_call_result or {}), "rejection_reason": reason}
+    await db.commit()
+    return True

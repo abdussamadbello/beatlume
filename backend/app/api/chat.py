@@ -10,7 +10,7 @@ from app.ai.graphs.chat_agent import run_chat_turn
 from app.deps import get_current_org, get_current_user, get_db, get_story
 from app.models.story import Story
 from app.models.user import Organization
-from app.schemas.chat import ChatMessageRead, ChatThreadRead, SendMessageRequest
+from app.schemas.chat import ChatMessageRead, ChatThreadRead, RejectToolCallRequest, SendMessageRequest
 from app.services import chat_service
 
 # Story-scoped routes (require story access via dep)
@@ -128,3 +128,42 @@ async def send_message(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@thread_router.post("/tool_calls/{message_id}/apply")
+async def apply_tool_call(
+    message_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    org: Organization = Depends(get_current_org),
+):
+    msg = await chat_service.get_message(db, message_id)
+    if msg is None:
+        raise HTTPException(status_code=404, detail="Tool call not found")
+    thread = await chat_service.get_thread(db, msg.thread_id)
+    if thread is None or thread.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Tool call not found")
+    result = await chat_service.apply_tool_call(db, message_id, org.id, thread.story_id)
+    if result.get("applied") is False:
+        raise HTTPException(status_code=409, detail=result)
+    return result
+
+
+@thread_router.post("/tool_calls/{message_id}/reject")
+async def reject_tool_call(
+    message_id: uuid.UUID,
+    body: RejectToolCallRequest,
+    db: AsyncSession = Depends(get_db),
+    org: Organization = Depends(get_current_org),
+):
+    # Cross-org check (defense-in-depth) before mutating
+    msg = await chat_service.get_message(db, message_id)
+    if msg is None:
+        raise HTTPException(status_code=404, detail="Tool call not found")
+    thread = await chat_service.get_thread(db, msg.thread_id)
+    if thread is None or thread.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Tool call not found")
+
+    ok = await chat_service.reject_tool_call(db, message_id, reason=body.reason)
+    if not ok:
+        raise HTTPException(status_code=409, detail={"applied": False, "error": "not_proposed_or_missing"})
+    return {"rejected": True}

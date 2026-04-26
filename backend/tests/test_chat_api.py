@@ -127,3 +127,125 @@ async def test_send_message_other_org_404(
         json={"content": "hijack", "active_scene_id": None},
     )
     assert resp.status_code == 404, resp.text
+
+
+@pytest.mark.asyncio
+async def test_apply_tool_call_endpoint(
+    client, auth_headers, db_session
+):
+    from app.services import chat_service, draft as draft_service
+    from app.models.chat_message import ChatMessageRole, ToolCallStatus
+
+    story_id = await _make_story(client, auth_headers)
+
+    # Create a scene via API
+    scene_resp = await client.post(
+        f"/api/stories/{story_id}/scenes",
+        headers=auth_headers,
+        json={"title": "Scene 1", "pov": "X", "summary": "summary"},
+    )
+    assert scene_resp.status_code in (200, 201), scene_resp.text
+    scene_id = scene_resp.json()["id"]
+
+    # Seed a draft via API
+    await client.put(
+        f"/api/stories/{story_id}/scenes/{scene_id}/draft",
+        headers=auth_headers,
+        json={"content": "old\n"},
+    )
+
+    # Create a thread via API
+    create_resp = await client.post(
+        f"/api/stories/{story_id}/chat/threads", headers=auth_headers, json={}
+    )
+    assert create_resp.status_code in (200, 201), create_resp.text
+    thread_id = create_resp.json()["id"]
+
+    # Seed a proposed message directly via the shared db_session (same session the app uses)
+    import uuid as _uuid
+    thread = await chat_service.get_thread(db_session, _uuid.UUID(thread_id))
+    msg = await chat_service.persist_message(
+        db_session,
+        org_id=thread.org_id,
+        thread_id=thread.id,
+        role=ChatMessageRole.assistant,
+        content="editing it",
+        tool_calls=[{"id": "t1", "name": "edit_scene_draft",
+                     "arguments": {"scene_id": scene_id, "new_text": "new\n"}}],
+        tool_call_status=ToolCallStatus.proposed,
+        tool_call_result={"diff": "stub"},
+    )
+    msg_id = msg.id
+
+    resp = await client.post(
+        f"/api/chat/tool_calls/{msg_id}/apply",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["applied"] is True
+
+
+@pytest.mark.asyncio
+async def test_reject_tool_call_endpoint(
+    client, auth_headers, db_session
+):
+    from app.services import chat_service
+    from app.models.chat_message import ChatMessageRole, ToolCallStatus
+
+    story_id = await _make_story(client, auth_headers)
+    create_resp = await client.post(
+        f"/api/stories/{story_id}/chat/threads", headers=auth_headers, json={}
+    )
+    thread_id = create_resp.json()["id"]
+
+    import uuid as _uuid
+    thread = await chat_service.get_thread(db_session, _uuid.UUID(thread_id))
+    msg = await chat_service.persist_message(
+        db_session,
+        org_id=thread.org_id,
+        thread_id=thread.id,
+        role=ChatMessageRole.assistant,
+        content="proposing something",
+        tool_calls=[{"id": "t2", "name": "edit_scene_draft", "arguments": {}}],
+        tool_call_status=ToolCallStatus.proposed,
+        tool_call_result={},
+    )
+
+    resp = await client.post(
+        f"/api/chat/tool_calls/{msg.id}/reject",
+        headers=auth_headers,
+        json={"reason": "not what I wanted"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["rejected"] is True
+
+
+@pytest.mark.asyncio
+async def test_apply_tool_call_409_for_non_proposed(
+    client, auth_headers, db_session
+):
+    from app.services import chat_service
+    from app.models.chat_message import ChatMessageRole
+
+    story_id = await _make_story(client, auth_headers)
+    create_resp = await client.post(
+        f"/api/stories/{story_id}/chat/threads", headers=auth_headers, json={}
+    )
+    thread_id = create_resp.json()["id"]
+
+    import uuid as _uuid
+    thread = await chat_service.get_thread(db_session, _uuid.UUID(thread_id))
+    msg = await chat_service.persist_message(
+        db_session,
+        org_id=thread.org_id,
+        thread_id=thread.id,
+        role=ChatMessageRole.assistant,
+        content="just text, no tool call",
+    )
+
+    resp = await client.post(
+        f"/api/chat/tool_calls/{msg.id}/apply",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 409, resp.text

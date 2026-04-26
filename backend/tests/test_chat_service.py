@@ -73,3 +73,65 @@ async def test_persist_proposed_tool_call(db_session, sample_org, sample_story):
     )
     assert msg.tool_call_status == ToolCallStatus.proposed
     assert msg.tool_call_result["diff"].startswith("@@")
+
+
+from app.ai.tools.chat_tools import preview_edit_scene_draft
+
+
+@pytest.mark.asyncio
+async def test_apply_tool_call_executes_existing_service(
+    db_session, sample_org, sample_story, sample_scene
+):
+    from app.services import draft as draft_service
+    await draft_service.upsert_draft(db_session, sample_story.id, sample_scene.id, sample_scene.org_id, "old\n")
+
+    thread = await chat_service.create_thread(db_session, sample_org.id, sample_story.id)
+    preview = await preview_edit_scene_draft(
+        db_session, sample_story.id, scene_id=sample_scene.id, new_text="new\n"
+    )
+    msg = await chat_service.persist_message(
+        db_session, sample_org.id, thread.id, ChatMessageRole.assistant,
+        content="x",
+        tool_calls=[{"id": "t1", "name": "edit_scene_draft",
+                     "arguments": {"scene_id": str(sample_scene.id), "new_text": "new\n"}}],
+        tool_call_status=ToolCallStatus.proposed,
+        tool_call_result=preview,
+    )
+
+    result = await chat_service.apply_tool_call(db_session, msg.id, sample_org.id, sample_story.id)
+    assert result["applied"] is True
+    await db_session.refresh(msg)
+    assert msg.tool_call_status == ToolCallStatus.applied
+    draft = await draft_service.get_draft(db_session, sample_story.id, sample_scene.id)
+    assert draft.content == "new\n"
+
+
+@pytest.mark.asyncio
+async def test_reject_tool_call_marks_rejected(db_session, sample_org, sample_story):
+    thread = await chat_service.create_thread(db_session, sample_org.id, sample_story.id)
+    msg = await chat_service.persist_message(
+        db_session, sample_org.id, thread.id, ChatMessageRole.assistant,
+        content="x",
+        tool_calls=[{"id": "t1", "name": "edit_scene_draft", "arguments": {}}],
+        tool_call_status=ToolCallStatus.proposed,
+        tool_call_result={},
+    )
+    ok = await chat_service.reject_tool_call(db_session, msg.id, reason="not what I want")
+    assert ok is True
+    await db_session.refresh(msg)
+    assert msg.tool_call_status == ToolCallStatus.rejected
+    assert msg.tool_call_result.get("rejection_reason") == "not what I want"
+
+
+@pytest.mark.asyncio
+async def test_apply_tool_call_returns_failure_for_non_proposed(
+    db_session, sample_org, sample_story
+):
+    thread = await chat_service.create_thread(db_session, sample_org.id, sample_story.id)
+    msg = await chat_service.persist_message(
+        db_session, sample_org.id, thread.id, ChatMessageRole.assistant,
+        content="just text",
+    )
+    # No tool_calls / no proposed status — apply should fail
+    result = await chat_service.apply_tool_call(db_session, msg.id, sample_org.id, sample_story.id)
+    assert result["applied"] is False
