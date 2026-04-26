@@ -24,6 +24,8 @@ export function ChatThread({
   const activeSceneN = useStore((s) => s.activeSceneN)
   const [streaming, setStreaming] = useState<{ id: string; content: string } | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  // Per-thread guard so the seeded-draft auto-send fires at most once per visit.
+  const sentSeedForThread = useRef<string | null>(null)
 
   const messages: ChatMessage[] = data?.items ?? []
 
@@ -66,11 +68,15 @@ export function ChatThread({
     }
   }
 
-  // Auto-send a seeded composer draft on first mount of an empty thread
+  // Auto-send a seeded composer draft on first mount of an empty thread.
+  // Guarded by a ref so StrictMode double-invocation, refetch races, and
+  // user retries don't fire the seed twice for the same thread visit.
   useEffect(() => {
     if (messages.length > 0) return
+    if (sentSeedForThread.current === threadId) return
     const draft = useStore.getState().chatComposerDrafts[threadId]
     if (!draft || !draft.trim()) return
+    sentSeedForThread.current = threadId
     useStore.getState().setChatComposerDraft(threadId, '')
     void send(draft.trim())
     // eslint-disable-next-line react-hooks/exhaustive-deps

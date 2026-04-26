@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     ai_model_standard: str = "gpt-4o"
     ai_model_powerful: str = "claude-sonnet-4-6"
     ai_model_scaffold: str = "claude-sonnet-4-6"
-    ai_model_chat: str = "gpt-4o-mini"
+    ai_model_chat: str = "openrouter/google/gemini-2.5-flash"
     ai_chat_max_input_tokens: int = 4000
     ai_chat_max_output_tokens: int = 1000
     # Fallback models when rate-limited (comma-separated)
