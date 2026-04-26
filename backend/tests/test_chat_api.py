@@ -79,3 +79,51 @@ async def test_thread_not_found_for_other_org(client, auth_headers, second_org_a
         headers=second_org_auth_headers,
     )
     assert resp.status_code == 404, f"got {resp.status_code}: {resp.text}"
+
+
+@pytest.mark.asyncio
+async def test_send_message_streams_user_persisted_then_complete(
+    client, auth_headers, monkeypatch
+):
+    # Stub the agent so the test doesn't hit a real LLM
+    async def fake_run(db, *, org_id, story_id, thread, user_text, active_scene_id):
+        yield {"type": "chat.user.persisted", "data": {"id": "u1"}}
+        yield {"type": "chat.message.complete", "data": {"id": "a1", "content": "ok"}}
+
+    import app.api.chat as chat_api
+    monkeypatch.setattr(chat_api, "run_chat_turn", fake_run)
+
+    story_id = await _make_story(client, auth_headers)
+    create_resp = await client.post(
+        f"/api/stories/{story_id}/chat/threads", headers=auth_headers, json={}
+    )
+    thread_id = create_resp.json()["id"]
+
+    resp = await client.post(
+        f"/api/chat/threads/{thread_id}/messages",
+        headers=auth_headers,
+        json={"content": "hello", "active_scene_id": None},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.text
+    assert "event: chat.user.persisted" in body
+    assert "event: chat.message.complete" in body
+
+
+@pytest.mark.asyncio
+async def test_send_message_other_org_404(
+    client, auth_headers, second_org_auth_headers
+):
+    # Create a thread under one org, try to send via the other org's user
+    story_id = await _make_story(client, auth_headers)
+    create_resp = await client.post(
+        f"/api/stories/{story_id}/chat/threads", headers=auth_headers, json={}
+    )
+    thread_id = create_resp.json()["id"]
+
+    resp = await client.post(
+        f"/api/chat/threads/{thread_id}/messages",
+        headers=second_org_auth_headers,
+        json={"content": "hijack", "active_scene_id": None},
+    )
+    assert resp.status_code == 404, resp.text

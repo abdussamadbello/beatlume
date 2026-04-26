@@ -1,13 +1,16 @@
+import json
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.graphs.chat_agent import run_chat_turn
 from app.deps import get_current_org, get_current_user, get_db, get_story
 from app.models.story import Story
 from app.models.user import Organization
-from app.schemas.chat import ChatMessageRead, ChatThreadRead
+from app.schemas.chat import ChatMessageRead, ChatThreadRead, SendMessageRequest
 from app.services import chat_service
 
 # Story-scoped routes (require story access via dep)
@@ -93,3 +96,35 @@ async def get_messages(
         raise HTTPException(status_code=404, detail="Thread not found")
     rows, total = await chat_service.list_messages(db, thread_id, offset=offset, limit=limit)
     return MessageListResponse(items=[ChatMessageRead.model_validate(r) for r in rows], total=total)
+
+
+@thread_router.post("/threads/{thread_id}/messages")
+async def send_message(
+    thread_id: uuid.UUID,
+    body: SendMessageRequest,
+    db: AsyncSession = Depends(get_db),
+    org: Organization = Depends(get_current_org),
+):
+    thread = await chat_service.get_thread(db, thread_id)
+    if thread is None or thread.org_id != org.id:
+        # Defense-in-depth: same 404-not-403 pattern Task 5 established for cross-org access
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    async def event_stream():
+        async for event in run_chat_turn(
+            db,
+            org_id=org.id,
+            story_id=thread.story_id,
+            thread=thread,
+            user_text=body.content,
+            active_scene_id=body.active_scene_id,
+        ):
+            event_type = event["type"]
+            data = json.dumps(event["data"])
+            yield f"event: {event_type}\ndata: {data}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
