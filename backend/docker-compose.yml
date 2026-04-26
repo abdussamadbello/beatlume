@@ -56,6 +56,40 @@ services:
       seed:
         condition: service_completed_successfully
 
+  worker:
+    build:
+      context: .
+      target: worker
+    restart: unless-stopped
+    env_file:
+      - .env
+      - .env.docker
+    # Single worker subscribes to all three queues. Queues are explicit (not defaulted)
+    # so a new queue added in celery_app.py without updating this list will fail loudly
+    # rather than silently stranding tasks in Redis.
+    command:
+      - "uv"
+      - "run"
+      - "celery"
+      - "-A"
+      - "app.tasks.celery_app"
+      - "worker"
+      - "-Q"
+      - "ai_fast,ai_heavy,export"
+      - "-l"
+      - "info"
+      - "-c"
+      - "4"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -173,7 +207,7 @@ services:
   frontend:
     build:
       context: ../frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "5173:5173"
     volumes:

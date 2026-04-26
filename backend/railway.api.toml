@@ -1,0 +1,31 @@
+# Railway service config — BeatLume API (FastAPI / uvicorn).
+#
+# How to wire up in Railway:
+#   1. Service → Settings → Source: Repo Root Directory = `backend`
+#   2. Service → Settings → Config-as-Code File Path = `backend/railway.api.toml`
+#   3. Service → Variables: copy from .env.example (DATABASE_URL, DATABASE_URL_SYNC,
+#      REDIS_URL, JWT_SECRET_KEY, S3_*, OPENAI_API_KEY, ANTHROPIC_API_KEY,
+#      CORS_ORIGINS, ENVIRONMENT=production). Reference Postgres/Redis plugin vars.
+#   4. Service → Networking: generate a domain (Railway sets $PORT automatically).
+#
+# Migrations run via preDeployCommand on this service only — the worker must not
+# also run them, or two deploys racing would deadlock on alembic_version.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+# Skip rebuilds when only frontend or docs change. Paths are relative to the
+# repo root regardless of service Root Directory, per Railway's matcher.
+watchPatterns = [
+  "backend/**",
+]
+
+[deploy]
+# Override the Dockerfile CMD so uvicorn binds to Railway's injected $PORT
+# instead of the hardcoded 8000 used in local docker-compose.
+startCommand = "uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+preDeployCommand = ["uv run alembic upgrade head"]
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

@@ -1,0 +1,29 @@
+# Railway service config — BeatLume Celery worker.
+#
+# How to wire up in Railway:
+#   1. Service → Settings → Source: Repo Root Directory = `backend`
+#   2. Service → Settings → Config-as-Code File Path = `backend/railway.worker.toml`
+#   3. Service → Variables: same set as the api service (DB / Redis / S3 / LLM keys).
+#      The worker imports app.tasks.* which transitively loads the full app, so it
+#      needs every env var the api needs.
+#   4. Service → Networking: do NOT generate a domain — the worker is not an HTTP
+#      service. Railway considers it healthy based on process liveness.
+#
+# This single worker subscribes to all three queues (ai_fast, ai_heavy, export).
+# To split queues across services later, copy this file (e.g. railway.worker-heavy.toml)
+# and change the -Q list. Keep -Q explicit so a new queue added to celery_app.py
+# without updating this list fails loudly rather than silently stranding tasks.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = [
+  "backend/**",
+]
+
+[deploy]
+startCommand = "uv run celery -A app.tasks.celery_app worker -Q ai_fast,ai_heavy,export -l info -c 4"
+# No preDeployCommand here — the api owns alembic migrations.
+# No healthcheckPath — workers don't expose HTTP.
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

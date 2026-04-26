@@ -1,0 +1,31 @@
+# Railway service config — BeatLume frontend (Vite SPA served by Nginx).
+#
+# How to wire up in Railway:
+#   1. Service → Settings → Source: Repo Root Directory = `frontend`
+#   2. Service → Settings → Config-as-Code File Path = `frontend/railway.toml`
+#      (auto-detected since it's the default name)
+#   3. Service → Variables (BUILD time, see note below):
+#        VITE_API_URL = https://<your-api-service>.up.railway.app
+#      Vite inlines this into the JS bundle at build, so it MUST be set as a
+#      service variable before deploying. Changing it later requires a rebuild,
+#      not just a restart.
+#   4. Service → Networking: generate a domain. Nginx binds to $PORT via the
+#      envsubst step in nginx.conf.template (see frontend/Dockerfile:25-28).
+#
+# No startCommand override here — we want the nginx:alpine image's default
+# entrypoint to run, which performs envsubst on the conf template before
+# launching nginx. Overriding startCommand would skip that step and nginx
+# would fail to bind to Railway's $PORT.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = [
+  "frontend/**",
+]
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

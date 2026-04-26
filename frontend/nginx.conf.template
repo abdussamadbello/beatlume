@@ -1,0 +1,23 @@
+server {
+    listen ${PORT};
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # SPA fallback for TanStack Router client-side routes.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Long-cache hashed Vite build artifacts.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Don't cache the entry HTML — needed so users get the latest build.
+    location = /index.html {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+}
