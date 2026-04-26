@@ -1,0 +1,162 @@
+{
+  "uid": "beatlume-api",
+  "title": "BeatLume API",
+  "tags": ["beatlume", "api", "otel"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-15m", "to": "now" },
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Traced requests (per sec)",
+      "description": "OTel span start rate — proxy for request throughput. Works even while HTTP server metrics are broken.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "reqps",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "blue", "value": null }
+          ]}
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "sum(rate(otel_sdk_span_started_total{service_name=\"beatlume-api\"}[1m]))", "refId": "A", "legendFormat": "spans/sec" }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "DB connections in use",
+      "description": "Active SQLAlchemy pool connections.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 15 },
+            { "color": "red", "value": 25 }
+          ]}
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "sum(db_client_connections_usage{state=\"used\"})", "refId": "A", "legendFormat": "used" }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "HTTP requests (per sec)",
+      "description": "Populates once FastAPIInstrumentor HTTP metrics are enabled (see telemetry/setup.py).",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "reqps", "noValue": "Pending",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "orange", "value": null }
+          ]}
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "sum(rate(http_server_duration_milliseconds_count[1m]))", "refId": "A", "legendFormat": "req/sec" }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "5xx error rate (per sec)",
+      "description": "Populates once HTTP metrics are enabled.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "reqps", "noValue": "Pending",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "red", "value": 0.1 }
+          ]}
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "sum(rate(http_server_duration_milliseconds_count{http_status_code=~\"5..\"}[1m]))", "refId": "A", "legendFormat": "5xx/sec" }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "HTTP requests by route",
+      "description": "Populates once HTTP metrics are enabled.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "gradientMode": "opacity", "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "sum by (http_route) (rate(http_server_duration_milliseconds_count[1m]))", "refId": "A", "legendFormat": "{{http_route}}" }]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "HTTP latency (p50 / p95 / p99)",
+      "description": "Populates once HTTP metrics are enabled.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "ms",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 5, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(http_server_duration_milliseconds_bucket[5m])) by (le))", "refId": "A", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum(rate(http_server_duration_milliseconds_bucket[5m])) by (le))", "refId": "B", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.99, sum(rate(http_server_duration_milliseconds_bucket[5m])) by (le))", "refId": "C", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "DB connection pool",
+      "description": "Used vs idle connections in the SQLAlchemy async pool.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "lineWidth": 2, "fillOpacity": 15, "showPoints": "never", "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "sum by (state) (db_client_connections_usage)", "refId": "A", "legendFormat": "{{state}}" }]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "OTel pipeline — spans processed/sec",
+      "description": "Span processing throughput. A flat line at zero while the app is idle is normal.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "ops",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "sum(rate(otel_sdk_processor_span_processed_total[1m]))", "refId": "A", "legendFormat": "spans/sec" }]
+    }
+  ]
+}

@@ -19,6 +19,7 @@ from app.services.analytics.pacing import analyze_pacing
 from app.services.analytics.presence import compute_presence
 from app.services.analytics.sparkline import tension_sparkline
 from app.services.analytics.tension import compute_tension_curve
+from app.services.story import get_story_stats_map
 
 router = APIRouter(
     prefix="/api/stories/{story_id}/analytics",
@@ -283,9 +284,8 @@ async def get_health(
     char_dicts = [{"name": c.name} for c in characters]
     edge_list = [{"id": str(e.id)} for e in edges]
     insight_list = [{"dismissed": e.dismissed} for e in insights]
-
-    # Approximate word count (would come from draft_contents in production)
-    word_count = 0
+    stats_map = await get_story_stats_map(db, [story.id])
+    word_count = stats_map.get(story.id, {}).get("draft_word_count", 0)
 
     return compute_health(
         scenes=scene_dicts,

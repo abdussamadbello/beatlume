@@ -4,6 +4,7 @@ from typing import TypedDict
 from langgraph.graph import StateGraph, END
 
 from app.ai.context.assembler import ContextAssembler
+from app.ai.graph_metrics import instrumented_node
 from app.ai.llm import call_llm
 from app.ai.prompts import prose_continuation
 
@@ -21,6 +22,7 @@ class ProseState(TypedDict):
     error: str | None
 
 
+@instrumented_node("prose", "gather_context")
 async def gather_context(state: ProseState) -> dict:
     # Context assembly happens in the Celery task before graph execution
     # This node just validates the context is present
@@ -29,6 +31,7 @@ async def gather_context(state: ProseState) -> dict:
     return {}
 
 
+@instrumented_node("prose", "generate_prose")
 async def generate_prose(state: ProseState) -> dict:
     from app.ai.context.assembler import AssembledContext
 

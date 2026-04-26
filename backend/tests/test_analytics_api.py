@@ -2,6 +2,10 @@ import uuid
 
 import pytest
 
+from sqlalchemy import select
+
+from app.models.story import Story
+
 
 async def _new_story(client):
     suffix = uuid.uuid4().hex[:10]
@@ -125,3 +129,36 @@ async def test_arcs_accepts_facet_override(client):
     body = resp.json()
     assert body["facet"] == "romance"
     assert len(body["arcs"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_health_uses_draft_word_totals(client, db_session):
+    token, story_id = await _new_story(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    await client.put(
+        f"/api/stories/{story_id}",
+        json={"target_words": 8},
+        headers=headers,
+    )
+    scene = (
+        await client.post(
+            f"/api/stories/{story_id}/scenes",
+            json={"title": "S1", "pov": "Iris", "act": 1, "tension": 5},
+            headers=headers,
+        )
+    ).json()
+    draft_resp = await client.put(
+        f"/api/stories/{story_id}/draft/{scene['id']}",
+        json={"content": "one two three four"},
+        headers=headers,
+    )
+    assert draft_resp.status_code == 200
+
+    health_resp = await client.get(
+        f"/api/stories/{story_id}/analytics/health",
+        headers=headers,
+    )
+    assert health_resp.status_code == 200
+    body = health_resp.json()
+    assert body["components"]["completion"] == 50.0

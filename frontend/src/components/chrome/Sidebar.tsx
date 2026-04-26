@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { Link } from '@tanstack/react-router';
+import type { Story } from '../../types';
 
 interface NavItem {
   label: string;
@@ -7,21 +8,42 @@ interface NavItem {
   count?: string;
 }
 
-function planningItems(storyId: string): NavItem[] {
+type SidebarStory = Pick<
+  Story,
+  | 'title'
+  | 'draft_number'
+  | 'target_words'
+  | 'scene_count'
+  | 'character_count'
+  | 'active_insight_count'
+  | 'draft_word_count'
+  | 'manuscript_word_count'
+>;
+
+const compactNumber = new Intl.NumberFormat('en', {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+});
+
+function formatCount(value: number): string {
+  return value >= 1000 ? compactNumber.format(value).toLowerCase() : String(value);
+}
+
+function planningItems(storyId: string, story?: SidebarStory | null): NavItem[] {
   return [
-    { label: 'Overview', to: `/stories/${storyId}`, count: '12' },
-    { label: 'Scene Board', to: `/stories/${storyId}/scenes`, count: '47' },
+    { label: 'Overview', to: `/stories/${storyId}` },
+    { label: 'Scene Board', to: `/stories/${storyId}/scenes`, count: formatCount(story?.scene_count ?? 0) },
     { label: 'Graph', to: `/stories/${storyId}/graph` },
     { label: 'Timeline', to: `/stories/${storyId}/timeline` },
-    { label: 'Characters', to: `/stories/${storyId}/characters`, count: '14' },
+    { label: 'Characters', to: `/stories/${storyId}/characters`, count: formatCount(story?.character_count ?? 0) },
   ];
 }
 
-function assistantItems(storyId: string): NavItem[] {
+function assistantItems(storyId: string, story?: SidebarStory | null): NavItem[] {
   return [
-    { label: 'AI Insights', to: `/stories/${storyId}/ai`, count: '3' },
-    { label: 'Draft', to: `/stories/${storyId}/draft`, count: '18k' },
-    { label: 'Manuscript', to: `/stories/${storyId}/manuscript`, count: '72k' },
+    { label: 'AI Insights', to: `/stories/${storyId}/ai`, count: formatCount(story?.active_insight_count ?? 0) },
+    { label: 'Draft', to: `/stories/${storyId}/draft`, count: formatCount(story?.draft_word_count ?? 0) },
+    { label: 'Manuscript', to: `/stories/${storyId}/manuscript`, count: formatCount(story?.manuscript_word_count ?? 0) },
   ];
 }
 
@@ -127,7 +149,11 @@ function NavSection({ heading, items, active }: { heading: string; items: NavIte
   );
 }
 
-export function Sidebar({ storyId, active, title = 'A Stranger in the Orchard' }: { storyId: string; active: string; title?: string }) {
+export function Sidebar({ storyId, active, story }: { storyId: string; active: string; story?: SidebarStory | null }) {
+  const storyTitleText = story?.title ?? 'Loading...';
+  const draftLabelText = `Draft ${story?.draft_number ?? '—'} · ${formatCount(story?.draft_word_count ?? 0)} drafted`;
+  const footerText = `Target ${formatCount(story?.target_words ?? 0)} words`;
+
   return (
     <nav style={sidebar}>
       <Link
@@ -148,12 +174,12 @@ export function Sidebar({ storyId, active, title = 'A Stranger in the Orchard' }
         &larr; Dashboard
       </Link>
       <div style={logoStyle}>BeatLume</div>
-      <div style={storyTitle}>{title}</div>
-      <div style={draftLabel}>Draft 3 &middot; Act II</div>
-      <NavSection heading="Planning" items={planningItems(storyId)} active={active} />
-      <NavSection heading="Assistant" items={assistantItems(storyId)} active={active} />
+      <div style={storyTitle}>{storyTitleText}</div>
+      <div style={draftLabel}>{draftLabelText}</div>
+      <NavSection heading="Planning" items={planningItems(storyId, story)} active={active} />
+      <NavSection heading="Assistant" items={assistantItems(storyId, story)} active={active} />
       <NavSection heading="Publish" items={publishItems(storyId)} active={active} />
-      <div style={footer}>Autosaved 2 min ago</div>
+      <div style={footer}>{footerText}</div>
     </nav>
   );
 }

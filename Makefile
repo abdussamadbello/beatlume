@@ -4,7 +4,8 @@
 .PHONY: help install dev dev-stop dev-frontend dev-backend test test-backend test-frontend test-e2e test-e2e-live lint lint-backend lint-frontend \
         migrate migrate-new seed db-create db-reset db-fresh db-clear-alembic build clean \
         celery-fast celery-heavy celery-export celery-beat celery-all \
-        docker-up docker-down
+        docker-all docker-infra docker-api docker-frontend docker-down docker-clean docker-rebuild docker-db-fresh \
+        observability-up observability-down observability-status observability-logs
 
 # Load local env files when present
 -include backend/.env
@@ -135,11 +136,11 @@ seed: ## Seed sample story data
 # ============================================================================
 
 # Unique -n avoids DuplicateNodenameWarning when several workers run on one machine.
-celery-fast: ## Start Celery worker for ai_fast queue
-	cd backend && PYTHONPATH=. uv run celery -A app.tasks.celery_app worker -n fast@$$(hostname) -Q ai_fast -c 4 -l info
+celery-fast: ## Start Celery worker for ai_fast queue (concurrency=1 to avoid rate limits)
+	cd backend && PYTHONPATH=. uv run celery -A app.tasks.celery_app worker -n fast@$$(hostname) -Q ai_fast -c 1 -l info
 
-celery-heavy: ## Start Celery worker for ai_heavy queue
-	cd backend && PYTHONPATH=. uv run celery -A app.tasks.celery_app worker -n heavy@$$(hostname) -Q ai_heavy -c 2 -l info
+celery-heavy: ## Start Celery worker for ai_heavy queue (concurrency=1 to avoid rate limits)
+	cd backend && PYTHONPATH=. uv run celery -A app.tasks.celery_app worker -n heavy@$$(hostname) -Q ai_heavy -c 1 -l info
 
 celery-export: ## Start Celery worker for export queue
 	cd backend && PYTHONPATH=. uv run celery -A app.tasks.celery_app worker -n export@$$(hostname) -Q export -c 2 -l info
@@ -155,14 +156,91 @@ celery-all: ## Start all Celery workers + beat (background; logs in same termina
 	@make celery-beat &
 
 # ============================================================================
-# Docker (optional services: MinIO, Jaeger)
+# Docker (all containers prefixed with beatlume-)
 # ============================================================================
 
-docker-up: ## Start Docker services (MinIO, Jaeger)
-	cd backend && docker compose up -d minio minio-setup jaeger
+docker-all: ## Start full stack in Docker (postgres, redis, MinIO, observability, API, frontend)
+	cd backend && docker compose up -d
+	@sleep 5
+	@echo ""
+	@echo "✓ BeatLume full stack running in Docker!"
+	@echo ""
+	@echo "  API:               http://localhost:8000"
+	@echo "  Frontend:          http://localhost:5173"
+	@echo "  Postgres:          localhost:5432"
+	@echo "  Redis:             localhost:6379"
+	@echo "  MinIO console:     http://localhost:9001"
+	@echo "  Jaeger (traces):   http://localhost:16686"
+	@echo "  Prometheus:        http://localhost:9090"
+	@echo "  Grafana:           http://localhost:3000  (admin/beatlume_dev)"
+	@echo ""
+	@echo "Note: For hot reload, use 'make docker-infra' + 'make dev'"
 
-docker-down: ## Stop Docker services
+docker-infra: ## Start infrastructure only (postgres, redis, MinIO, observability) - then run 'make dev'
+	cd backend && docker compose up -d postgres redis minio minio-setup jaeger prometheus grafana otel-collector
+	@sleep 5
+	@echo ""
+	@echo "✓ BeatLume infrastructure ready! Run 'make dev' for hot reload."
+	@echo ""
+	@echo "  Postgres:          localhost:5432 (beatlume/beatlume_dev)"
+	@echo "  Redis:             localhost:6379"
+	@echo "  MinIO console:     http://localhost:9001"
+	@echo "  Jaeger (traces):   http://localhost:16686"
+	@echo "  Prometheus:        http://localhost:9090"
+	@echo "  Grafana:           http://localhost:3000  (admin/beatlume_dev)"
+
+docker-down: ## Stop all BeatLume Docker containers (keeps volumes / data)
 	cd backend && docker compose down
+
+docker-clean: ## Remove all BeatLume Docker containers, volumes, and orphan containers (WIPES DB)
+	cd backend && docker compose down --volumes --remove-orphans
+
+docker-rebuild: ## Rebuild api image (picks up backend code changes) and restart full stack — keeps volumes
+	cd backend && docker compose down
+	cd backend && docker compose build api
+	cd backend && docker compose up -d
+	@echo ""
+	@echo "✓ Rebuilt and restarted. Follow api logs: docker logs -f beatlume-api-1"
+
+docker-db-fresh: ## Wipe ONLY the postgres volume and bring stack back up — migrate + seed re-run, other data kept
+	cd backend && docker compose down
+	@# Fail loudly if the volume can't be removed — previously `|| true` silently hid "volume in use"
+	@# errors, leaving the old volume attached and the DB in its stale (broken) state.
+	@if docker volume ls --format '{{.Name}}' | grep -qx beatlume_postgres_data; then \
+		docker volume rm beatlume_postgres_data; \
+	else \
+		echo "(beatlume_postgres_data not present — fresh DB will be created on up)"; \
+	fi
+	cd backend && docker compose up -d
+	@echo ""
+	@echo "✓ DB wiped and re-seeded. Login: elena@beatlume.io / beatlume123"
+
+# ============================================================================
+# Observability (Jaeger, Prometheus, Grafana, OTel Collector)
+# ============================================================================
+
+observability-up: ## Start observability stack (Jaeger, Prometheus, Grafana, OTel Collector)
+	cd backend && docker compose up -d jaeger prometheus grafana otel-collector
+	@echo ""
+	@echo "Observability stack started!"
+	@echo "  Jaeger (traces):   http://localhost:16686"
+	@echo "  Prometheus:        http://localhost:9090"
+	@echo "  Grafana:           http://localhost:3000  (admin/beatlume_dev)"
+
+observability-down: ## Stop observability stack
+	cd backend && docker compose stop jaeger prometheus grafana otel-collector
+
+observability-status: ## Show observability stack status and access URLs
+	@echo "=== BeatLume Observability Stack ==="
+	@docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep beatlume || echo "No beatlume containers running"
+	@echo ""
+	@echo "=== Access URLs ==="
+	@echo "  Jaeger (traces):   http://localhost:16686"
+	@echo "  Prometheus:        http://localhost:9090"
+	@echo "  Grafana:           http://localhost:3000  (admin/beatlume_dev)"
+
+observability-logs: ## Show OTel Collector logs (trace/metric flow)
+	docker logs beatlume-otel-collector-1 --tail 50 -f
 
 # ============================================================================
 # Build

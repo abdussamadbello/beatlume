@@ -1,0 +1,19 @@
+# Prometheus configuration for BeatLume development
+# Receives OTLP metrics from the app and scrapes its own metrics
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'beatlume-dev'
+
+# OTLP write receiver enabled (see docker-compose command flags)
+# App sends metrics via OTLP HTTP to /api/v1/otlp/write
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'

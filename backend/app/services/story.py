@@ -1,15 +1,110 @@
 import uuid
+from collections.abc import Iterable
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.beat import Beat
 from app.models.character import Character
+from app.models.draft import DraftContent
+from app.models.insight import Insight
 from app.models.manuscript import ManuscriptChapter
 from app.models.scene import Scene
 from app.models.scene_participant import SceneParticipant
 from app.models.story import Story
 from app.services.core import populate_default_core
+
+
+STORY_STAT_FIELDS = (
+    "scene_count",
+    "character_count",
+    "active_insight_count",
+    "draft_word_count",
+    "manuscript_word_count",
+    "manuscript_chapter_count",
+)
+
+
+def _empty_story_stats() -> dict[str, int]:
+    return {field: 0 for field in STORY_STAT_FIELDS}
+
+
+async def get_story_stats_map(
+    db: AsyncSession,
+    story_ids: Iterable[uuid.UUID],
+) -> dict[uuid.UUID, dict[str, int]]:
+    ids = list(dict.fromkeys(story_ids))
+    if not ids:
+        return {}
+
+    stats: dict[uuid.UUID, dict[str, int]] = {story_id: _empty_story_stats() for story_id in ids}
+
+    scene_counts = await db.execute(
+        select(Scene.story_id, func.count(Scene.id))
+        .where(Scene.story_id.in_(ids))
+        .group_by(Scene.story_id)
+    )
+    for story_id, count in scene_counts.all():
+        stats[story_id]["scene_count"] = int(count or 0)
+
+    character_counts = await db.execute(
+        select(Character.story_id, func.count(Character.id))
+        .where(Character.story_id.in_(ids))
+        .group_by(Character.story_id)
+    )
+    for story_id, count in character_counts.all():
+        stats[story_id]["character_count"] = int(count or 0)
+
+    active_insight_counts = await db.execute(
+        select(Insight.story_id, func.count(Insight.id))
+        .where(Insight.story_id.in_(ids), Insight.dismissed.is_(False))
+        .group_by(Insight.story_id)
+    )
+    for story_id, count in active_insight_counts.all():
+        stats[story_id]["active_insight_count"] = int(count or 0)
+
+    draft_word_counts = await db.execute(
+        select(DraftContent.story_id, func.coalesce(func.sum(DraftContent.word_count), 0))
+        .where(DraftContent.story_id.in_(ids))
+        .group_by(DraftContent.story_id)
+    )
+    for story_id, count in draft_word_counts.all():
+        stats[story_id]["draft_word_count"] = int(count or 0)
+
+    trimmed_content = func.btrim(func.coalesce(ManuscriptChapter.content, ""))
+    chapter_word_count = case(
+        (trimmed_content == "", 0),
+        else_=func.cardinality(func.regexp_split_to_array(trimmed_content, r"\s+")),
+    )
+    manuscript_stats = await db.execute(
+        select(
+            ManuscriptChapter.story_id,
+            func.count(ManuscriptChapter.id),
+            func.coalesce(func.sum(chapter_word_count), 0),
+        )
+        .where(ManuscriptChapter.story_id.in_(ids))
+        .group_by(ManuscriptChapter.story_id)
+    )
+    for story_id, chapter_count, word_count in manuscript_stats.all():
+        stats[story_id]["manuscript_chapter_count"] = int(chapter_count or 0)
+        stats[story_id]["manuscript_word_count"] = int(word_count or 0)
+
+    return stats
+
+
+async def attach_story_stats(db: AsyncSession, stories: Iterable[Story]) -> list[Story]:
+    story_list = list(stories)
+    stats_map = await get_story_stats_map(db, [story.id for story in story_list])
+    for story in story_list:
+        story_stats = stats_map.get(story.id, _empty_story_stats())
+        for field, value in story_stats.items():
+            setattr(story, field, value)
+    return story_list
+
+
+async def attach_story_stat(db: AsyncSession, story: Story) -> Story:
+    await attach_story_stats(db, [story])
+    return story
 
 
 async def list_stories(
@@ -34,6 +129,7 @@ async def list_stories(
     result = await db.execute(query)
     stories = result.scalars().all()
     total = (await db.execute(count_query)).scalar()
+    await attach_story_stats(db, stories)
     return list(stories), total
 
 

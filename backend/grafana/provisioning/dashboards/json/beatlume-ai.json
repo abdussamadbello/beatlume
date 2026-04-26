@@ -1,0 +1,286 @@
+{
+  "uid": "beatlume-ai",
+  "title": "BeatLume AI",
+  "tags": ["beatlume", "ai", "llm"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "task_type",
+        "type": "query",
+        "label": "Task type",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(llm_calls_total, task_type)",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+"
+      },
+      {
+        "name": "tier",
+        "type": "query",
+        "label": "Tier",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(llm_calls_total, tier)",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+"
+      }
+    ]
+  },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "LLM calls (per min)",
+      "description": "Total LLM call attempts reaching a terminal outcome.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "cpm", "noValue": "0",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "60 * sum(rate(llm_calls_total{task_type=~\"$task_type\",tier=~\"$tier\"}[5m]))", "refId": "A", "legendFormat": "calls/min" }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Success rate",
+      "description": "Percentage of LLM calls returning successfully over the last 5 minutes.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "percentunit", "noValue": "—", "min": 0, "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "orange", "value": 0.9 },
+            { "color": "green", "value": 0.98 }
+          ]}
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "sum(rate(llm_calls_total{outcome=\"success\",task_type=~\"$task_type\",tier=~\"$tier\"}[5m])) / clamp_min(sum(rate(llm_calls_total{task_type=~\"$task_type\",tier=~\"$tier\"}[5m])), 0.0001)", "refId": "A", "legendFormat": "success" }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Tokens (per min)",
+      "description": "Prompt + completion tokens consumed per minute.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "short", "noValue": "0",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "purple", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "60 * sum(rate(llm_tokens_total{task_type=~\"$task_type\",tier=~\"$tier\"}[5m]))", "refId": "A", "legendFormat": "tokens/min" }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "p95 latency",
+      "description": "95th-percentile wall-clock duration including retries and fallbacks.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "s", "noValue": "—",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 10 },
+            { "color": "red", "value": 30 }
+          ]}
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(llm_duration_seconds_bucket{task_type=~\"$task_type\",tier=~\"$tier\"}[5m])) by (le))", "refId": "A", "legendFormat": "p95" }]
+    },
+
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Calls / min by task type",
+      "description": "Volume grouped by semantic task: which features are driving LLM usage right now.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "cpm",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 20, "gradientMode": "opacity", "showPoints": "never", "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "60 * sum by (task_type) (rate(llm_calls_total{task_type=~\"$task_type\",tier=~\"$tier\"}[5m]))", "refId": "A", "legendFormat": "{{task_type}}" }]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Calls / min by outcome",
+      "description": "Success vs error split. Errors here are terminal — each already exhausted retries and fallbacks.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "sum"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "cpm",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 20, "showPoints": "never", "stacking": { "mode": "normal" } }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "success" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
+          { "matcher": { "id": "byName", "options": "error" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] }
+        ]
+      },
+      "targets": [{ "expr": "60 * sum by (outcome) (rate(llm_calls_total{task_type=~\"$task_type\",tier=~\"$tier\"}[5m]))", "refId": "A", "legendFormat": "{{outcome}}" }]
+    },
+
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Latency percentiles (p50 / p95 / p99)",
+      "description": "Wall-clock duration of call_llm() including retries. Divergence between p50 and p95 usually means a rate-limit retry loop.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "s",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 5, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(llm_duration_seconds_bucket{task_type=~\"$task_type\",tier=~\"$tier\"}[5m])) by (le))", "refId": "A", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum(rate(llm_duration_seconds_bucket{task_type=~\"$task_type\",tier=~\"$tier\"}[5m])) by (le))", "refId": "B", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.99, sum(rate(llm_duration_seconds_bucket{task_type=~\"$task_type\",tier=~\"$tier\"}[5m])) by (le))", "refId": "C", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Tokens / min by direction",
+      "description": "Prompt vs completion token flow. If prompt dominates, consider context trimming; if completion dominates, consider max_tokens caps.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "sum"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 20, "showPoints": "never", "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "60 * sum by (direction) (rate(llm_tokens_total{task_type=~\"$task_type\",tier=~\"$tier\"}[5m]))", "refId": "A", "legendFormat": "{{direction}}" }]
+    },
+
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Errors / min by category",
+      "description": "Error categories come from app/ai/errors.py → classify_error. rate_limit spikes correlate with fallback-model activity.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "sum"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "cpm",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 20, "showPoints": "never", "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "60 * sum by (error_category) (rate(llm_calls_total{outcome=\"error\",task_type=~\"$task_type\",tier=~\"$tier\"}[5m]))", "refId": "A", "legendFormat": "{{error_category}}" }]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Calls / min by tier",
+      "description": "Traffic mix across fast / standard / powerful / scaffold. A shift toward powerful usually means cost is climbing.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "cpm",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 20, "showPoints": "never", "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "60 * sum by (tier) (rate(llm_calls_total{task_type=~\"$task_type\",tier=~\"$tier\"}[5m]))", "refId": "A", "legendFormat": "{{tier}}" }]
+    },
+
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Cost ($/hour)",
+      "description": "Rolling cost per hour. Only counts calls where litellm knows the model's pricing — provider-level drift possible.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 28 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "currencyUSD", "decimals": 3, "noValue": "0",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 0.5 },
+            { "color": "red", "value": 2 }
+          ]}
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "3600 * sum(rate(llm_cost_usd_total{task_type=~\"$task_type\",tier=~\"$tier\"}[15m]))", "refId": "A", "legendFormat": "usd/hour" }]
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Cost ($/day projected)",
+      "description": "24× current hourly rate — back-of-envelope daily spend if this hour repeats.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 28 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "currencyUSD", "decimals": 2, "noValue": "0",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "purple", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "86400 * sum(rate(llm_cost_usd_total{task_type=~\"$task_type\",tier=~\"$tier\"}[15m]))", "refId": "A", "legendFormat": "usd/day" }]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Cost ($/min) by model",
+      "description": "Stacked spend per model. The top layer is the most expensive contributor right now.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "sum"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "currencyUSD", "decimals": 4,
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 30, "showPoints": "never", "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "60 * sum by (model) (rate(llm_cost_usd_total{task_type=~\"$task_type\",tier=~\"$tier\"}[5m]))", "refId": "A", "legendFormat": "{{model}}" }]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Cost ($/min) by task type",
+      "description": "Which feature is burning budget? Pair with task-type breakdown panel above to correlate volume vs. spend.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "sum"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "currencyUSD", "decimals": 4,
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 20, "showPoints": "never", "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "60 * sum by (task_type) (rate(llm_cost_usd_total{task_type=~\"$task_type\",tier=~\"$tier\"}[5m]))", "refId": "A", "legendFormat": "{{task_type}}" }]
+    }
+  ]
+}

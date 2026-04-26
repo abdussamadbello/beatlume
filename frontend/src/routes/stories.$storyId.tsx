@@ -17,19 +17,16 @@ function StoryLayout() {
   useSSE(storyId)
 
   let body
-  let title = 'Loading...'
   if (isLoading) {
     body = <LoadingState />
   } else if (error || !story) {
-    title = 'Error'
     body = <ErrorState error={error as Error} onRetry={refetch} />
   } else {
-    title = story.title
     body = <Outlet />
   }
 
   return (
-    <AppShell sidebar={<Sidebar storyId={storyId} active={location.pathname} title={title} />}>
+    <AppShell sidebar={<Sidebar storyId={storyId} active={location.pathname} story={story} />}>
       {body}
       <AILauncher />
       <AIPanel storyId={storyId} />

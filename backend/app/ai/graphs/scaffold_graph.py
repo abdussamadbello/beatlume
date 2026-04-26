@@ -2,6 +2,7 @@ from typing import TypedDict
 
 from langgraph.graph import StateGraph, END
 
+from app.ai.graph_metrics import instrumented_node
 from app.ai.llm import call_llm
 from app.ai.prompts import story_scaffolding
 
@@ -16,6 +17,7 @@ class ScaffoldState(TypedDict):
     error: str | None
 
 
+@instrumented_node("scaffold", "generate_scaffold")
 async def generate_scaffold(state: ScaffoldState) -> dict:
     messages = story_scaffolding.build_prompt(
         state["premise"], state["structure_type"], state["target_words"],

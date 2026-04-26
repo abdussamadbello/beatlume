@@ -26,6 +26,12 @@ class StoryRead(BaseModel):
     structure_type: str
     story_type: str
     archived: bool = False
+    scene_count: int = 0
+    character_count: int = 0
+    active_insight_count: int = 0
+    draft_word_count: int = 0
+    manuscript_word_count: int = 0
+    manuscript_chapter_count: int = 0
 
     model_config = {"from_attributes": True}
 

@@ -1,13 +1,22 @@
 # Contributing to BeatLume
 
+Read these first:
+
+- [README.md](../README.md) for the product overview and setup path
+- [DEVELOPMENT.md](./DEVELOPMENT.md) for architecture, workflow, and implementation patterns
+- [API.md](./API.md) for the HTTP surface
+
 ## Getting Started
 
 ```bash
-make setup    # Install everything, create DB, migrate, seed
-make dev      # Start frontend + backend
+make setup
+make dev
 ```
 
-Login: `elena@beatlume.io` / `beatlume123`
+Login:
+
+- `elena@beatlume.io`
+- `beatlume123`
 
 ## Development Workflow
 
@@ -88,10 +97,10 @@ Use conventional commits:
 ## Testing
 
 ```bash
-make test-backend         # 95 pytest tests
-make test-backend-quick   # same, less verbose
-make test-frontend        # TypeScript type checking
-make lint                 # ruff + eslint
+make test-backend
+make test-backend-quick
+make test-frontend
+make lint
 ```
 
 Backend tests use a real PostgreSQL database (same instance, tables created/dropped per test).

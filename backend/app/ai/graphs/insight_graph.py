@@ -2,6 +2,7 @@ from typing import TypedDict
 
 from langgraph.graph import StateGraph, END
 
+from app.ai.graph_metrics import instrumented_node
 from app.ai.llm import call_llm
 from app.ai.prompts import insight_analysis, insight_synthesis
 
@@ -15,6 +16,7 @@ class InsightState(TypedDict):
     error: str | None
 
 
+@instrumented_node("insight", "analyze_acts")
 async def analyze_acts(state: InsightState) -> dict:
     from app.ai.context.assembler import AssembledContext
 
@@ -33,6 +35,7 @@ async def analyze_acts(state: InsightState) -> dict:
     return {"chunk_findings": all_findings}
 
 
+@instrumented_node("insight", "synthesize")
 async def synthesize(state: InsightState) -> dict:
     if not state["chunk_findings"]:
         return {"error": "No findings to synthesize"}

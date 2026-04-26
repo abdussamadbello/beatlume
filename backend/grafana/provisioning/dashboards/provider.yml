@@ -1,0 +1,17 @@
+apiVersion: 1
+
+# Grafana polls `options.path` for .json files and auto-loads them.
+# allowUiUpdates: true lets you edit in the UI; use "Save as JSON" then commit the file
+# to keep the git source of truth in sync.
+
+providers:
+  - name: BeatLume
+    orgId: 1
+    folder: BeatLume
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json
+      foldersFromFilesStructure: false

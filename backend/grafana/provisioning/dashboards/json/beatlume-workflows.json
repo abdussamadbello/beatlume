@@ -1,0 +1,194 @@
+{
+  "uid": "beatlume-workflows",
+  "title": "BeatLume Workflows (LangGraph)",
+  "tags": ["beatlume", "ai", "langgraph", "workflows"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "graph",
+        "type": "query",
+        "label": "Graph",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(graph_workflow_runs_total, graph)",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+"
+      }
+    ]
+  },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Workflows / hour",
+      "description": "LangGraph workflow invocations reaching a terminal outcome.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "short", "noValue": "0",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "3600 * sum(rate(graph_workflow_runs_total{graph=~\"$graph\"}[15m]))", "refId": "A", "legendFormat": "workflows/hr" }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Workflow success rate",
+      "description": "Percentage of workflow invocations that returned without setting result.error or raising.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "percentunit", "noValue": "—", "min": 0, "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "orange", "value": 0.9 },
+            { "color": "green", "value": 0.98 }
+          ]}
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "sum(rate(graph_workflow_runs_total{outcome=\"success\",graph=~\"$graph\"}[15m])) / clamp_min(sum(rate(graph_workflow_runs_total{graph=~\"$graph\"}[15m])), 0.0001)", "refId": "A", "legendFormat": "success" }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Workflow p95 duration",
+      "description": "End-to-end LangGraph workflow duration including all nodes.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "s", "noValue": "—",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 30 },
+            { "color": "red", "value": 120 }
+          ]}
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(graph_workflow_duration_seconds_bucket{graph=~\"$graph\"}[15m])) by (le))", "refId": "A", "legendFormat": "p95" }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Slowest node p95",
+      "description": "p95 duration of the single slowest node across all graphs. A regression here usually drags workflow p95 up too.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "s", "noValue": "—",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 15 },
+            { "color": "red", "value": 60 }
+          ]}
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "max(histogram_quantile(0.95, sum(rate(graph_node_duration_seconds_bucket{graph=~\"$graph\"}[15m])) by (graph, node, le)))", "refId": "A", "legendFormat": "max p95" }]
+    },
+
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Workflows / min by graph",
+      "description": "Volume per graph. Each graph maps to a user-facing feature (insight = brainstorm, summary = scene post-write, etc.).",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "sum"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "cpm",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 20, "showPoints": "never", "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "60 * sum by (graph) (rate(graph_workflow_runs_total{graph=~\"$graph\"}[5m]))", "refId": "A", "legendFormat": "{{graph}}" }]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Workflow duration p50 / p95 by graph",
+      "description": "Latency percentiles per graph. Rising p95 with flat p50 usually points at a single slow node.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "s",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 5, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(graph_workflow_duration_seconds_bucket{graph=~\"$graph\"}[5m])) by (graph, le))", "refId": "A", "legendFormat": "p50 · {{graph}}" },
+        { "expr": "histogram_quantile(0.95, sum(rate(graph_workflow_duration_seconds_bucket{graph=~\"$graph\"}[5m])) by (graph, le))", "refId": "B", "legendFormat": "p95 · {{graph}}" }
+      ]
+    },
+
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Node executions / min",
+      "description": "Per-node throughput. Lets you see fan-out behavior (a single workflow call often invokes multiple nodes).",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "cpm",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "60 * sum by (graph, node) (rate(graph_node_runs_total{graph=~\"$graph\"}[5m]))", "refId": "A", "legendFormat": "{{graph}} · {{node}}" }]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Node p95 duration",
+      "description": "p95 duration per node. Use this to find the bottleneck inside a multi-node graph.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "s",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 5, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(graph_node_duration_seconds_bucket{graph=~\"$graph\"}[5m])) by (graph, node, le))", "refId": "A", "legendFormat": "{{graph}} · {{node}}" }]
+    },
+
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Node outcome breakdown",
+      "description": "success = clean return · error = {'error': '...'} returned · exception = raised. Exceptions usually imply a code bug; errors are recoverable LLM or data issues.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "sum"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "cpm",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 20, "showPoints": "never", "stacking": { "mode": "normal" } }
+        },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": ".*success.*" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
+          { "matcher": { "id": "byRegexp", "options": ".*error.*" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }] },
+          { "matcher": { "id": "byRegexp", "options": ".*exception.*" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] }
+        ]
+      },
+      "targets": [{ "expr": "60 * sum by (graph, outcome) (rate(graph_node_runs_total{graph=~\"$graph\"}[5m]))", "refId": "A", "legendFormat": "{{graph}} · {{outcome}}" }]
+    }
+  ]
+}

@@ -1,677 +1,474 @@
-# BeatLume API Reference
+# BeatLume API Guide
 
-Base URL: `http://localhost:8000`
+This document describes the current HTTP API shape, the async task pattern, and the SSE event model used by the frontend.
 
-All endpoints return JSON. Authenticated endpoints require `Authorization: Bearer {token}` header.
+For implementation details, read [ARCHITECTURE.md](./ARCHITECTURE.md). For day-to-day contributor workflow, read [DEVELOPMENT.md](./DEVELOPMENT.md).
 
-## Authentication
+## Base URL
 
-### POST /auth/signup
+Local development:
 
-Create a new account. Returns access token + sets refresh cookie.
+```text
+http://localhost:8000
+```
 
-**Request:**
+## Authentication Model
+
+BeatLume uses:
+
+- bearer access tokens for authenticated API calls
+- refresh tokens via `httpOnly` cookie
+- short-lived story-scoped SSE tokens for browser `EventSource` connections
+
+Authenticated requests send:
+
+```http
+Authorization: Bearer <access-token>
+```
+
+## Common API Conventions
+
+### IDs
+
+All primary entities use UUIDs.
+
+### Response Shapes
+
+Common patterns:
+
+- single resource: JSON object
+- paginated list: `{ "items": [...], "total": 123 }`
+- async task trigger: `{ "task_id": "<celery-task-id>" }`
+- delete: `204 No Content`
+
+### Errors
+
+Typical error shape:
+
 ```json
 {
-  "name": "Ada Lovelace",
-  "email": "ada@example.com",
-  "password": "securepass123"
+  "detail": "Human-readable explanation",
+  "code": "internal_error"
 }
 ```
 
-**Validation:** Password 8-72 chars. Email must contain `@`. Name cannot be empty.
+Some endpoints only return `detail`.
 
-**Response (201):**
+### Story Scoping
+
+Most product routes are story-scoped:
+
+```text
+/api/stories/{story_id}/...
+```
+
+The backend resolves the story through request dependencies and relies on org-scoped RLS for data isolation.
+
+## Async Task Pattern
+
+AI and export work do not complete in the request/response cycle. The API returns `202 Accepted` and a `task_id`, then progress and completion are delivered through SSE.
+
+Main async trigger routes:
+
+- `POST /api/stories/{story_id}/insights/generate`
+- `POST /api/stories/{story_id}/insights/{insight_id}/apply`
+- `POST /api/stories/{story_id}/draft/{scene_id}/ai-continue`
+- `POST /api/stories/{story_id}/ai/relationships`
+- `POST /api/stories/{story_id}/ai/summarize/{scene_id}`
+- `POST /api/stories/{story_id}/ai/scaffold`
+- `POST /api/stories/{story_id}/ai/generate-manuscript`
+- `POST /api/stories/{story_id}/export`
+
+Standard response:
+
 ```json
 {
-  "access_token": "eyJhbG...",
-  "token_type": "bearer"
+  "task_id": "6f6f2511-8d1e-4901-97a1-9e78d8b3f149"
 }
 ```
 
-Also sets `refresh_token` httpOnly cookie.
+## SSE Event Model
 
-**Errors:** `409` email already registered.
+### Get A Story-Scoped SSE Token
 
-**Rate limited:** 5 requests/minute per IP.
+```http
+POST /api/stories/{story_id}/events/token
+Authorization: Bearer <access-token>
+```
 
----
+Response:
 
-### POST /auth/login
-
-**Request:**
 ```json
 {
-  "email": "ada@example.com",
-  "password": "securepass123"
+  "token": "<short-lived-sse-token>",
+  "expires_in": 3600
 }
 ```
 
-**Response (200):** Same as signup.
+### Open The Event Stream
 
-**Errors:** `401` invalid email or password.
+Browser clients connect with:
 
-**Rate limited:** 5 requests/minute per IP.
-
----
-
-### POST /auth/refresh
-
-Rotate access token using the refresh cookie.
-
-**Request:** No body. Refresh token sent automatically via cookie.
-
-**Response (200):** New access token + new refresh cookie.
-
----
-
-### POST /auth/logout
-
-Clear refresh cookie.
-
-**Response:** `204 No Content`
-
----
-
-### GET /auth/oauth/{provider}
-
-Get OAuth redirect URL. Provider: `google` or `github`.
-
-**Response (200):**
-```json
-{
-  "redirect_url": "https://accounts.google.com/o/oauth2/..."
-}
+```text
+GET /api/stories/{story_id}/events?sse_token=<token>
 ```
 
-**Errors:** `501` provider not configured.
+Non-browser clients can use the bearer token in the `Authorization` header instead.
 
----
+### Event Types
 
-### GET /auth/callback/{provider}?code={code}
+The frontend currently listens for:
 
-Exchange OAuth code for tokens. Called by OAuth provider redirect.
+- `ai.progress`
+- `ai.chunk`
+- `ai.complete`
+- `ai.error`
+- `export.complete`
+- `activity`
+- `comment`
 
-**Response (200):** Same as login.
+Example event frame:
 
----
-
-### POST /auth/forgot-password
-
-```json
-{ "email": "ada@example.com" }
+```text
+event: ai.progress
+data: {"task_id":"...","type":"full_manuscript","status":"running","current":3,"total":12}
 ```
 
-**Response (200):** Always returns success (prevents email enumeration).
+The SSE endpoint also emits keepalive comments when idle.
 
----
+## Route Groups
 
-### POST /auth/reset-password
+### Auth
 
-```json
-{ "token": "reset-jwt-token", "new_password": "newpass123" }
-```
+Routes under `/auth`:
 
----
+- `POST /auth/signup`
+- `POST /auth/login`
+- `POST /auth/refresh`
+- `POST /auth/logout`
+- `GET /auth/oauth/{provider}`
+- `GET /auth/callback/{provider}`
+- `POST /auth/forgot-password`
+- `POST /auth/reset-password`
 
-## Users
+Notes:
 
-### GET /api/users/me
+- login and signup are rate-limited
+- OAuth providers currently include `google` and `github`
+- refresh rotates the access token using the refresh cookie
 
-**Auth required.**
+### Users
 
-**Response (200):**
-```json
-{
-  "id": "uuid",
-  "email": "ada@example.com",
-  "name": "Ada Lovelace",
-  "avatar_url": null,
-  "plan": "free"
-}
-```
+Routes under `/api/users`:
 
----
+- `GET /api/users/me`
+- `PUT /api/users/me`
+- `GET /api/users/me/organizations`
 
-### PUT /api/users/me
+### Stories
 
-**Auth required.**
+Routes under `/api/stories`:
 
-```json
-{ "name": "Ada Byron Lovelace", "avatar_url": "https://..." }
-```
+- `GET /api/stories`
+- `POST /api/stories`
+- `GET /api/stories/{story_id}`
+- `PUT /api/stories/{story_id}`
+- `DELETE /api/stories/{story_id}`
+- `POST /api/stories/{story_id}/duplicate`
 
----
+List query params:
 
-### GET /api/users/me/organizations
+- `offset`
+- `limit`
+- `include_archived`
+- `only_archived`
 
-**Auth required.** Returns list of organizations the user belongs to.
+Create/update fields include:
 
----
+- `title`
+- `logline`
+- `genres`
+- `subgenre`
+- `themes`
+- `target_words`
+- `structure_type`
+- `story_type`
+- `archived`
+- `draft_number`
+- `status`
 
-## Stories
-
-### GET /api/stories?offset=0&limit=50
-
-**Auth required.** List stories in the user's organization.
-
-**Response (200):**
-```json
-{
-  "items": [
-    {
-      "id": "uuid",
-      "title": "A Stranger in the Orchard",
-      "genres": ["Literary", "Mystery"],
-      "target_words": 90000,
-      "draft_number": 3,
-      "status": "in_progress",
-      "structure_type": "3-act"
-    }
-  ],
-  "total": 1
-}
-```
-
----
-
-### POST /api/stories
-
-**Auth required.**
+Example create payload:
 
 ```json
 {
-  "title": "My Novel",
-  "genres": ["Literary"],
+  "title": "The Orchard Keeps Its Secrets",
+  "logline": "A grieving archivist returns home and finds the town rewriting its own history.",
+  "genres": ["Literary", "Mystery"],
+  "subgenre": "Gothic",
+  "themes": ["memory", "grief", "inheritance"],
   "target_words": 80000,
-  "structure_type": "3-act"
+  "structure_type": "3-act",
+  "story_type": "novel"
 }
 ```
 
-**Response:** `201` with created story.
+### Scenes
 
----
+Routes under `/api/stories/{story_id}/scenes`:
 
-### GET /api/stories/{storyId}
+- `GET /api/stories/{story_id}/scenes`
+- `POST /api/stories/{story_id}/scenes`
+- `PATCH /api/stories/{story_id}/scenes/reorder`
+- `GET /api/stories/{story_id}/scenes/{scene_id}`
+- `PUT /api/stories/{story_id}/scenes/{scene_id}`
+- `DELETE /api/stories/{story_id}/scenes/{scene_id}`
 
-### PUT /api/stories/{storyId}
+Common scene fields:
 
-### DELETE /api/stories/{storyId}
+- `title`
+- `summary`
+- `pov`
+- `tension`
+- `act`
+- `location`
+- `tag`
+- analytic facets such as `emotional`, `stakes`, `mystery`, `romance`, `danger`, `hope`
 
-Standard CRUD. DELETE returns `204`.
+List query params include:
 
----
+- `act`
+- `pov`
+- `sort`
+- `offset`
+- `limit`
 
-## Scenes
+### Beats
 
-All scoped under `/api/stories/{storyId}/scenes`.
-
-### GET /api/stories/{storyId}/scenes?act=1&pov=Iris&sort=tension&offset=0&limit=50
-
-Filter by `act` (int), `pov` (string), sort by `tension`/`pov`/default (scene number).
-
-**Response (200):**
-```json
-{
-  "items": [
-    {
-      "id": "uuid",
-      "story_id": "uuid",
-      "n": 1,
-      "title": "Orchard at dawn",
-      "pov": "Iris",
-      "tension": 3,
-      "act": 1,
-      "location": "The Orchard",
-      "tag": "setup",
-      "summary": null
-    }
-  ],
-  "total": 13
-}
-```
-
----
-
-### POST /api/stories/{storyId}/scenes
-
-Scene number `n` auto-increments.
-
-```json
-{
-  "title": "New Scene",
-  "pov": "Iris",
-  "tension": 5,
-  "act": 2,
-  "location": "Town square",
-  "tag": "rising"
-}
-```
-
----
-
-### GET /PUT /DELETE /api/stories/{storyId}/scenes/{sceneId}
-
-Standard CRUD by UUID.
-
----
+Routes under `/api/stories/{story_id}/scenes/{scene_id}/beats`:
 
-## Characters
-
-All scoped under `/api/stories/{storyId}/characters`.
-
-### GET /api/stories/{storyId}/characters?offset=0&limit=50
-
-**Response (200):**
-```json
-{
-  "items": [
-    {
-      "id": "uuid",
-      "story_id": "uuid",
-      "name": "Iris",
-      "role": "Protagonist",
-      "desire": "To understand why Wren left",
-      "flaw": "Cannot trust anyone fully",
-      "scene_count": 12,
-      "longest_gap": 2
-    }
-  ],
-  "total": 10
-}
-```
-
----
-
-### POST /PUT /DELETE — standard CRUD
-
----
-
-## Graph
-
-### GET /api/stories/{storyId}/graph
-
-**Response (200):**
-```json
-{
-  "nodes": [
-    {
-      "id": "uuid",
-      "character_id": "uuid",
-      "x": 400.0,
-      "y": 300.0,
-      "label": "Iris",
-      "initials": "IR",
-      "node_type": "hub",
-      "first_appearance_scene": 1
-    }
-  ],
-  "edges": [
-    {
-      "id": "uuid",
-      "source_node_id": "uuid",
-      "target_node_id": "uuid",
-      "kind": "conflict",
-      "weight": 0.8,
-      "provenance": "author",
-      "evidence": [{"scene_n": 3, "type": "dialogue"}],
-      "first_evidenced_scene": 3
-    }
-  ]
-}
-```
-
----
-
-### PUT /api/stories/{storyId}/graph/nodes/{nodeId}
-
-Update node position (drag and drop).
-
-```json
-{ "x": 450.0, "y": 280.0 }
-```
-
----
+- `GET`
+- `POST`
+- `PATCH /reorder`
+- `GET /{beat_id}`
+- `PUT /{beat_id}`
+- `DELETE /{beat_id}`
 
-### POST /api/stories/{storyId}/graph/edges
+Beats are optional micro-structure inside a scene. Reorder is explicit instead of inferred from array order in the client.
 
-```json
-{
-  "source_node_id": "uuid",
-  "target_node_id": "uuid",
-  "kind": "alliance",
-  "weight": 0.6
-}
-```
+### Characters
 
----
-
-### PUT /DELETE /api/stories/{storyId}/graph/edges/{edgeId}
-
----
-
-## Insights
-
-### GET /api/stories/{storyId}/insights?category=Pacing&severity=red&offset=0&limit=50
-
-**Response (200):**
-```json
-{
-  "items": [
-    {
-      "id": "uuid",
-      "severity": "red",
-      "category": "Pacing",
-      "title": "Tension flatline in Act 2",
-      "body": "Scenes 6-9 have nearly identical tension levels...",
-      "refs": ["S06", "S07", "S08", "S09"],
-      "dismissed": false
-    }
-  ],
-  "total": 5
-}
-```
-
----
-
-### PUT /api/stories/{storyId}/insights/{insightId}/dismiss
-
----
-
-## Draft
-
-### GET /api/stories/{storyId}/draft/{sceneId}
-
-**Response (200):**
-```json
-{
-  "id": "uuid",
-  "scene_id": "uuid",
-  "content": "The orchard was quiet at dawn...",
-  "word_count": 342
-}
-```
-
----
-
-### PUT /api/stories/{storyId}/draft/{sceneId}
-
-```json
-{ "content": "Updated prose text..." }
-```
-
-Word count computed automatically on save.
-
----
-
-## Core Config
-
-Structural hierarchy (story → part → chapter → scene → beat) plus a
-configuration key/value store that supports **per-node overrides**. Every raw
-setting row has a `source` — `user`, `system`, or `AI` — plus an optional `tag`
-(e.g. `inferred`, `primary`) and an optional `config_node_id`:
-
-- `config_node_id IS NULL` → story-level default (applies everywhere by
-  inheritance).
-- `config_node_id = <node id>` → override scoped to that node and its
-  descendants.
-
-The tree is self-referential via `parent_id`. When a key is looked up for a
-specific node, the backend walks from that node up through its ancestors and
-returns the nearest-defined value, along with `defined_at_node_id` /
-`defined_at_label` / `is_override` so the UI knows where the value came from.
-
-### GET /api/stories/{storyId}/core/tree
-
-Returns all config nodes for the story, each with `parent_id`, `depth`, `label`,
-`kind`, `active`, `sort_order`.
-
-### PUT /api/stories/{storyId}/core/tree/{nodeId}
-
-Patch `label` and/or `active` on a node.
-
-### GET /api/stories/{storyId}/core/settings
-
-Returns resolved settings for a given tree node. Query params:
-
-- `node_id` (optional UUID) — resolve relative to this node. Omit to resolve
-  the story root.
-
-Response shape:
-
-```json
-[
-  {
-    "key": "POV",
-    "value": "Third-person close (Jon)",
-    "source": "user",
-    "tag": null,
-    "defined_at_node_id": "…",
-    "defined_at_label": "Ch 5 — The Ridge",
-    "is_override": false
-  }
-]
-```
-
-`is_override` is `true` only when the row is defined on the node being queried.
-
-### GET /api/stories/{storyId}/core/settings/raw
-
-Returns every raw `core_settings` row for this story (no resolution). Debug/
-admin use only.
-
-### POST /api/stories/{storyId}/core/settings
-
-Create a new setting. Omit `config_node_id` (or pass `null`) for a story-level
-default; pass a node UUID to scope the value to that node. Returns `201` with
-the created row, `409` if a row with the same `(story_id, config_node_id, key)`
-already exists.
+Routes under `/api/stories/{story_id}/characters`:
+
+- `GET`
+- `POST`
+- `GET /{character_id}`
+- `PUT /{character_id}`
+- `DELETE /{character_id}`
+
+Character fields commonly include:
+
+- `name`
+- `role`
+- `desire`
+- `flaw`
+- `arc_summary`
+
+### Graph
+
+Routes under `/api/stories/{story_id}/graph`:
+
+- `GET`
+- `PUT /nodes/{node_id}`
+- `POST /edges`
+- `PUT /edges/{edge_id}`
+- `DELETE /edges/{edge_id}`
+
+The graph API manages relationship nodes and edges, including edge kinds such as conflict, alliance, romance, mentor, family, and secret depending on story state.
+
+### Insights
+
+Routes under `/api/stories/{story_id}/insights`:
+
+- `GET`
+- `POST /generate`
+- `POST /{insight_id}/apply`
+- `PUT /{insight_id}/dismiss`
+- `PUT /{insight_id}/restore`
+
+List query params:
+
+- `category`
+- `severity`
+- `offset`
+- `limit`
+- `include_dismissed`
+- `only_dismissed`
+
+The insight flow is intentionally split:
+
+1. generate explainable recommendations
+2. inspect them in the UI
+3. optionally apply a recommendation back into scenes, draft, or manuscript data
+
+### Draft
+
+Routes under `/api/stories/{story_id}/draft`:
+
+- `GET /{scene_id}`
+- `PUT /{scene_id}`
+- `POST /{scene_id}/ai-continue`
+
+This is the scene-level prose surface. `ai-continue` is async and streams partial text over SSE through `ai.chunk` events.
+
+### Core Configuration
+
+Routes under `/api/stories/{story_id}/core`:
+
+- `GET /tree`
+- `PUT /tree/{node_id}`
+- `GET /settings`
+- `GET /settings/raw`
+- `POST /settings`
+- `PUT /settings/{key}`
+- `DELETE /settings/{key}`
+
+This API supports story-level defaults and inherited settings across the story tree. It is the continuity/configuration layer used by AI prompt assembly and editor-facing configuration.
+
+### Manuscript
+
+Routes under `/api/stories/{story_id}/manuscript`:
+
+- `GET`
+- `GET /{num}`
+- `PUT /{num}`
+
+The manuscript API is chapter-oriented. It sits above per-scene drafts and is what export uses first when chapters are present.
+
+### Collaboration
+
+Story collaboration routes:
+
+- `GET /api/stories/{story_id}/collaborators`
+- `POST /api/stories/{story_id}/collaborators`
+- `DELETE /api/stories/{story_id}/collaborators/{collaborator_id}`
+- `GET /api/stories/{story_id}/comments`
+- `POST /api/stories/{story_id}/comments`
+- `PUT /api/stories/{story_id}/comments/{comment_id}`
+- `DELETE /api/stories/{story_id}/comments/{comment_id}`
+- `GET /api/stories/{story_id}/activity`
+
+### Analytics
+
+Routes under `/api/stories/{story_id}/analytics`:
+
+- `GET /tension-curve`
+- `GET /pacing`
+- `GET /presence`
+- `GET /arcs`
+- `GET /health`
+- `GET /sparkline`
+
+Facet-aware endpoints accept a `facet` query param where supported. Current facet options come from scene-level metrics:
+
+- `emotional`
+- `stakes`
+- `mystery`
+- `romance`
+- `danger`
+- `hope`
+
+Health aggregates manuscript completion and structural signals rather than returning only a chart primitive.
+
+### AI
+
+Routes:
+
+- `POST /api/stories/{story_id}/insights/generate`
+- `POST /api/stories/{story_id}/draft/{scene_id}/ai-continue`
+- `POST /api/stories/{story_id}/ai/relationships`
+- `POST /api/stories/{story_id}/ai/summarize/{scene_id}`
+- `POST /api/stories/{story_id}/ai/scaffold`
+- `POST /api/stories/{story_id}/ai/generate-manuscript`
+
+#### Scaffold Request
 
 ```json
 {
-  "key": "Tense",
-  "value": "Present",
-  "source": "user",
-  "tag": null,
-  "config_node_id": "…"
-}
-```
-
-### PUT /api/stories/{storyId}/core/settings/{key}
-
-Update `value`, `source`, and/or `tag` on either a story-level row or a
-node-scoped override. All three fields are optional. Use `?node_id=...` to
-target a node-scoped row; omit the query param to hit the story-level row.
-Useful for "accept AI suggestion" by sending
-`{"source": "user", "tag": null}`.
-
-```json
-{ "value": "new value", "source": "user", "tag": null }
-```
-
-### DELETE /api/stories/{storyId}/core/settings/{key}
-
-Remove either a story-level row (omit `node_id`) or a node-scoped override
-(pass `?node_id=...`). Deleting a node override is equivalent to "revert to
-inheritance" — descendants that were inheriting this value will now inherit
-from the next ancestor up.
-
-Returns `204` on success, `404` if the key is missing at the requested scope,
-or `409` if the row is a story-level `source=system` entry (system-derived
-story-level settings are immutable).
-
----
-
-## Manuscript
-
-### GET /api/stories/{storyId}/manuscript
-
-Returns all chapters ordered by sort_order.
-
-### GET /PUT /api/stories/{storyId}/manuscript/{num}
-
----
-
-## Collaboration
-
-### GET /api/stories/{storyId}/collaborators
-
-### GET /api/stories/{storyId}/comments?scene_id={sceneId}
-
-### POST /api/stories/{storyId}/comments
-
-```json
-{ "body": "This pacing feels off", "scene_id": "uuid-or-null" }
-```
-
-### GET /api/stories/{storyId}/activity
-
-Returns last 50 activity events.
-
----
-
-## Analytics
-
-### GET /api/stories/{storyId}/analytics/tension-curve
-
-Cubic-spline interpolated tension curve with peak detection.
-
-### GET /api/stories/{storyId}/analytics/pacing
-
-Pacing analysis: velocity, flatlines, whiplash, breathing room.
-
-### GET /api/stories/{storyId}/analytics/presence
-
-Character x scene presence matrix.
-
-### GET /api/stories/{storyId}/analytics/arcs
-
-Per-character tension arcs with shape classification.
-
-### GET /api/stories/{storyId}/analytics/health
-
-Composite 0-100 health score with A-F grade.
-
-### GET /api/stories/{storyId}/analytics/sparkline
-
-LTTB-downsampled tension sparkline (12 points).
-
----
-
-## AI Triggers
-
-All return `202 Accepted` with `{ "task_id": "celery-task-id" }`. Results delivered via SSE.
-
-### POST /api/stories/{storyId}/insights/generate
-
-Trigger full story insight analysis.
-
-### POST /api/stories/{storyId}/draft/{sceneId}/ai-continue
-
-Trigger AI prose continuation for a scene.
-
-### POST /api/stories/{storyId}/ai/relationships
-
-Trigger relationship inference across all character pairs.
-
-### POST /api/stories/{storyId}/ai/summarize/{sceneId}
-
-Trigger scene summarization.
-
-### POST /api/stories/{storyId}/ai/scaffold
-
-```json
-{
-  "premise": "A woman returns to her hometown orchard...",
+  "premise": "A mapmaker discovers her city has been redrawn around erased crimes.",
   "structure_type": "3-act",
   "target_words": 80000,
-  "genres": ["Literary"],
-  "characters": [{"name": "Iris", "role": "Protagonist", "description": "..."}]
+  "genres": ["Fantasy", "Mystery"],
+  "characters": [
+    {
+      "name": "Mara",
+      "role": "Protagonist"
+    }
+  ],
+  "replace_existing": false
 }
 ```
 
----
+Behavior:
 
-## Export
+- returns `409` if scenes already exist and `replace_existing` is false
+- can replace prior scaffolded scene structure
+- persists scenes, characters, and relationship edges
 
-### POST /api/stories/{storyId}/export
+#### Generate Manuscript Request
 
 ```json
 {
-  "format": "pdf",
-  "options": {
-    "include_title_page": true,
-    "include_chapter_headers": true,
-    "font_family": "serif"
-  }
+  "skip_non_empty": true,
+  "max_scenes": null,
+  "act": null,
+  "min_scene_n": null
 }
 ```
 
-**Response (202):** `{ "task_id": "..." }`
+Behavior:
 
-### GET /api/stories/{storyId}/export/{jobId}
+- drafts scenes in order
+- can resume long runs from a scene number
+- can scope to a specific act
+- can leave existing prose untouched
 
-Poll export status. Returns download URL when complete.
+### Export
 
----
+Routes under `/api/stories/{story_id}/export`:
 
-## SSE (Server-Sent Events)
+- `POST /api/stories/{story_id}/export`
+- `GET /api/stories/{story_id}/export/{job_id}`
 
-### GET /api/stories/{storyId}/events?token={accessToken}
+Supported formats:
 
-Real-time event stream. Token passed as query param (EventSource can't set headers).
+- `pdf`
+- `docx`
+- `epub`
+- `plaintext`
 
-**Event types:**
+Example request:
 
-```
-event: ai.progress
-data: {"task_id": "...", "type": "prose_continuation", "status": "running"}
-
-event: ai.complete
-data: {"task_id": "...", "type": "insight_generation"}
-
-event: ai.error
-data: {"task_id": "...", "error": "Rate limit exceeded"}
-
-event: export.progress
-data: {"job_id": "...", "percent": 65}
-
-event: export.complete
-data: {"job_id": "...", "download_url": "..."}
-
-event: activity
-data: {"user": "Wren", "action": "added_scene"}
-
-event: comment
-data: {"user": "Kai", "body": "..."}
+```json
+{
+  "format": "docx",
+  "options": {}
+}
 ```
 
----
+The export service prefers chapter data from `manuscript_chapters`; if no manuscript chapters exist, it assembles exportable chapter content from scene drafts.
 
-## Response Conventions
+## Health Endpoint
 
-| Operation | Status | Body |
-|-----------|--------|------|
-| List | 200 | `{ items: [...], total: int }` |
-| Create | 201 | Created resource |
-| Update | 200 | Updated resource |
-| Delete | 204 | No body |
-| Async trigger | 202 | `{ task_id: "..." }` |
-| Error | 4xx/5xx | `{ detail: "message", code: "error_code" }` |
+```http
+GET /health
+```
 
-## Rate Limits
+Returns:
 
-| Endpoint | Limit |
-|----------|-------|
-| POST /auth/login | 5/minute per IP |
-| POST /auth/signup | 5/minute per IP |
-| All other endpoints | No limit (add in production) |
+- `200` when database and Redis checks pass
+- `503` when one or more dependencies are degraded
 
-## Health Check
-
-### GET /health
-
-Returns `200` if all dependencies are healthy, `503` if degraded.
+Example response:
 
 ```json
 {
@@ -682,3 +479,23 @@ Returns `200` if all dependencies are healthy, `503` if degraded.
   }
 }
 ```
+
+## Frontend Integration Notes
+
+The frontend mirrors the API by domain:
+
+- `frontend/src/api/stories.ts`
+- `frontend/src/api/scenes.ts`
+- `frontend/src/api/beats.ts`
+- `frontend/src/api/characters.ts`
+- `frontend/src/api/graph.ts`
+- `frontend/src/api/insights.ts`
+- `frontend/src/api/ai.ts`
+- `frontend/src/api/draft.ts`
+- `frontend/src/api/core.ts`
+- `frontend/src/api/manuscript.ts`
+- `frontend/src/api/collaboration.ts`
+- `frontend/src/api/analytics.ts`
+- `frontend/src/api/export.ts`
+
+If you add or change an endpoint, update the corresponding hook module and cache invalidation logic.

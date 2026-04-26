@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Btn, Label } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { useChapters } from '../api/manuscript'
+import { useStory } from '../api/stories'
 import { useTriggerExport } from '../api/export'
 import {
   useCoreTree,
@@ -13,9 +14,20 @@ import {
 import { useStore } from '../store'
 import type { CoreConfigNode } from '../types'
 
+function formatReadingTime(wordCount: number): string {
+  if (wordCount <= 0) return '0m'
+  const totalMinutes = Math.max(1, Math.ceil(wordCount / 250))
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours === 0) return `${totalMinutes}m`
+  if (minutes === 0) return `${hours}h`
+  return `${hours}h ${minutes}m`
+}
+
 function ManuscriptPage() {
   const { storyId } = Route.useParams()
   const { chapter: chapterParam } = Route.useSearch()
+  const { data: story, isLoading: storyLoading } = useStory(storyId)
   const { data: chaptersData, isLoading } = useChapters(storyId)
   const exportMutation = useTriggerExport(storyId)
   const editMode = useStore(s => s.editMode)
@@ -27,6 +39,10 @@ function ManuscriptPage() {
   const chapterRefsMap = useRef<Map<string, HTMLDivElement>>(new Map())
 
   const chapters = chaptersData ?? []
+  const manuscriptWords = story?.manuscript_word_count ?? 0
+  const sceneCount = story?.scene_count ?? 0
+  const draftNumber = story?.draft_number ?? 0
+  const title = story?.title ?? 'Untitled story'
 
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current
@@ -71,7 +87,7 @@ function ManuscriptPage() {
     }
   }, [chapterParam, chapters.length])
 
-  if (isLoading) return <LoadingState />
+  if (isLoading || storyLoading) return <LoadingState />
 
   return (
     <div
@@ -96,15 +112,15 @@ function ManuscriptPage() {
         }}
       >
         <div>
-          <Label>Manuscript &middot; Draft 3</Label>
+          <Label>Manuscript &middot; Draft {draftNumber}</Label>
           <div style={{ fontFamily: 'var(--font-serif)', fontSize: 18, fontStyle: 'italic' }}>
-            A Stranger in the Orchard
+            {title}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 20, alignItems: 'center', fontSize: 11, color: 'var(--ink-2)' }}>
-          <span>72,340 words</span>
-          <span>47 scenes &middot; {chapters.length} chapters</span>
-          <span>Reading time &asymp; 4h 50m</span>
+          <span>{manuscriptWords.toLocaleString()} words</span>
+          <span>{sceneCount} scenes &middot; {chapters.length} chapters</span>
+          <span>Reading time &asymp; {formatReadingTime(manuscriptWords)}</span>
           <Btn
             variant="ghost"
             onClick={() => exportMutation.mutate({ format: 'pdf' })}
@@ -164,11 +180,9 @@ function ManuscriptPage() {
                 margin: '24px 0 12px',
               }}
             >
-              A Stranger
-              <br />
-              in the Orchard
+              {title}
             </h1>
-            <div style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 18 }}>by Elena Marsh</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 18 }}>Draft {draftNumber}</div>
           </div>
 
           {chapters.length === 0 && (

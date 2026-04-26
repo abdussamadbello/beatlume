@@ -44,6 +44,12 @@ export interface Story {
   structure_type: string
   story_type: string
   archived: boolean
+  scene_count: number
+  character_count: number
+  active_insight_count: number
+  draft_word_count: number
+  manuscript_word_count: number
+  manuscript_chapter_count: number
 }
 
 // --- Scene ---

@@ -2,6 +2,7 @@ from typing import TypedDict
 
 from langgraph.graph import StateGraph, END
 
+from app.ai.graph_metrics import instrumented_node
 from app.ai.llm import call_llm
 from app.ai.prompts import scene_summarization
 
@@ -14,6 +15,7 @@ class SummaryState(TypedDict):
     error: str | None
 
 
+@instrumented_node("summary", "generate_summary")
 async def generate_summary(state: SummaryState) -> dict:
     messages = scene_summarization.build_prompt(
         state["scene"], state["prose"], state.get("pov_character")

@@ -79,7 +79,7 @@ function DashboardPage() {
 
   const sorted = [...filtered].sort((a, b) => {
     if (sort === 'alphabetical') return a.title.localeCompare(b.title)
-    if (sort === 'wordcount') return b.target_words - a.target_words
+    if (sort === 'wordcount') return b.draft_word_count - a.draft_word_count
     return 0 // 'recent' keeps original order
   })
 
@@ -292,7 +292,9 @@ function StoryCard({
     onAfterDuplicate(copy.id)
   }
 
-  const progress = 0 // TODO: wire actual word count once draft totals are exposed
+  const progress = story.target_words > 0
+    ? Math.min(story.draft_word_count / story.target_words, 1)
+    : 0
 
   return (
     <div
@@ -333,6 +335,9 @@ function StoryCard({
       {/* Stats */}
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-2)', marginBottom: 8 }}>
         Target: {story.target_words.toLocaleString()} words
+      </div>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-3)', marginBottom: 8 }}>
+        Drafted: {story.draft_word_count.toLocaleString()} words
       </div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>

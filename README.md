@@ -1,31 +1,75 @@
 # BeatLume
 
-A graph-driven AI fiction planner. Structure your novel with scene boards, character relationship graphs, tension curves, and AI-powered story analysis — all in a blueprint-aesthetic workspace.
+BeatLume is a graph-driven AI fiction workspace for planning, drafting, and exporting long-form stories.
 
-## What It Does
+It is not only a scene board or an analysis tool. The product guarantee is that a writer can move from setup to a complete, exportable manuscript inside the app, using AI-assisted scaffolding, scene drafting, manuscript assembly, and export.
 
-BeatLume is a writing tool that treats fiction structurally. Authors plan their stories through interconnected views:
+## Product Guarantee
 
-- **Scene Board** — Kanban-style board organized by act, with POV, tension scores, and drag-to-reorder
-- **Relationship Graph** — Force-directed character relationship visualization (conflict, alliance, romance, mentor, secret, family edges) with temporal scrubbing
-- **Tension Timeline** — Cubic-spline tension curve with peak detection, pacing analysis, and heatmap overlays
-- **AI Insights** — Developmental editor analysis powered by LLM: flags pacing flatlines, character disappearances, untested relationships, structural gaps
-- **Draft Editor** — Scene-locked prose editor with AI continuation that matches the author's voice
-- **Manuscript** — Full manuscript view with chapter navigation and scroll progress
-- **Export** — PDF, DOCX, ePub, and plain text with professional manuscript formatting
+Every story workspace is expected to support this path:
 
-## Architecture
+1. Create a story and define the premise, structure, story type, and target word count.
+2. Scaffold the story into scenes, characters, and initial relationship edges.
+3. Refine the plan through scenes, beats, graph edits, analytics, and AI insights.
+4. Generate prose scene by scene or run a full-manuscript pass.
+5. Review the assembled manuscript and export it as PDF, DOCX, ePub, or plaintext.
 
+That end-to-end path matters more than any isolated planning surface.
+
+## What BeatLume Includes
+
+- Guided setup for premise, structure, character seed data, and AI scaffold kickoff
+- Story-scoped views for overview, scenes, beats, characters, graph, timeline, AI insights, draft, manuscript, collaboration, and export
+- Async AI workflows for story scaffolding, insight generation, insight application, prose continuation, relationship inference, scene summarization, and full-manuscript generation
+- Real-time task feedback over SSE for AI progress, completion, and errors
+- Export pipeline for manuscript output in multiple formats
+- Organization-scoped multi-tenancy enforced with PostgreSQL Row-Level Security
+
+## Monorepo Layout
+
+```text
+beatlume/
+├── frontend/               React + Vite + TanStack Router + TanStack Query + Zustand
+├── backend/                FastAPI + SQLAlchemy + PostgreSQL + LangGraph + Celery
+├── docs/                   Architecture, API, deployment, contribution, and product docs
+├── scripts/                Local development helpers
+├── CLAUDE.md               Product and repo context for coding agents
+├── AGENTS.md               Agent workflow rules for this repo
+└── Makefile                Common setup, dev, test, and infra commands
 ```
-frontend/  React 19 + Vite + TanStack Router + TanStack Query + Zustand
-backend/   FastAPI + SQLAlchemy 2 + PostgreSQL + LangGraph + Celery + Redis
+
+## Architecture At A Glance
+
+```text
+Frontend routes/components
+  -> TanStack Query hooks
+    -> FastAPI routes
+      -> services
+        -> SQLAlchemy + PostgreSQL
+        -> Celery tasks for AI/export
+          -> Redis pub/sub
+            -> SSE back to the browser
 ```
 
-**Frontend** — 27 routes, 14 API modules, blueprint design system (oklch colors, JetBrains Mono, Instrument Serif)
+### Frontend
 
-**Backend** — 46 API endpoints, 17 database tables with org-based Row-Level Security, 5 AI workflows, 4 export formats, OpenTelemetry observability
+- React 19
+- Vite
+- TanStack Router
+- TanStack Query
+- Zustand
+- TypeScript
 
-**AI Pipeline** — LangGraph orchestrates multi-step workflows. LiteLLM routes to different models by task complexity (fast model for summaries, powerful model for story analysis). A context engine assembles the right data for each prompt — retrieving, ranking, and truncating to fit token budgets.
+### Backend
+
+- FastAPI
+- SQLAlchemy 2 async
+- PostgreSQL 16
+- Alembic
+- LangGraph
+- LiteLLM
+- Celery + Redis
+- OpenTelemetry + structlog
 
 ## Quick Start
 
@@ -33,195 +77,149 @@ backend/   FastAPI + SQLAlchemy 2 + PostgreSQL + LangGraph + Celery + Redis
 
 - Node.js 20+
 - Python 3.12+
-- PostgreSQL 16 (running locally)
-- Redis 7 (running locally)
-- [UV](https://docs.astral.sh/uv/) package manager
+- `uv`
+- PostgreSQL running locally on `localhost:5432`
+- Redis running locally on `localhost:6379`
 
-### Setup
+Local development defaults:
+
+- PostgreSQL database: `beatlume`
+- PostgreSQL user: `beatlume`
+- PostgreSQL password: `beatlume_dev`
+- Redis URL: `redis://localhost:6379/0`
+
+### One-Time Setup
 
 ```bash
-git clone <repo-url> beatlume && cd beatlume
 make setup
 ```
 
-This installs all dependencies, creates the database, runs migrations, and seeds sample data.
+This installs dependencies, creates the database, runs migrations, and seeds local data.
 
-**Seed credentials:** `elena@beatlume.io` / `beatlume123`
+Seed login:
 
-### Development
+- Email: `elena@beatlume.io`
+- Password: `beatlume123`
+
+### Run The App
 
 ```bash
-# Start API, all Celery workers + beat, and Vite (backend + Celery in background)
 make dev
-
-# Stop API + Vite on dev ports and BeatLume Celery workers/beat
-make dev-stop
-
-# Or start separately
-make dev-frontend    # localhost:5173
-make dev-backend     # localhost:8000
 ```
 
-### Testing
+Useful variants:
 
 ```bash
-make test            # Run all tests
-make test-backend    # 95 pytest tests
-make test-frontend   # TypeScript type checking
-make lint            # Ruff (backend) + ESLint (frontend)
+make dev-backend
+make dev-frontend
+make dev-stop
+make celery-all
 ```
 
-## Tech Stack
+Default local URLs:
+
+- Frontend: `http://localhost:5173`
+- API: `http://localhost:8000`
+- Health check: `http://localhost:8000/health`
+
+## Testing And Validation
+
+Repo-local commands:
+
+```bash
+make test
+make test-backend
+make test-frontend
+make test-e2e
+make lint
+```
+
+Direct commands used most often:
+
+```bash
+cd backend && PYTHONPATH=. uv run pytest tests/ -v
+cd frontend && npx tsc --noEmit
+```
+
+## Key Workflows
+
+### Story Creation And Scaffold
+
+The setup wizard creates the story record first, then can immediately trigger `/api/stories/{storyId}/ai/scaffold` using the writer's premise, structure, target word count, genres, and seed characters.
+
+The scaffold flow persists:
+
+- scenes
+- characters
+- graph edges inferred from scaffold relationships
+
+### Whole-Manuscript Generation
+
+BeatLume supports both scene-level prose continuation and story-wide drafting through `/api/stories/{storyId}/ai/generate-manuscript`.
+
+That job:
+
+- walks scenes in order
+- can skip scenes that already have prose
+- can resume from a scene number
+- emits progress and error events over SSE
+- updates draft and manuscript-facing views as work completes
+
+### Analytics And Explainable Insights
+
+The analytics layer computes:
+
+- tension curves
+- pacing
+- character presence
+- character arcs
+- health score
+- sparklines
+
+AI insights sit on top of those structural signals and route users back to the relevant story view instead of acting like a detached chatbot.
+
+## Development Conventions
 
 ### Frontend
 
-| Tool | Purpose |
-|------|---------|
-| React 19 | UI framework |
-| Vite 8 | Build tool |
-| TanStack Router | File-based routing with type-safe params |
-| TanStack Query v5 | Server state (caching, refetching, optimistic updates) |
-| Zustand | Client state (auth, UI selections) |
-| TypeScript 6 | Type safety |
+- Server state lives in TanStack Query hooks under `frontend/src/api`
+- Auth and ephemeral UI state live in `frontend/src/store.ts`
+- Story pages use TanStack Router file routes like `stories.$storyId.*.tsx`
+- Styling is inline `CSSProperties` plus shared CSS tokens
 
 ### Backend
 
-| Tool | Purpose |
-|------|---------|
-| FastAPI | Async API framework |
-| SQLAlchemy 2 | Async ORM with PostgreSQL |
-| Alembic | Database migrations |
-| LangGraph | AI workflow orchestration |
-| LiteLLM | Multi-provider LLM abstraction |
-| Celery + Redis | Background task queue |
-| ReportLab | PDF export |
-| python-docx | DOCX export |
-| ebooklib | ePub export |
-| OpenTelemetry | Distributed tracing + metrics |
-| structlog | Structured JSON logging |
-| slowapi | Rate limiting |
+- Routes live in `backend/app/api`
+- Services work directly with SQLAlchemy sessions
+- Models live in `backend/app/models`
+- AI prompts, context assembly, and graphs live under `backend/app/ai`
+- Async AI and export jobs run through Celery tasks in `backend/app/tasks`
 
-### Infrastructure
+### Multi-Tenancy
 
-| Tool | Purpose |
-|------|---------|
-| PostgreSQL 16 | Primary database with RLS |
-| Redis 7 | Cache, Celery broker, pub/sub for SSE |
-| MinIO | S3-compatible object storage (local dev) |
-| Jaeger | Trace visualization |
-| Docker Compose | Optional infrastructure services |
+BeatLume uses organization-scoped Row-Level Security. For org-scoped tables:
 
-## Project Structure
+- inserts must set `org_id`
+- queries do not need explicit `org_id` filters when the request session is configured through `get_current_org`
 
-```
-beatlume/
-├── frontend/
-│   └── src/
-│       ├── api/                 # TanStack Query hooks (14 modules)
-│       ├── hooks/               # Custom hooks (SSE)
-│       ├── components/
-│       │   ├── chrome/          # AppShell, Sidebar, ChromeTop
-│       │   ├── charts/          # TensionCurve, GraphRenderer
-│       │   └── primitives/      # Tag, Btn, Label, Panel, TensionBar, etc.
-│       ├── routes/              # File-based routes (27 files)
-│       ├── styles/              # CSS tokens + global styles
-│       ├── store.ts             # Zustand (auth + UI state)
-│       └── types.ts             # TypeScript interfaces
-│
-├── backend/
-│   ├── app/
-│   │   ├── api/                 # FastAPI routers (15 modules)
-│   │   ├── models/              # SQLAlchemy models (12 modules, 17 tables)
-│   │   ├── schemas/             # Pydantic request/response schemas
-│   │   ├── services/            # Business logic + analytics engine
-│   │   ├── ai/
-│   │   │   ├── context/         # Context retrieval, ranking, truncation
-│   │   │   ├── graphs/          # LangGraph workflows (5)
-│   │   │   ├── prompts/         # Prompt templates (6 modules)
-│   │   │   └── llm.py           # LiteLLM client + model routing
-│   │   ├── tasks/               # Celery task definitions
-│   │   ├── export/              # PDF, DOCX, ePub, plaintext engines
-│   │   ├── storage/             # S3/MinIO client
-│   │   └── telemetry/           # OpenTelemetry + structlog
-│   ├── migrations/              # Alembic migrations + RLS bootstrap
-│   ├── tests/                   # pytest (95 tests)
-│   └── docker-compose.yml       # Infrastructure services
-│
-├── docs/superpowers/
-│   ├── specs/                   # Design specifications
-│   └── plans/                   # Implementation plans
-│
-├── CLAUDE.md                    # Claude Code instructions
-├── AGENTS.md                    # AI agent workflow guide
-└── Makefile                     # Development commands
-```
+## Documentation Map
 
-## API Overview
+- [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) - deeper developer handbook for local architecture, workflows, and implementation patterns
+- [docs/API.md](./docs/API.md) - current API surface, async task behavior, and SSE model
+- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) - deeper systems and algorithms document
+- [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - local and production deployment guidance
+- [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) - contribution workflow
+- [docs/PRD.md](./docs/PRD.md) - product requirements background
+- [docs/superpowers/plans](./docs/superpowers/plans) - implementation plans
+- [docs/superpowers/specs](./docs/superpowers/specs) - design and engineering specs
 
-All story data scoped under `/api/stories/{storyId}/`:
+## Notes For Contributors
 
-| Domain | Endpoints | Description |
-|--------|-----------|-------------|
-| Auth | `/auth/signup`, `/auth/login`, `/auth/logout`, `/auth/refresh`, `/auth/oauth/{provider}` | JWT + OAuth2 (Google, GitHub) |
-| Users | `/api/users/me` | Profile management |
-| Stories | `/api/stories` | CRUD with list/filter |
-| Scenes | `/api/stories/{id}/scenes` | CRUD + filter by act/pov/sort |
-| Characters | `/api/stories/{id}/characters` | CRUD |
-| Graph | `/api/stories/{id}/graph` | Nodes, edges, suggestions |
-| Insights | `/api/stories/{id}/insights` | List, dismiss, AI generate |
-| Draft | `/api/stories/{id}/draft/{sceneId}` | Read/write prose content |
-| Core Config | `/api/stories/{id}/core/tree`, `/core/settings` | Story metadata with per-node overrides (walk-up inheritance Story → Part → Chapter → Scene → Beat), `user`/`system`/`AI` provenance, and AI-prompt scene-scoped resolution |
-| Manuscript | `/api/stories/{id}/manuscript` | Chapter read/update |
-| Collaboration | `/api/stories/{id}/collaborators`, `/comments`, `/activity` | Team features |
-| Analytics | `/api/stories/{id}/analytics/*` | Tension curve, pacing, presence, arcs, health, sparkline |
-| AI | `/api/stories/{id}/ai/scaffold`, `/ai/relationships`, `/ai/summarize` | Trigger AI workflows |
-| Export | `/api/stories/{id}/export` | PDF/DOCX/ePub/text generation |
-| SSE | `/api/stories/{id}/events` | Real-time event stream |
-
-## Multi-Tenancy
-
-Organization-based with PostgreSQL Row-Level Security (RLS). Every data table has an `org_id` column. RLS policies enforce isolation at the database level — even buggy application code can't leak data across organizations.
-
-## AI Workflows
-
-Five LangGraph workflows, each with dedicated prompts and output validation:
-
-| Workflow | Model Tier | What It Does |
-|----------|-----------|-------------|
-| Insight Generation | Powerful | Full structural analysis: pacing, characters, relationships, continuity |
-| Prose Continuation | Standard | Continues scene prose matching the author's voice |
-| Relationship Inference | Standard | Infers character relationships from shared scene prose |
-| Scene Summarization | Fast | Generates summary + beats for a scene |
-| Story Scaffolding | Powerful | Generates full story structure from a premise |
-
-A **context engine** assembles the right data for each task — retrieving scenes/characters/prose from the database, ranking by relevance, and truncating to fit token budgets.
-
-## Environment Variables
-
-See `backend/.env.example` for all configuration options. Key groups:
-
-- **Database:** `DATABASE_URL`, `DATABASE_URL_SYNC`
-- **Redis:** `REDIS_URL`
-- **Auth:** `JWT_SECRET_KEY` (must change in production), OAuth client IDs/secrets
-- **AI:** `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, model configuration per tier
-- **Storage:** S3 endpoint, credentials, bucket names
-- **Telemetry:** OTLP endpoint, service name, log level
-
-## Make Targets
-
-```
-make setup              Full setup: install, create DB, migrate, seed
-make dev                Start API + Celery (all queues) + Vite
-make dev-stop           Stop API + Vite on dev ports and Celery for this app
-make test               Run all tests (backend + frontend)
-make lint               Lint everything (ruff + eslint)
-make db-reset           Drop, recreate, migrate, seed
-make migrate            Run pending Alembic migrations
-make seed               Seed sample story data
-make celery-all         Start all Celery workers + beat
-make build              Production frontend build
-make help               Show all available commands
-```
+- Read the existing docs and recent code before changing architecture or workflow
+- Always use real UUIDs from the API or database; never invent identifiers
+- Backend commands should use `PYTHONPATH=.`
+- Avoid putting API data in Zustand; use Query cache instead
+- The repo may have unrelated local changes in flight; do not revert them casually
 
 ## License
 

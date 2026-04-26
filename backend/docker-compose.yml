@@ -1,4 +1,37 @@
+# BeatLume Docker Compose
+# All containers prefixed with "beatlume-" to avoid conflicts with other projects
+name: beatlume
+
 services:
+  migrate:
+    build:
+      context: .
+      target: api
+    restart: "no"
+    # Host defaults from .env, then Docker service-hostname overrides from .env.docker (last file wins).
+    env_file:
+      - .env
+      - .env.docker
+    command: ["uv", "run", "alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  seed:
+    build:
+      context: .
+      target: api
+    restart: "no"
+    # Idempotent: the script short-circuits if elena@beatlume.io already exists.
+    # Safe to run on every `docker compose up` — no-ops against a seeded DB.
+    env_file:
+      - .env
+      - .env.docker
+    command: ["uv", "run", "python", "-m", "app.seeds.sample_story"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   api:
     build:
       context: .
@@ -6,15 +39,22 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
+    # No volume mounts for docker-all - use built image (production mode)
+    # For dev with hot reload, use 'make docker-infra' + 'make dev-backend'
     env_file:
       - .env
+      - .env.docker
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
 
   postgres:
     image: postgres:16-alpine
@@ -24,10 +64,10 @@ services:
       POSTGRES_USER: beatlume
       POSTGRES_PASSWORD: beatlume_dev
     ports:
-      - "5432:5432"
+      - "5432:5432"  # Standard port for local dev
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init_rls.sql:/docker-entrypoint-initdb.d/init_rls.sql
+      - ./migrations/init_rls.sql:/docker-entrypoint-initdb.d/init_rls.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U beatlume -d beatlume"]
       interval: 5s
@@ -38,7 +78,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6379:6379"  # Standard port for local dev
     volumes:
       - redis_data:/data
     healthcheck:
@@ -51,36 +91,113 @@ services:
     image: minio/minio:latest
     restart: unless-stopped
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000"   # MinIO API (standard port)
+      - "9001:9001"   # MinIO Console
     environment:
       MINIO_ROOT_USER: beatlume
       MINIO_ROOT_PASSWORD: beatlume_dev
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   minio-setup:
     image: minio/mc:latest
     depends_on:
-      - minio
+      minio:
+        condition: service_started
     entrypoint: >
       /bin/sh -c "
-      sleep 3;
+      sleep 5;
       mc alias set local http://minio:9000 beatlume beatlume_dev;
       mc mb --ignore-existing local/beatlume-exports;
       mc mb --ignore-existing local/beatlume-assets;
       echo 'Buckets created successfully';
       "
 
+  # OpenTelemetry Collector - receives from app, routes to Jaeger/Prometheus
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    restart: unless-stopped
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver (app sends here)
+      - "4318:4318"   # OTLP HTTP receiver
+    depends_on:
+      - jaeger
+      - prometheus
+
   jaeger:
     image: jaegertracing/all-in-one:latest
     ports:
-      - "16686:16686"
-      - "4317:4317"
-      - "4318:4318"
+      - "16686:16686"  # Jaeger UI
+    # OTLP ports handled by collector, not exposed directly
 
+  prometheus:
+    image: prom/prometheus:v2.49.0
+    restart: unless-stopped
+    ports:
+      - "9090:9090"    # Prometheus UI
+    volumes:
+      - prometheus_data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--enable-feature=otlp-write-receiver"  # Native OTLP metrics support
+      - "--web.enable-remote-write-receiver"
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"    # Grafana UI
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=beatlume_dev
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      # Provisioning: datasources + dashboard provider + dashboard JSON are mounted read-only
+      # so git is the source of truth. Wiping the grafana_data volume does not wipe these.
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      # Mount the local frontend code into the container for hot-reloading
+      - ../frontend:/app
+      # Prevent local node_modules from overwriting the container's node_modules
+      - /app/node_modules
+    environment:
+      # Instruct the frontend to talk to the backend on localhost:8000
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - api
+
+# Explicit `name:` on each volume locks in the exact volume currently in use, regardless of
+# project name or COMPOSE_PROJECT_NAME env overrides. Prevents future renames from silently
+# orphaning data or picking up stale `backend_*` volumes from before this project was named.
 volumes:
   postgres_data:
+    name: beatlume_postgres_data
   redis_data:
+    name: beatlume_redis_data
   minio_data:
+    name: beatlume_minio_data
+  prometheus_data:
+    name: beatlume_prometheus_data
+  grafana_data:
+    name: beatlume_grafana_data

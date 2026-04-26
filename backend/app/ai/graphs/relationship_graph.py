@@ -2,6 +2,7 @@ from typing import TypedDict
 
 from langgraph.graph import StateGraph, END
 
+from app.ai.graph_metrics import instrumented_node
 from app.ai.llm import call_llm
 from app.ai.prompts import relationship_inference
 
@@ -12,6 +13,7 @@ class RelationshipState(TypedDict):
     error: str | None
 
 
+@instrumented_node("relationship", "analyze_pairs")
 async def analyze_pairs(state: RelationshipState) -> dict:
     results = []
     for pair in state["pairs"]:

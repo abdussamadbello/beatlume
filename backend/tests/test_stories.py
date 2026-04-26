@@ -1,4 +1,12 @@
 import pytest
+import uuid
+
+from sqlalchemy import select
+
+from app.models.draft import DraftContent
+from app.models.insight import Insight, InsightSeverity
+from app.models.manuscript import ManuscriptChapter
+from app.models.story import Story
 
 
 async def get_auth_token(client) -> str:
@@ -43,6 +51,123 @@ async def test_get_story(client):
     resp = await client.get(f"/api/stories/{story_id}", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json()["title"] == "My Novel"
+
+
+@pytest.mark.asyncio
+async def test_story_detail_includes_live_metrics(client, db_session):
+    token = await get_auth_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    create = await client.post(
+        "/api/stories",
+        json={"title": "Metrics Novel", "target_words": 1000},
+        headers=headers,
+    )
+    story_id = create.json()["id"]
+
+    await client.post(
+        f"/api/stories/{story_id}/characters",
+        json={"name": "Iris"},
+        headers=headers,
+    )
+    scene_1 = (
+        await client.post(
+            f"/api/stories/{story_id}/scenes",
+            json={"title": "Opening", "pov": "Iris", "act": 1},
+            headers=headers,
+        )
+    ).json()
+    await client.post(
+        f"/api/stories/{story_id}/scenes",
+        json={"title": "Second", "pov": "Iris", "act": 2},
+        headers=headers,
+    )
+
+    story_row = (
+        await db_session.execute(select(Story).where(Story.id == uuid.UUID(story_id)))
+    ).scalar_one()
+    db_session.add(
+        DraftContent(
+            story_id=story_row.id,
+            scene_id=uuid.UUID(scene_1["id"]),
+            org_id=story_row.org_id,
+            content="alpha beta gamma delta",
+            word_count=4,
+        )
+    )
+    db_session.add(
+        ManuscriptChapter(
+            story_id=story_row.id,
+            org_id=story_row.org_id,
+            num=1,
+            title="Chapter 1",
+            content="one two three",
+            sort_order=1,
+        )
+    )
+    db_session.add(
+        Insight(
+            story_id=story_row.id,
+            org_id=story_row.org_id,
+            severity=InsightSeverity.red,
+            category="Structure",
+            title="Act two missing",
+            body="Body",
+            refs=["S1"],
+            dismissed=False,
+        )
+    )
+    await db_session.commit()
+
+    resp = await client.get(f"/api/stories/{story_id}", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["scene_count"] == 2
+    assert data["character_count"] == 1
+    assert data["active_insight_count"] == 1
+    assert data["draft_word_count"] == 4
+    assert data["manuscript_word_count"] == 3
+    assert data["manuscript_chapter_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_list_stories_includes_live_metrics(client, db_session):
+    token = await get_auth_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    create = await client.post(
+        "/api/stories",
+        json={"title": "Listed Metrics"},
+        headers=headers,
+    )
+    story_id = create.json()["id"]
+    scene = (
+        await client.post(
+            f"/api/stories/{story_id}/scenes",
+            json={"title": "Opening", "pov": "Iris", "act": 1},
+            headers=headers,
+        )
+    ).json()
+
+    story_row = (
+        await db_session.execute(select(Story).where(Story.id == uuid.UUID(story_id)))
+    ).scalar_one()
+    db_session.add(
+        DraftContent(
+            story_id=story_row.id,
+            scene_id=uuid.UUID(scene["id"]),
+            org_id=story_row.org_id,
+            content="one two",
+            word_count=2,
+        )
+    )
+    await db_session.commit()
+
+    resp = await client.get("/api/stories", headers=headers)
+    assert resp.status_code == 200
+    item = resp.json()["items"][0]
+    assert item["scene_count"] == 1
+    assert item["draft_word_count"] == 2
 
 
 @pytest.mark.asyncio

@@ -41,7 +41,7 @@ async def create_story(
     db: AsyncSession = Depends(get_db),
 ):
     story = await story_service.create_story(db, org.id, body.model_dump())
-    return story
+    return await story_service.attach_story_stat(db, story)
 
 
 @router.post(
@@ -60,12 +60,15 @@ async def duplicate_story(
         db, story.id, org.id, user.id, "story.duplicate",
         {"new_story_id": str(new_story.id), "new_title": new_story.title},
     )
-    return new_story
+    return await story_service.attach_story_stat(db, new_story)
 
 
 @router.get("/{story_id}", response_model=StoryRead)
-async def get_story_detail(story: Story = Depends(get_story)):
-    return story
+async def get_story_detail(
+    story: Story = Depends(get_story),
+    db: AsyncSession = Depends(get_db),
+):
+    return await story_service.attach_story_stat(db, story)
 
 
 @router.put("/{story_id}", response_model=StoryRead)
@@ -88,7 +91,7 @@ async def update_story(
         db, story.id, org.id, user.id, action,
         {"fields": sorted(patch.keys())},
     )
-    return updated
+    return await story_service.attach_story_stat(db, updated)
 
 
 @router.delete("/{story_id}", status_code=status.HTTP_204_NO_CONTENT)

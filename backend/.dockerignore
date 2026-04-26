@@ -1,0 +1,41 @@
+# Virtualenvs — host symlinks are broken inside the container, forcing a full
+# `uv sync` rebuild on every start. Excluding these drops boot time from ~2min
+# to seconds.
+.venv/
+venv/
+
+# Python caches
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Tool caches
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Env + secrets (compose reads .env from host via env_file, not from the image)
+.env
+.env.*
+!.env.example
+
+# Celery beat schedule is local runtime state, not a build artifact
+celerybeat-schedule
+celerybeat-schedule.*
+
+# Git + editor
+.git/
+.gitignore
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

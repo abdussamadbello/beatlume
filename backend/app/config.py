@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     # Redis — required
     redis_url: str = "redis://localhost:6379/0"
 
-    # S3 — keep defaults for dev
+    # S3 — keep defaults for dev (MinIO)
     s3_endpoint_url: str = "http://localhost:9000"
     s3_access_key: str = "beatlume"
     s3_secret_key: str = "beatlume_dev"
@@ -37,10 +37,21 @@ class Settings(BaseSettings):
     ai_model_standard: str = "gpt-4o"
     ai_model_powerful: str = "claude-sonnet-4-6"
     ai_model_scaffold: str = "claude-sonnet-4-6"
+    # Fallback models when rate-limited (comma-separated)
+    ai_model_fallbacks: str = (
+        "openrouter/openai/gpt-4o-mini,openrouter/meta-llama/llama-3.1-8b-instruct"
+    )
+    # Max concurrent LLM calls (semaphore limit)
+    ai_max_concurrent_calls: int = 3
 
     # Observability
-    otel_exporter_otlp_endpoint: str = "http://localhost:4317"
+    # OpenTelemetry Collector endpoint (receives both traces and metrics)
+    otel_exporter_otlp_endpoint: str = "http://localhost:4317"  # gRPC to OTel Collector
+    otel_exporter_otlp_metrics_endpoint: str = (
+        ""  # Use same endpoint as traces (Collector handles routing)
+    )
     otel_service_name: str = "beatlume-api"
+    otel_export_otlp_metrics: bool = True  # Export metrics via OTLP gRPC to Collector
     log_level: str = "INFO"
     log_format: str = "json"
 
