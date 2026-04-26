@@ -65,6 +65,18 @@ async def run_chat_turn(
     )
     yield {"type": "chat.user.persisted", "data": {"id": str(user_msg.id)}}
 
+    # 1b) Auto-title an untitled thread from the first user message.
+    # Done before the LLM call so the title is visible even if the turn fails.
+    if not (thread.title or "").strip():
+        new_title = (user_text or "").strip().splitlines()[0][:60].strip() or "Untitled thread"
+        thread.title = new_title
+        await db.commit()
+        await db.refresh(thread)
+        yield {
+            "type": "chat.thread.titled",
+            "data": {"thread_id": str(thread.id), "title": new_title},
+        }
+
     # 2) Build adaptive context
     story_context = await build_chat_context(db, story_id, active_scene_id=active_scene_id)
     history_rows, _ = await chat_service.list_messages(db, thread.id, limit=100)

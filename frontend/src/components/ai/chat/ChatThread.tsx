@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   useChatMessages,
   sendChatMessageStream,
   useArchiveChatThread,
+  chatThreadsKey,
 } from '../../../api/chat'
 import { useStore } from '../../../store'
 import type { ChatMessage } from '../../../types'
@@ -20,6 +22,7 @@ export function ChatThread({
 }) {
   const { data, refetch } = useChatMessages(threadId)
   const archive = useArchiveChatThread(storyId)
+  const qc = useQueryClient()
   const activeSceneId = useStore((s) => s.activeSceneId)
   const activeSceneN = useStore((s) => s.activeSceneN)
   const [streaming, setStreaming] = useState<{ id: string; content: string } | null>(null)
@@ -49,6 +52,10 @@ export function ChatThread({
           const toolName =
             (ev.data as { tool_name?: string } | null)?.tool_name ?? 'tool'
           setStreaming({ id: 'tmp', content: `…using ${toolName}` })
+        } else if (ev.type === 'chat.thread.titled') {
+          // Server auto-titled the thread — invalidate the threads list so the
+          // sidebar reflects it next time the user goes back.
+          qc.invalidateQueries({ queryKey: chatThreadsKey(storyId) })
         } else if (
           ev.type === 'chat.message.complete' ||
           ev.type === 'chat.tool_call.proposed'
