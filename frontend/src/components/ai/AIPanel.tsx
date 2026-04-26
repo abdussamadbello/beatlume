@@ -105,17 +105,18 @@ export function AILauncher() {
   const aiPanelOpen = useStore((s) => s.aiPanelOpen)
   const aiPanelLastSeenAt = useStore((s) => s.aiPanelLastSeenAt)
   const toggleAIPanel = useStore((s) => s.toggleAIPanel)
+  const unreadChat = useStore((s) => s.unreadAssistantMessages)
 
   const activeCount = aiTasks.filter((t) => t.status === 'queued' || t.status === 'running').length
   const unseenCount = aiTasks.filter(
     (t) => (t.status === 'completed' || t.status === 'error') && (t.completed_at ?? 0) > aiPanelLastSeenAt,
   ).length
-  const totalNotice = activeCount + unseenCount
+  const totalNotice = activeCount + unseenCount + unreadChat
 
   if (aiPanelOpen) return null
 
   return (
-    <button style={launcherBase} onClick={toggleAIPanel} aria-label="Open AI tasks">
+    <button style={launcherBase} onClick={toggleAIPanel} aria-label="Open AI panel">
       <span>AI</span>
       {totalNotice > 0 && <span style={badgeStyle}>{totalNotice}</span>}
     </button>
