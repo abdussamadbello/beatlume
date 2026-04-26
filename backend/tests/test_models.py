@@ -121,7 +121,6 @@ from app.models.chat_message import ChatMessage, ChatMessageRole, ToolCallStatus
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="enabled in Task 2 once migration runs")
 async def test_chat_thread_persists(db_session, sample_org, sample_story):
     thread = ChatThread(
         org_id=sample_org.id,
@@ -139,7 +138,6 @@ async def test_chat_thread_persists(db_session, sample_org, sample_story):
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="enabled in Task 2 once migration runs")
 async def test_chat_message_persists_with_tool_call(db_session, sample_org, sample_story):
     thread = ChatThread(org_id=sample_org.id, story_id=sample_story.id)
     db_session.add(thread)
@@ -164,7 +162,6 @@ async def test_chat_message_persists_with_tool_call(db_session, sample_org, samp
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="enabled in Task 2 once migration runs")
 async def test_chat_thread_cascades_messages_on_delete(db_session, sample_org, sample_story):
     thread = ChatThread(org_id=sample_org.id, story_id=sample_story.id)
     db_session.add(thread)
