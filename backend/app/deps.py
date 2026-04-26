@@ -12,8 +12,22 @@ from app.models.user import User, Organization
 from app.models.story import Story as StoryModel
 from app.services.auth import decode_token
 
+def _async_database_url(url: str) -> str:
+    """Ensure the URL uses the asyncpg driver required by create_async_engine.
+
+    Railway's Postgres service provides DATABASE_URL with the plain
+    ``postgresql://`` scheme, which SQLAlchemy maps to psycopg2 (sync).
+    Replace it with ``postgresql+asyncpg://`` so the async engine works.
+    """
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+asyncpg://", 1)
+    return url
+
+
 engine = create_async_engine(
-    settings.database_url,
+    _async_database_url(settings.database_url),
     echo=False,
     pool_pre_ping=True,
     pool_recycle=300,
