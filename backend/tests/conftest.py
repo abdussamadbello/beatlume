@@ -6,6 +6,8 @@ from app.config import settings
 from app.deps import get_db
 from app.main import create_app
 from app.models import Base
+from app.models.user import Organization
+from app.models.story import Story
 
 
 @pytest.fixture
@@ -24,6 +26,24 @@ async def db_session(db_engine):
     session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
     async with session_factory() as session:
         yield session
+
+
+@pytest.fixture
+async def sample_org(db_session):
+    org = Organization(name="Test Org", slug="test-org")
+    db_session.add(org)
+    await db_session.commit()
+    await db_session.refresh(org)
+    return org
+
+
+@pytest.fixture
+async def sample_story(db_session, sample_org):
+    story = Story(org_id=sample_org.id, title="Test Story")
+    db_session.add(story)
+    await db_session.commit()
+    await db_session.refresh(story)
+    return story
 
 
 @pytest.fixture

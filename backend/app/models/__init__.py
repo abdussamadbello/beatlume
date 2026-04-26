@@ -11,6 +11,8 @@ from app.models.draft import DraftContent
 from app.models.core import CoreConfigNode, CoreSetting
 from app.models.manuscript import ManuscriptChapter
 from app.models.collaboration import Collaborator, Comment, ActivityEvent, ExportJob
+from app.models.chat_thread import ChatThread  # noqa: F401
+from app.models.chat_message import ChatMessage, ChatMessageRole, ToolCallStatus  # noqa: F401
 
 __all__ = [
     "Base", "OrgScopedMixin",
@@ -21,4 +23,6 @@ __all__ = [
     "CoreConfigNode", "CoreSetting",
     "ManuscriptChapter",
     "Collaborator", "Comment", "ActivityEvent", "ExportJob",
+    "ChatThread",
+    "ChatMessage", "ChatMessageRole", "ToolCallStatus",
 ]
