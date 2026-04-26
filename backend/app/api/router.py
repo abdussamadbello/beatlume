@@ -16,6 +16,7 @@ from app.api.sse import router as sse_router
 from app.api.ai import router as ai_router
 from app.api.analytics import router as analytics_router
 from app.api.export import router as export_router
+from app.api.chat import story_router as chat_story_router, thread_router as chat_thread_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
@@ -34,3 +35,5 @@ api_router.include_router(sse_router)
 api_router.include_router(ai_router)
 api_router.include_router(analytics_router)
 api_router.include_router(export_router)
+api_router.include_router(chat_story_router)
+api_router.include_router(chat_thread_router)

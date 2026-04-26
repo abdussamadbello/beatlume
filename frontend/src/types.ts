@@ -251,3 +251,34 @@ export interface PaginatedResponse<T> {
   items: T[]
   total: number
 }
+
+// --- Chat ---
+export type ChatMessageRole = 'user' | 'assistant' | 'tool'
+export type ToolCallStatus = 'proposed' | 'applied' | 'rejected'
+
+export interface ChatThread {
+  id: string
+  story_id: string
+  title: string | null
+  archived_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ChatToolCall {
+  id?: string
+  name: string
+  arguments: Record<string, unknown>
+}
+
+export interface ChatMessage {
+  id: string
+  thread_id: string
+  role: ChatMessageRole
+  content: string | null
+  tool_calls: ChatToolCall[] | null
+  tool_call_status: ToolCallStatus | null
+  tool_call_result: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}

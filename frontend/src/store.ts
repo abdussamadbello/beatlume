@@ -34,6 +34,17 @@ interface AppState {
   toggleAIPanel: () => void
   setAIPanelOpen: (open: boolean) => void
 
+  // Chat UI (ephemeral)
+  aiPanelTab: 'chat' | 'tasks'
+  setAIPanelTab: (tab: 'chat' | 'tasks') => void
+  selectedChatThreadId: string | null
+  setSelectedChatThreadId: (id: string | null) => void
+  chatComposerDrafts: Record<string, string>
+  setChatComposerDraft: (threadId: string, draft: string) => void
+  unreadAssistantMessages: number
+  markChatUnread: (n: number) => void
+  clearChatUnread: () => void
+
   // Setup wizard (ephemeral)
   setupCharacters: SetupCharacter[]
   addSetupCharacter: () => void
@@ -142,6 +153,19 @@ export const useStore = create<AppState>()(
         aiPanelOpen: open,
         aiPanelLastSeenAt: open ? Date.now() : s.aiPanelLastSeenAt,
       })),
+
+      // Chat UI
+      aiPanelTab: 'chat',
+      setAIPanelTab: (tab) => set({ aiPanelTab: tab }),
+      selectedChatThreadId: null,
+      setSelectedChatThreadId: (id) => set({ selectedChatThreadId: id }),
+      chatComposerDrafts: {},
+      setChatComposerDraft: (threadId, draft) => set((s) => ({
+        chatComposerDrafts: { ...s.chatComposerDrafts, [threadId]: draft },
+      })),
+      unreadAssistantMessages: 0,
+      markChatUnread: (n) => set({ unreadAssistantMessages: n }),
+      clearChatUnread: () => set({ unreadAssistantMessages: 0 }),
 
       // Setup
       setupCharacters: [

@@ -174,3 +174,10 @@ class TestSafeErrorMessage:
     def test_long_message_is_sanitized(self):
         msg = safe_error_message(ValueError("x" * 250))
         assert len(msg) < 100  # generic fallback is short
+
+
+def test_chat_task_type_has_tier_mapping():
+    from app.ai.llm import TASK_MODEL_MAP, TASK_TIER_MAP
+    assert "chat" in TASK_TIER_MAP
+    assert "chat" in TASK_MODEL_MAP
+    assert TASK_TIER_MAP["chat"] in TASK_MODEL_MAP["chat"]

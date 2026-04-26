@@ -152,3 +152,58 @@ class ContextAssembler:
             ctx.token_counts[name] = count_tokens(text)
             ctx.total_tokens += ctx.token_counts[name]
         return ctx
+
+
+async def build_chat_context(
+    db: "AsyncSession",
+    story_id: "uuid.UUID",
+    *,
+    active_scene_id: "uuid.UUID | None" = None,
+) -> str:
+    """Adaptive medium-tier context for the chat agent.
+
+    Always: title + logline + genres + structure + target words + flat scene list + char roster.
+    If active_scene_id is given, also include that scene's full draft.
+    Refresh every turn — content is small (<1k tokens for typical stories).
+    """
+    from sqlalchemy import select  # local import to avoid touching the existing import block
+    from app.models.story import Story
+    from app.models.scene import Scene
+    from app.models.character import Character
+    from app.services import draft as draft_service
+
+    story = (await db.execute(select(Story).where(Story.id == story_id))).scalar_one_or_none()
+    if story is None:
+        return ""
+
+    scenes = list((await db.execute(
+        select(Scene).where(Scene.story_id == story_id).order_by(Scene.n.asc())
+    )).scalars().all())
+    chars = list((await db.execute(
+        select(Character).where(Character.story_id == story_id).order_by(Character.name.asc())
+    )).scalars().all())
+
+    parts = [
+        f"# Story: {story.title}",
+        f"Logline: {getattr(story, 'logline', '') or ''}",
+        f"Genres: {', '.join(getattr(story, 'genres', None) or [])}",
+        f"Structure: {getattr(story, 'structure_type', '?')}; target words: {getattr(story, 'target_words', '?')}",
+        "",
+        "## Scenes (n · title — summary)",
+        *[f"{s.n} · {s.title} — {(s.summary or '')[:120]}" for s in scenes],
+        "",
+        "## Characters",
+        *[f"- {c.name} ({c.role or 'unknown'})" for c in chars],
+    ]
+
+    if active_scene_id is not None:
+        active = next((s for s in scenes if s.id == active_scene_id), None)
+        if active is not None:
+            draft = await draft_service.get_draft(db, story_id, active_scene_id)
+            parts += [
+                "",
+                f"## Active scene draft (scene {active.n} · {active.title})",
+                draft.content if draft else "(no draft yet)",
+            ]
+
+    return "\n".join(parts)

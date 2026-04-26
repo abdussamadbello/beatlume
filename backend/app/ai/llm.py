@@ -114,6 +114,11 @@ def _get_fallback_models() -> list[str]:
 
 
 TASK_MODEL_MAP = {
+    "chat": {
+        "fast": settings.ai_model_chat,
+        "standard": settings.ai_model_chat,
+        "powerful": settings.ai_model_chat,
+    },
     "prose_continuation": {
         "fast": settings.ai_model_fast,
         "standard": settings.ai_model_standard,
@@ -158,6 +163,7 @@ TASK_MODEL_MAP = {
 }
 
 TASK_TIER_MAP = {
+    "chat": "fast",
     "prose_continuation": "standard",
     "story_scaffolding": "scaffold",
     "insight_analysis": "standard",
@@ -403,3 +409,85 @@ def parse_json_response(raw: str) -> dict:
     if match:
         text = match.group(1).strip()
     return json.loads(text)
+
+
+async def call_llm_with_tools(
+    messages: list[dict],
+    tools: list[dict],
+    *,
+    temperature: float = 0.4,
+    max_tokens: int | None = None,
+) -> dict:
+    """Single-turn call that may produce text, tool_calls, or both.
+
+    Returns a dict with keys:
+      content: str | None
+      tool_calls: list[{id, name, arguments}] | None
+      finish_reason: str
+      usage: object | None
+    """
+    tier = TASK_TIER_MAP["chat"]
+    model = TASK_MODEL_MAP["chat"][tier]
+    semaphore = _get_semaphore()
+    start_time = time.monotonic()
+    last_error = None
+
+    fallback_models = _get_fallback_models()
+    models_to_try = [model] + [m for m in fallback_models if m != model]
+    out_tokens = max_tokens or settings.ai_chat_max_output_tokens
+
+    for attempt_model in models_to_try:
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                async with semaphore:
+                    response = await litellm.acompletion(
+                        model=attempt_model,
+                        messages=messages,
+                        tools=[{"type": "function", "function": t} for t in tools],
+                        temperature=temperature,
+                        max_tokens=out_tokens,
+                        timeout=120,
+                    )
+                choice = response.choices[0]
+                msg = choice.message
+                tool_calls = []
+                if getattr(msg, "tool_calls", None):
+                    for tc in msg.tool_calls:
+                        tool_calls.append({
+                            "id": tc.id,
+                            "name": tc.function.name,
+                            "arguments": json.loads(tc.function.arguments or "{}"),
+                        })
+                _record_llm_call(
+                    task_type="chat",
+                    tier=tier,
+                    model=attempt_model,
+                    outcome="success",
+                    duration=time.monotonic() - start_time,
+                    response=response,
+                )
+                return {
+                    "content": msg.content,
+                    "tool_calls": tool_calls or None,
+                    "finish_reason": choice.finish_reason,
+                    "usage": getattr(response, "usage", None),
+                }
+            except Exception as exc:
+                error_info = classify_error(exc)
+                last_error = error_info
+                if not error_info.retryable:
+                    raise
+                if error_info.category == "rate_limit":
+                    break  # try next model
+                if attempt < MAX_RETRIES:
+                    await asyncio.sleep(error_info.retry_after or (BASE_RETRY_DELAY * (2 ** attempt)))
+
+    _record_llm_call(
+        task_type="chat",
+        tier=tier,
+        model=None,
+        outcome="error",
+        duration=time.monotonic() - start_time,
+        error_category=(last_error.category if last_error else "unknown"),
+    )
+    raise RuntimeError(f"chat LLM call failed: {last_error.message if last_error else 'unknown'}")

@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     ai_model_standard: str = "gpt-4o"
     ai_model_powerful: str = "claude-sonnet-4-6"
     ai_model_scaffold: str = "claude-sonnet-4-6"
+    ai_model_chat: str = "gpt-4o-mini"
+    ai_chat_max_input_tokens: int = 4000
+    ai_chat_max_output_tokens: int = 1000
     # Fallback models when rate-limited (comma-separated)
     ai_model_fallbacks: str = (
         "openrouter/openai/gpt-4o-mini,openrouter/meta-llama/llama-3.1-8b-instruct"
