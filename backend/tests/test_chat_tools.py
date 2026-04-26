@@ -81,3 +81,61 @@ async def test_tool_find_inconsistencies_returns_insights_shape(db_session, samp
     result = await tool_find_inconsistencies(db_session, sample_story.id)
     assert "insights" in result
     assert isinstance(result["insights"], list)
+
+
+from app.ai.tools.chat_tools import (
+    preview_edit_scene_draft,
+    preview_propose_scene,
+    preview_update_character_note,
+    preview_summarize_scene,
+)
+
+
+@pytest.mark.asyncio
+async def test_preview_edit_scene_draft_returns_unified_diff(db_session, sample_story, sample_scene):
+    from app.services import draft as draft_service
+    await draft_service.upsert_draft(db_session, sample_story.id, sample_scene.id, sample_scene.org_id, "Old text.\n")
+    preview = await preview_edit_scene_draft(
+        db_session, sample_story.id, scene_id=sample_scene.id, new_text="New text.\n"
+    )
+    assert preview["kind"] == "diff"
+    assert "@@" in preview["diff"]
+    assert "+New text." in preview["diff"]
+
+
+@pytest.mark.asyncio
+async def test_preview_propose_scene(db_session, sample_story):
+    preview = await preview_propose_scene(
+        db_session, sample_story.id,
+        after_id=None, summary="A new opening scene.", scene_n=1, title="Opening",
+    )
+    assert preview["kind"] == "scene_proposal"
+    assert preview["summary"] == "A new opening scene."
+
+
+@pytest.mark.asyncio
+async def test_preview_update_character_note_appends(db_session, sample_story, sample_character):
+    preview = await preview_update_character_note(
+        db_session, sample_story.id,
+        character_id=sample_character.id, note_text="New observation.", append=True,
+    )
+    assert preview["kind"] == "character_note"
+    assert preview["after"].endswith("New observation.")
+
+
+def test_write_tools_registry_shape():
+    from app.ai.tools.chat_tools import WRITE_TOOLS
+    names = {t["name"] for t in WRITE_TOOLS}
+    assert {
+        "edit_scene_draft",
+        "propose_scene",
+        "update_character_note",
+        "summarize_scene",
+    } == names
+
+
+def test_write_tool_dicts_match_registry():
+    from app.ai.tools.chat_tools import WRITE_TOOLS, WRITE_TOOL_PREVIEWS, WRITE_TOOL_APPLIERS
+    names = {t["name"] for t in WRITE_TOOLS}
+    assert names == set(WRITE_TOOL_PREVIEWS.keys())
+    assert names == set(WRITE_TOOL_APPLIERS.keys())
