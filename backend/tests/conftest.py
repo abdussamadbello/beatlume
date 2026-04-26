@@ -130,3 +130,40 @@ async def client(app):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+import uuid as _uuid
+
+
+@pytest.fixture
+async def auth_token(client):
+    suffix = _uuid.uuid4().hex[:8]
+    resp = await client.post("/auth/signup", json={
+        "name": "Test User",
+        "email": f"test-{suffix}@example.com",
+        "password": "pass1234",
+    })
+    assert resp.status_code in (200, 201), resp.text
+    return resp.json()["access_token"]
+
+
+@pytest.fixture
+def auth_headers(auth_token):
+    return {"Authorization": f"Bearer {auth_token}"}
+
+
+@pytest.fixture
+async def second_org_auth_token(client):
+    suffix = _uuid.uuid4().hex[:8]
+    resp = await client.post("/auth/signup", json={
+        "name": "Second User",
+        "email": f"second-{suffix}@example.com",
+        "password": "pass1234",
+    })
+    assert resp.status_code in (200, 201), resp.text
+    return resp.json()["access_token"]
+
+
+@pytest.fixture
+def second_org_auth_headers(second_org_auth_token):
+    return {"Authorization": f"Bearer {second_org_auth_token}"}

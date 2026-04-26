@@ -50,23 +50,6 @@ AI_RESPONSES = {
 
 
 @pytest.fixture
-async def auth_token(client):
-    import uuid
-    suffix = uuid.uuid4().hex[:8]
-    resp = await client.post("/auth/signup", json={
-        "name": "Sim User",
-        "email": f"sim-{suffix}@example.com",
-        "password": "pass1234",
-    })
-    return resp.json()["access_token"]
-
-
-@pytest.fixture
-def auth_headers(auth_token):
-    return {"Authorization": f"Bearer {auth_token}"}
-
-
-@pytest.fixture
 async def story_id(client, auth_headers):
     resp = await client.post("/api/stories", json={
         "title": "Simulation Story",
