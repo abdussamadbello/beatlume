@@ -66,10 +66,28 @@ class Settings(BaseSettings):
     # Environment
     environment: str = "development"
 
+    # Cookie config for refresh_token. In a same-site deployment (frontend and backend
+    # share an eTLD+1, e.g. app.beatlume.io / api.beatlume.io) "lax" is fine. For a
+    # cross-site deployment (frontend on Vercel, backend on Railway) "none" is required
+    # AND secure must be True. Override via env if your prod is cross-site.
+    cookie_samesite: str = "lax"
+    cookie_secure_override: bool | None = None  # None = auto-detect from environment
+
     # Dev — uvicorn port (BACKEND_PORT in .env; Makefile uses same name)
     backend_port: int = 8000
 
     model_config = {"env_file": ".env", "case_sensitive": False}
+
+    @property
+    def cookie_secure(self) -> bool:
+        """Whether to set the Secure flag on auth cookies.
+
+        Auto-detects: True for any non-development environment. Override via
+        COOKIE_SECURE_OVERRIDE env var if you need to force the value.
+        """
+        if self.cookie_secure_override is not None:
+            return self.cookie_secure_override
+        return self.environment != "development"
 
 
 settings = Settings()

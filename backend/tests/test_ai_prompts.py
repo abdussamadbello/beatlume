@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from app.ai.prompts import (
     insight_analysis,
     insight_apply,
@@ -188,3 +190,140 @@ def test_relationship_inference_validation():
     })
     result = relationship_inference.validate_output(valid)
     assert result["kind"] == "conflict"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Insight validator coercion: real-world LLM outputs
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_insight_analysis_coerces_critical_to_red():
+    """Models sometimes return 'Critical' instead of canonical 'red' — must coerce."""
+    raw = json.dumps([{
+        "severity": "Critical", "category": "Pacing",
+        "title": "Flat tension", "body": "Tension doesn't change.", "refs": ["S01"],
+    }])
+    result = insight_analysis.validate_output(raw)
+    assert len(result) == 1
+    assert result[0]["severity"] == "red"
+
+
+def test_insight_analysis_coerces_severity_synonyms():
+    raw = json.dumps([
+        {"severity": "High",     "category": "Pacing",        "title": "a", "body": "b"},
+        {"severity": "Medium",   "category": "Characters",    "title": "a", "body": "b"},
+        {"severity": "Low",      "category": "Continuity",    "title": "a", "body": "b"},
+        {"severity": "Yellow",   "category": "Structure",     "title": "a", "body": "b"},
+        {"severity": "blue",     "category": "Relationships", "title": "a", "body": "b"},
+    ])
+    result = insight_analysis.validate_output(raw)
+    severities = [r["severity"] for r in result]
+    assert severities == ["red", "amber", "blue", "amber", "blue"]
+
+
+def test_insight_analysis_coerces_category_synonyms():
+    raw = json.dumps([
+        {"severity": "red",   "category": "character",    "title": "a", "body": "b"},
+        {"severity": "amber", "category": "tempo",        "title": "a", "body": "b"},
+        {"severity": "blue",  "category": "consistency",  "title": "a", "body": "b"},
+    ])
+    result = insight_analysis.validate_output(raw)
+    cats = [r["category"] for r in result]
+    assert cats == ["Characters", "Pacing", "Continuity"]
+
+
+def test_insight_analysis_drops_bad_item_keeps_good_ones():
+    """One bad finding shouldn't fail the whole task."""
+    raw = json.dumps([
+        {"severity": "red",       "category": "Pacing", "title": "good",  "body": "ok"},
+        {"severity": "WeirdNew",  "category": "Pacing", "title": "drop",  "body": "ok"},
+        {"severity": "amber",     "category": "Pacing", "title": "good2", "body": "ok"},
+    ])
+    result = insight_analysis.validate_output(raw)
+    assert len(result) == 2
+    assert {r["title"] for r in result} == {"good", "good2"}
+
+
+def test_insight_analysis_empty_after_drops_fails():
+    """If everything is uncoercible, fail loud — there's nothing to show the user."""
+    raw = json.dumps([
+        {"severity": "Eldritch", "category": "Cosmic", "title": "x", "body": "y"},
+    ])
+    with pytest.raises(ValueError, match="No valid insights"):
+        insight_analysis.validate_output(raw)
+
+
+def test_insight_analysis_drops_missing_title():
+    raw = json.dumps([
+        {"severity": "red", "category": "Pacing", "title": "", "body": "ok"},
+        {"severity": "red", "category": "Pacing", "title": "kept", "body": "ok"},
+    ])
+    result = insight_analysis.validate_output(raw)
+    assert len(result) == 1
+    assert result[0]["title"] == "kept"
+
+
+def test_insight_synthesis_coerces_same_way():
+    """Synthesis validator uses the same coercion path."""
+    from app.ai.prompts import insight_synthesis
+    raw = json.dumps([
+        {"severity": "Critical", "category": "Plot",  "title": "a", "body": "b"},
+        {"severity": "Note",     "category": "Cast",  "title": "a", "body": "b"},
+    ])
+    result = insight_synthesis.validate_output(raw)
+    assert [r["severity"] for r in result] == ["red", "blue"]
+    assert [r["category"] for r in result] == ["Structure", "Characters"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Expanded category coverage: prose-level concerns now have a home
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_insight_analysis_accepts_voice_category():
+    raw = json.dumps([{
+        "severity": "amber", "category": "Voice",
+        "title": "POV slips in S03", "body": "Narration drifts to omniscient.",
+    }])
+    result = insight_analysis.validate_output(raw)
+    assert result[0]["category"] == "Voice"
+
+
+def test_insight_analysis_accepts_dialogue_category():
+    raw = json.dumps([{
+        "severity": "blue", "category": "Dialogue",
+        "title": "Stiff exchanges", "body": "Beat dialogue feels expository.",
+    }])
+    result = insight_analysis.validate_output(raw)
+    assert result[0]["category"] == "Dialogue"
+
+
+def test_insight_analysis_accepts_theme_worldbuilding_stakes():
+    raw = json.dumps([
+        {"severity": "red",   "category": "Theme",        "title": "a", "body": "b"},
+        {"severity": "amber", "category": "Worldbuilding","title": "a", "body": "b"},
+        {"severity": "blue",  "category": "Stakes",       "title": "a", "body": "b"},
+    ])
+    result = insight_analysis.validate_output(raw)
+    cats = [r["category"] for r in result]
+    assert cats == ["Theme", "Worldbuilding", "Stakes"]
+
+
+def test_insight_synthesis_build_prompt_includes_skeleton_when_provided():
+    """Synthesis prompt must expose the skeleton so cross-act issues are visible."""
+    findings = [[{"severity": "red", "category": "Pacing",
+                  "title": "x", "body": "y", "refs": []}]]
+    story_ctx = {"title": "T", "genre": "Literary"}
+    skeleton = "STORY OVERVIEW:\nSCENES (3): Scene 1 ... Scene 3 ..."
+    messages = insight_synthesis.build_prompt(findings, story_ctx, skeleton)
+    user_content = messages[1]["content"]
+    assert "STORY SKELETON" in user_content
+    assert "Scene 1" in user_content
+
+
+def test_insight_synthesis_build_prompt_works_without_skeleton():
+    """Backward-compat: skeleton is optional — older callers shouldn't break."""
+    findings = [[{"severity": "red", "category": "Pacing",
+                  "title": "x", "body": "y", "refs": []}]]
+    story_ctx = {"title": "T", "genre": "Literary"}
+    messages = insight_synthesis.build_prompt(findings, story_ctx)
+    assert len(messages) == 2
+    assert "STORY SKELETON" not in messages[1]["content"]

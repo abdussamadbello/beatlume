@@ -192,3 +192,31 @@ class ContextRetriever:
                          act=s.act, location=s.location, tag=s.tag, summary=s.summary)
             for s in result.scalars().all()
         ]
+
+    async def get_act_scenes_with_prose(
+        self, story_id: uuid.UUID, act: int
+    ) -> list[SceneContext]:
+        """Like get_act_scenes but also loads draft prose for each scene.
+
+        Used by the insight analyzer so the model can flag prose-level issues
+        (voice, dialogue, telling-not-showing) that are invisible from summaries alone.
+        """
+        result = await self.db.execute(
+            select(Scene).where(Scene.story_id == story_id, Scene.act == act).order_by(Scene.n)
+        )
+        scenes = result.scalars().all()
+        if not scenes:
+            return []
+        scene_ids = [s.id for s in scenes]
+        draft_r = await self.db.execute(
+            select(DraftContent).where(DraftContent.scene_id.in_(scene_ids))
+        )
+        drafts_by_scene = {d.scene_id: d.content for d in draft_r.scalars().all()}
+        return [
+            SceneContext(
+                n=s.n, title=s.title, pov=s.pov, tension=s.tension,
+                act=s.act, location=s.location, tag=s.tag, summary=s.summary,
+                prose=drafts_by_scene.get(s.id),
+            )
+            for s in scenes
+        ]

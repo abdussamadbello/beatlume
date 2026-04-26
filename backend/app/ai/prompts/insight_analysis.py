@@ -2,6 +2,7 @@ from textwrap import dedent
 
 from app.ai.context.assembler import AssembledContext
 from app.ai.llm import parse_json_response
+from app.ai.prompts._validators import normalize_insight_item
 
 
 def build_prompt(
@@ -16,26 +17,42 @@ def build_prompt(
                 You are a senior developmental editor analyzing a novel manuscript.
                 You are analyzing Act {act_number} of a {story_context.get('genre', 'literary')} novel.
 
-                Think step by step:
-                1. Check pacing: are tension levels monotonous or compelling?
-                2. Check character presence: does any character disappear too long?
-                3. Check relationships: are stated relationships tested in scenes?
-                4. Check structural beats: are expected beats present for this act?
-                5. Check continuity: do locations and plot threads track logically?
+                You will see scene metadata, scene summaries, AND draft prose for each scene
+                in this act. Read the prose closely — many of the most useful insights are
+                visible only at the sentence level.
 
-                OUTPUT FORMAT — JSON array:
+                Think step by step:
+                1. Pacing: are tension levels monotonous or compelling? Do scenes drag or rush?
+                2. Characters: does any character disappear too long? Are motivations clear in scene?
+                3. Relationships: are stated relationships tested in scenes? Do they evolve?
+                4. Structure: are expected beats present for this act? Setup/rising/midpoint/etc.?
+                5. Continuity: do locations, timeline, and plot threads track logically?
+                6. Voice: is POV consistent? Is the narrator's voice steady across scenes?
+                7. Dialogue: do characters sound distinct? Does dialogue do work (not just chat)?
+                8. Theme: is the central conflict surfacing in scene-level choices?
+                9. Worldbuilding: is the setting earning its place, or is it inert backdrop?
+                10. Stakes: does the reader know what the POV stands to lose? Is risk concrete?
+
+                When prose is available, you may quote 5-15 words from a scene to ground a
+                finding (use refs like "S03" so the user can locate it). When prose is missing,
+                say so explicitly in the body — the user may need to draft that scene first.
+
+                OUTPUT FORMAT — JSON array. Use ONLY these exact lowercase severity values
+                ("red", "amber", "blue") and these exact category values: "Pacing", "Characters",
+                "Relationships", "Structure", "Continuity", "Voice", "Dialogue", "Theme",
+                "Worldbuilding", "Stakes". Do not invent other labels.
                 [
                   {{
                     "severity": "red" | "amber" | "blue",
-                    "category": "Pacing" | "Characters" | "Relationships" | "Structure" | "Continuity",
+                    "category": "<one of the categories above>",
                     "title": "Short headline (max 10 words)",
-                    "body": "2-3 sentences explaining the problem.",
+                    "body": "2-3 sentences explaining the problem and pointing at evidence.",
                     "refs": ["S03", "S07"]
                   }}
                 ]
 
                 SEVERITY: red = must fix, amber = should fix, blue = suggestion.
-                Limit to 3-7 findings. Output ONLY the JSON array.
+                Limit to 4-9 findings. Output ONLY the JSON array.
             """).strip(),
         },
         {
@@ -55,19 +72,21 @@ def build_prompt(
 
 
 def validate_output(raw: str) -> list[dict]:
-    """Parse and validate insight analysis output."""
+    """Parse and coerce insight analysis output.
+
+    Coerces synonyms (e.g. "Critical" → "red"), drops uncoercible findings, and
+    only fails the whole task if no findings remain. Models occasionally return
+    valid-but-off-vocabulary values; failing the entire task for one bad item
+    wastes tokens and frustrates users.
+    """
     data = parse_json_response(raw)
     if not isinstance(data, list):
         raise ValueError("Expected JSON array")
+    normalized: list[dict] = []
     for item in data:
-        if item.get("severity") not in ("red", "amber", "blue"):
-            raise ValueError(f"Invalid severity: {item.get('severity')}")
-        if item.get("category") not in ("Pacing", "Characters", "Relationships", "Structure", "Continuity"):
-            raise ValueError(f"Invalid category: {item.get('category')}")
-        if not item.get("title"):
-            raise ValueError("Missing title")
-        if not item.get("body"):
-            raise ValueError("Missing body")
-        if not isinstance(item.get("refs", []), list):
-            raise ValueError("refs must be a list")
-    return data
+        coerced = normalize_insight_item(item)
+        if coerced is not None:
+            normalized.append(coerced)
+    if not normalized:
+        raise ValueError("No valid insights returned")
+    return normalized

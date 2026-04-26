@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router'
-import { AppShell, Sidebar } from '../components/chrome'
+import { AppShell, AIProgressBanner, Sidebar } from '../components/chrome'
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/ErrorState'
 import { AIPanel, AILauncher } from '../components/ai/AIPanel'
@@ -27,6 +27,7 @@ function StoryLayout() {
 
   return (
     <AppShell sidebar={<Sidebar storyId={storyId} active={location.pathname} story={story} />}>
+      <AIProgressBanner />
       {body}
       <AILauncher />
       <AIPanel storyId={storyId} />

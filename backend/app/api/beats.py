@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.errors import safe_error_message
 from app.deps import get_current_org, get_current_user, get_db, get_story
 from app.models.story import Story
 from app.models.user import Organization, User
@@ -57,7 +58,7 @@ async def reorder_beats(
     try:
         return await beat_service.reorder_beats(db, scene_id, body.ordered_ids)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_message(e))
 
 
 @router.post("", response_model=BeatRead, status_code=status.HTTP_201_CREATED)

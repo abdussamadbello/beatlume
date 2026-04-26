@@ -8,6 +8,7 @@ import uuid
 
 import redis
 
+from app.ai.errors import safe_error_message
 from app.config import settings
 from app.export import get_exporter
 from app.export.base import ExportOptions
@@ -36,6 +37,18 @@ def _publish_progress(job_id: str, progress: float, status: str = "running"):
         )
     except Exception:
         logger.warning("Failed to publish export progress", exc_info=True)
+
+
+def _publish_story_event(story_id: str, event_type: str, data: dict):
+    """Publish an event to the per-story SSE channel consumed by the frontend."""
+    try:
+        r = _get_redis()
+        r.publish(
+            f"story:{story_id}:events",
+            json.dumps({"type": event_type, "data": data}),
+        )
+    except Exception:
+        logger.warning("Failed to publish story event %s", event_type, exc_info=True)
 
 
 @celery_app.task(bind=True, name="app.tasks.export_tasks.run_export")
@@ -106,16 +119,34 @@ def run_export(
         )
         r.expire(f"export_job:{job_id}", 86400)  # 24h TTL
         _publish_progress(job_id, 1.0, status="completed")
+        _publish_story_event(
+            story.get("id", ""),
+            "export.complete",
+            {
+                "job_id": job_id,
+                "format": fmt,
+                "filename": result.filename,
+                "download_url": download_url,
+                "content_type": result.content_type,
+                "word_count": result.word_count,
+            },
+        )
 
     except Exception as exc:
         logger.exception("Export job %s failed", job_id)
+        safe_msg = safe_error_message(exc)
         try:
             r = _get_redis()
             r.hset(
                 f"export_job:{job_id}",
-                mapping={"status": "failed", "error": str(exc)},
+                mapping={"status": "failed", "error": safe_msg},
             )
             _publish_progress(job_id, 0, status="failed")
+            _publish_story_event(
+                story.get("id", ""),
+                "export.failed",
+                {"job_id": job_id, "format": fmt, "error": safe_msg},
+            )
         except Exception:
             pass
         raise

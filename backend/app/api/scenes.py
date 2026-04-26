@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.errors import safe_error_message
 from app.deps import get_current_org, get_current_user, get_db, get_story
 from app.models.story import Story
 from app.models.user import Organization, User
@@ -46,7 +47,7 @@ async def reorder_scenes(
     try:
         scenes = await scene_service.reorder_scenes(db, story.id, tuples)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_message(e))
     return scenes
 
 

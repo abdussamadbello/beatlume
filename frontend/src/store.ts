@@ -9,6 +9,7 @@ interface AppState {
   accessToken: string | null
   currentUser: UserProfile | null
   setAuth: (token: string, user: UserProfile) => void
+  setAccessToken: (token: string) => void
   clearAuth: () => void
 
   // UI selections (ephemeral)
@@ -47,6 +48,7 @@ export const useStore = create<AppState>()(
       accessToken: null,
       currentUser: null,
       setAuth: (token, user) => set({ accessToken: token, currentUser: user }),
+      setAccessToken: (token) => set({ accessToken: token }),
       clearAuth: () => set({ accessToken: null, currentUser: null }),
 
       // UI

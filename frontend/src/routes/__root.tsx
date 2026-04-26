@@ -1,10 +1,19 @@
 import { createRootRoute, Outlet, useNavigate } from '@tanstack/react-router'
 import { useStore } from '../store'
 import { useEffect } from 'react'
+import {
+  useAuthBootHydration,
+  useCrossTabAuthSync,
+  useProactiveRefresh,
+} from '../api/auth-lifecycle'
 
 function RootComponent() {
   const accessToken = useStore(s => s.accessToken)
   const navigate = useNavigate()
+
+  useAuthBootHydration()
+  useProactiveRefresh()
+  useCrossTabAuthSync()
 
   useEffect(() => {
     const publicRoutes = ['/login', '/signup', '/forgot-password', '/welcome']

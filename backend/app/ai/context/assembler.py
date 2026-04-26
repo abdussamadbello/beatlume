@@ -86,6 +86,12 @@ class ContextAssembler:
     async def assemble_for_insight_analysis(
         self, story_id: uuid.UUID, act: int
     ) -> AssembledContext:
+        """Build context for an act-level insight analysis.
+
+        The analyzer now sees actual scene prose (subject to a token budget per
+        scene) so it can surface voice / dialogue / telling-not-showing issues
+        that are invisible from summaries alone.
+        """
         ctx = AssembledContext()
 
         settings = await self.retriever.get_story_settings(story_id)
@@ -93,17 +99,34 @@ class ContextAssembler:
         if metadata_text:
             ctx.sections["story_metadata"] = metadata_text
 
+        # Skeleton stays compact \u2014 it's the spine for cross-scene references
+        # (e.g. "see S07" when the analyzer only got S01-S05's prose).
         skeleton = await self.retriever.get_story_skeleton(story_id)
-        ctx.sections["story_skeleton"] = format_story_skeleton(skeleton)
-
-        act_scenes = await self.retriever.get_act_scenes(story_id, act)
-        scenes_text = "\n".join(
-            f"  Scene {s.n} | \"{s.title}\" | POV: {s.pov} | "
-            f"Tension: {s.tension}/10 | Location: {s.location} | "
-            f"Tag: {s.tag} | Summary: {s.summary or '\u2014'}"
-            for s in act_scenes
+        skeleton_text = format_story_skeleton(skeleton)
+        skeleton_budget = self.budget.allocate({"skeleton": 0.25})["skeleton"]
+        ctx.sections["story_skeleton"] = self.budget.truncate_to_budget(
+            skeleton_text, skeleton_budget
         )
-        ctx.sections["act_scenes"] = scenes_text
+
+        # Per-scene prose: spread 60% of budget evenly across scenes.
+        act_scenes = await self.retriever.get_act_scenes_with_prose(story_id, act)
+        prose_budget_total = self.budget.allocate({"prose": 0.60})["prose"]
+        per_scene_budget = max(400, prose_budget_total // max(1, len(act_scenes)))
+        scene_blocks: list[str] = []
+        for s in act_scenes:
+            header = (
+                f"Scene {s.n} | \"{s.title}\" | POV: {s.pov} | "
+                f"Tension: {s.tension}/10 | Location: {s.location} | Tag: {s.tag}"
+            )
+            summary = (s.summary or "(no summary)").strip()
+            if s.prose and s.prose.strip():
+                excerpt = self.budget.truncate_to_budget(s.prose.strip(), per_scene_budget)
+                scene_blocks.append(
+                    f"--- {header} ---\nSummary: {summary}\n\nProse:\n{excerpt}\n"
+                )
+            else:
+                scene_blocks.append(f"--- {header} ---\nSummary: {summary}\n(no draft prose yet)\n")
+        ctx.sections["act_scenes"] = "\n".join(scene_blocks)
 
         for name, text in ctx.sections.items():
             tokens = count_tokens(text)

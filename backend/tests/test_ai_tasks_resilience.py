@@ -70,7 +70,7 @@ class TestManuscriptSceneLoopResilience:
         # The error payload should contain structured info
         assert error_payload["category"] == "rate_limit"
         assert error_payload["retryable"] is True
-        assert "message" in error_payload
+        assert "error" in error_payload
 
     @pytest.mark.asyncio
     async def test_auth_error_publishes_non_retryable_event(self):
@@ -109,6 +109,6 @@ class TestStreamingResilience:
         payload = format_error_for_frontend(info)
 
         assert "category" in payload
-        assert "message" in payload
+        assert "error" in payload
         assert "retryable" in payload
         assert "retry_after" in payload

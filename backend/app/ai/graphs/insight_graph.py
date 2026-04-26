@@ -11,6 +11,7 @@ class InsightState(TypedDict):
     story_id: str
     story_context: dict
     act_contexts: dict  # {act_number: context_sections}
+    story_skeleton_text: str  # full skeleton for cross-act synthesis
     chunk_findings: list  # findings per act
     final_insights: list | None
     error: str | None
@@ -39,7 +40,11 @@ async def analyze_acts(state: InsightState) -> dict:
 async def synthesize(state: InsightState) -> dict:
     if not state["chunk_findings"]:
         return {"error": "No findings to synthesize"}
-    messages = insight_synthesis.build_prompt(state["chunk_findings"], state["story_context"])
+    messages = insight_synthesis.build_prompt(
+        state["chunk_findings"],
+        state["story_context"],
+        state.get("story_skeleton_text", ""),
+    )
     try:
         result = await call_llm("insight_synthesis", messages, temperature=0.3, max_tokens=2000)
         insights = insight_synthesis.validate_output(result)

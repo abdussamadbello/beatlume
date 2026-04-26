@@ -123,9 +123,10 @@ export function useSSE(storyId: string) {
 
     const handleExportComplete = (e: MessageEvent) => {
       const data = JSON.parse(e.data)
-      if (data.download_url) {
-        window.open(data.download_url, '_blank')
+      if (data.job_id) {
+        queryClient.invalidateQueries({ queryKey: ['stories', storyId, 'export', data.job_id] })
       }
+      queryClient.invalidateQueries({ queryKey: ['stories', storyId, 'export', 'history'] })
     }
 
     const handleActivity = () => {

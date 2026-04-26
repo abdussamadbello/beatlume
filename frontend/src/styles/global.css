@@ -16,3 +16,8 @@ html, body, #root { width: 100%; min-height: 100%; }
 .title-serif { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; }
 .rule { border-top: 1px solid var(--ink); }
 .rule-dash { border-top: 1px dashed var(--ink-3); }
+
+@keyframes beatlume-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.85); }
+  50%      { opacity: 1; transform: scale(1); }
+}

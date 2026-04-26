@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Btn, Panel, PanelHead } from '../components/primitives'
-import { useTriggerExport } from '../api/export'
+import { useTriggerExport, useExportStatus, useExportHistory, type ExportJobStatus } from '../api/export'
 
 export const Route = createFileRoute('/stories/$storyId/export')({
   component: ExportPage,
@@ -17,9 +17,125 @@ const labelStyle = {
   marginBottom: 4,
 }
 
+const exportJobStorageKey = (storyId: string) => `beatlume:export-job:${storyId}`
+
+const readStoredJobId = (storyId: string): string | null => {
+  try {
+    return window.localStorage.getItem(exportJobStorageKey(storyId))
+  } catch {
+    return null
+  }
+}
+
+const writeStoredJobId = (storyId: string, jobId: string | null) => {
+  try {
+    if (jobId) window.localStorage.setItem(exportJobStorageKey(storyId), jobId)
+    else window.localStorage.removeItem(exportJobStorageKey(storyId))
+  } catch {
+    // localStorage may be disabled (private mode, quota); fail silently
+  }
+}
+
+const formatRelativeTime = (epochSeconds: number | null): string => {
+  if (!epochSeconds) return ''
+  const diff = Math.max(0, Date.now() / 1000 - epochSeconds)
+  if (diff < 60) return 'JUST NOW'
+  if (diff < 3600) return `${Math.floor(diff / 60)}M AGO`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}H AGO`
+  return `${Math.floor(diff / 86400)}D AGO`
+}
+
+const statusColor = (status: string): string => {
+  if (status === 'completed') return 'var(--green, #1a7f37)'
+  if (status === 'failed') return 'var(--red, #c00)'
+  if (status === 'running') return 'var(--blue, #06c)'
+  return 'var(--ink-3)'
+}
+
+function ExportHistoryRow({ job }: { job: ExportJobStatus }) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '60px 1fr 90px 120px',
+        alignItems: 'center',
+        gap: 12,
+        padding: '10px 14px',
+        borderBottom: '1px solid var(--line)',
+        fontFamily: 'var(--font-mono)',
+        fontSize: 11,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 9,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: 'var(--ink-3)',
+        }}
+      >
+        {job.format ?? '—'}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: statusColor(job.status),
+            flexShrink: 0,
+          }}
+          aria-label={job.status}
+        />
+        <span
+          style={{
+            fontFamily: 'var(--font-sans)',
+            color: 'var(--ink-2)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {job.status === 'completed' && job.filename
+            ? job.filename
+            : job.status === 'failed'
+            ? job.error ?? 'Export failed'
+            : job.status === 'running'
+            ? `Generating... ${Math.round((job.progress ?? 0) * 100)}%`
+            : 'Queued'}
+        </span>
+      </div>
+      <div
+        style={{
+          fontSize: 9,
+          letterSpacing: '0.08em',
+          color: 'var(--ink-3)',
+          textTransform: 'uppercase',
+        }}
+      >
+        {formatRelativeTime(job.created_at)}
+      </div>
+      <div style={{ justifySelf: 'end' }}>
+        {job.status === 'completed' && job.download_url ? (
+          <a href={job.download_url} target="_blank" rel="noopener noreferrer">
+            <Btn variant="ghost" style={{ padding: '4px 12px' }}>
+              Download
+            </Btn>
+          </a>
+        ) : (
+          <span style={{ fontSize: 9, letterSpacing: '0.08em', color: 'var(--ink-3)' }}>—</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function ExportPage() {
   const { storyId } = Route.useParams()
   const exportMutation = useTriggerExport(storyId)
+  const [activeJobId, setActiveJobId] = useState<string | null>(() => readStoredJobId(storyId))
+  const exportStatus = useExportStatus(storyId, activeJobId)
+  const exportHistory = useExportHistory(storyId)
   const [format, setFormat] = useState('pdf')
   const [includeTitlePage, setIncludeTitlePage] = useState(true)
   const [includeChapterHeaders, setIncludeChapterHeaders] = useState(true)
@@ -28,6 +144,29 @@ function ExportPage() {
   const [shareLink, setShareLink] = useState('')
   const [privacy, setPrivacy] = useState('unlisted')
   const [copied, setCopied] = useState(false)
+
+  const job = exportStatus.data
+  // If the saved job id is stale (Redis TTL expired → 404), drop it so the UI unsticks.
+  useEffect(() => {
+    if (activeJobId && exportStatus.isError) {
+      writeStoredJobId(storyId, null)
+      setActiveJobId(null)
+    }
+  }, [activeJobId, exportStatus.isError, storyId])
+
+  // When the active job lands in a terminal state, refresh history so the new row appears.
+  useEffect(() => {
+    if (job?.status === 'completed' || job?.status === 'failed') {
+      exportHistory.refetch()
+    }
+  }, [job?.status, exportHistory])
+
+  const isRunning =
+    exportMutation.isPending ||
+    (!!activeJobId &&
+      !exportStatus.isError &&
+      job?.status !== 'completed' &&
+      job?.status !== 'failed')
 
   const generateLink = () => {
     setShareLink('https://beatlume.io/share/abc123')
@@ -131,19 +270,31 @@ function ExportPage() {
             <Btn
               variant="solid"
               style={{ width: '100%', justifyContent: 'center' }}
-              onClick={() => exportMutation.mutate({
-                format,
-                options: {
-                  include_title_page: includeTitlePage,
-                  include_chapter_headers: includeChapterHeaders,
-                  include_scene_breaks: includeSceneBreaks,
-                  include_author_bio: includeAuthorBio,
-                },
-              })}
-              disabled={exportMutation.isPending}
+              onClick={() =>
+                exportMutation.mutate(
+                  {
+                    format,
+                    options: {
+                      include_title_page: includeTitlePage,
+                      include_chapter_headers: includeChapterHeaders,
+                      include_scene_breaks: includeSceneBreaks,
+                      include_author_bio: includeAuthorBio,
+                    },
+                  },
+                  {
+                    onSuccess: (res) => {
+                      writeStoredJobId(storyId, res.job_id)
+                      setActiveJobId(res.job_id)
+                    },
+                  },
+                )
+              }
+              disabled={isRunning}
             >
-              {exportMutation.isPending
-                ? 'Exporting...'
+              {isRunning
+                ? job?.status === 'running'
+                  ? `Generating... ${Math.round((job.progress ?? 0) * 100)}%`
+                  : 'Exporting...'
                 : `Export as ${formats.find((f) => f.value === format)?.label}`}
             </Btn>
             {exportMutation.isError && (
@@ -151,9 +302,30 @@ function ExportPage() {
                 Export failed. Please try again.
               </div>
             )}
-            {exportMutation.isSuccess && (
-              <div style={{ fontSize: 10, color: 'var(--blue, #06c)', marginTop: 6, textAlign: 'center' }}>
-                Export started. You will be notified when ready.
+            {job?.status === 'failed' && (
+              <div style={{ fontSize: 10, color: 'var(--red, #c00)', marginTop: 6, textAlign: 'center' }}>
+                {job.error ?? 'Export failed. Please try again.'}
+              </div>
+            )}
+            {job?.status === 'completed' && job.download_url && (
+              <div style={{ marginTop: 12 }}>
+                <a href={job.download_url} target="_blank" rel="noopener noreferrer">
+                  <Btn variant="solid" style={{ width: '100%', justifyContent: 'center' }}>
+                    Download {job.filename ?? 'file'}
+                  </Btn>
+                </a>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--ink-3)',
+                    marginTop: 6,
+                    textAlign: 'center',
+                    fontFamily: 'var(--font-mono)',
+                    letterSpacing: '0.06em',
+                  }}
+                >
+                  Link expires in 24 hours
+                </div>
               </div>
             )}
           </div>
@@ -353,6 +525,43 @@ function ExportPage() {
             >
               Preview &middot; {format.toUpperCase()} format
             </div>
+          </div>
+        </Panel>
+      </div>
+
+      <div style={{ maxWidth: 1100, marginTop: 24 }}>
+        <Panel>
+          <PanelHead left="Recent exports" />
+          <div>
+            {exportHistory.isLoading ? (
+              <div
+                style={{
+                  padding: 16,
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 10,
+                  color: 'var(--ink-3)',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Loading…
+              </div>
+            ) : !exportHistory.data || exportHistory.data.items.length === 0 ? (
+              <div
+                style={{
+                  padding: 16,
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: 12,
+                  color: 'var(--ink-3)',
+                }}
+              >
+                No exports yet. Export a manuscript above and it will appear here.
+              </div>
+            ) : (
+              exportHistory.data.items.map((j) => (
+                <ExportHistoryRow key={j.job_id} job={j} />
+              ))
+            )}
           </div>
         </Panel>
       </div>

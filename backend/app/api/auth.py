@@ -26,6 +26,8 @@ from app.services.auth import (
     decode_token,
     find_or_create_oauth_user,
     hash_password,
+    is_jti_revoked,
+    revoke_jti,
 )
 
 limiter = Limiter(key_func=get_remote_address)
@@ -47,8 +49,8 @@ async def signup(request: Request, body: SignupRequest, response: Response, db: 
         key="refresh_token",
         value=refresh,
         httponly=True,
-        secure=settings.environment != "development",
-        samesite="lax",
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
         max_age=settings.jwt_refresh_token_expire_days * 86400,
     )
     return TokenResponse(access_token=access)
@@ -69,8 +71,8 @@ async def login(request: Request, body: LoginRequest, response: Response, db: As
         key="refresh_token",
         value=refresh,
         httponly=True,
-        secure=settings.environment != "development",
-        samesite="lax",
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
         max_age=settings.jwt_refresh_token_expire_days * 86400,
     )
     return TokenResponse(access_token=access)
@@ -82,6 +84,8 @@ async def refresh_token(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
+    import time
+
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(status_code=401, detail="No refresh token")
@@ -92,8 +96,23 @@ async def refresh_token(
             raise HTTPException(status_code=401, detail="Invalid token type")
         user_id = uuid.UUID(payload["sub"])
         org_id = uuid.UUID(payload["org"])
+        jti = payload.get("jti")
+        exp = payload.get("exp")
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    # Reject reuse: if this jti was already consumed in a prior refresh, the cookie has
+    # been rotated and this presentation is stale (or stolen).
+    if jti and is_jti_revoked(jti):
+        # Defense-in-depth: clear the stale cookie so the browser stops sending it.
+        response.delete_cookie(
+            key="refresh_token",
+            path="/",
+            secure=settings.cookie_secure,
+            httponly=True,
+            samesite=settings.cookie_samesite,
+        )
+        raise HTTPException(status_code=401, detail="Refresh token already used")
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
@@ -106,21 +125,43 @@ async def refresh_token(
         key="refresh_token",
         value=new_refresh,
         httponly=True,
-        secure=settings.environment != "development",
-        samesite="lax",
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
         max_age=settings.jwt_refresh_token_expire_days * 86400,
     )
+
+    # Revoke the just-consumed jti so a stolen copy can't replay it. TTL = remaining
+    # lifetime of the original token, so the revocation entry self-cleans.
+    if jti and exp:
+        ttl = max(0, int(exp) - int(time.time()))
+        revoke_jti(jti, ttl)
+
     return TokenResponse(access_token=access)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(response: Response):
+async def logout(request: Request, response: Response):
+    import time
+
+    # Revoke the current refresh-token jti before clearing the cookie. If the cookie
+    # is missing or malformed we still proceed — logout should be unconditional.
+    refresh = request.cookies.get("refresh_token")
+    if refresh:
+        try:
+            payload = decode_token(refresh)
+            jti = payload.get("jti")
+            exp = payload.get("exp")
+            if jti and exp:
+                revoke_jti(jti, max(0, int(exp) - int(time.time())))
+        except Exception:
+            pass  # tampered/expired cookie — the delete_cookie below is enough.
+
     response.delete_cookie(
         key="refresh_token",
         path="/",
-        secure=settings.environment != "development",
+        secure=settings.cookie_secure,
         httponly=True,
-        samesite="lax",
+        samesite=settings.cookie_samesite,
     )
     return None
 
@@ -227,8 +268,8 @@ async def oauth_callback(
         key="refresh_token",
         value=refresh,
         httponly=True,
-        secure=settings.environment != "development",
-        samesite="lax",
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
         max_age=settings.jwt_refresh_token_expire_days * 86400,
     )
     return TokenResponse(access_token=access)

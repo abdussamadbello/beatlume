@@ -1,7 +1,9 @@
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
+import redis as redis_lib
 from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +12,48 @@ from app.config import settings
 from app.models.user import Organization, User, Membership, MembershipRole
 
 ALGORITHM = "HS256"
+logger = logging.getLogger(__name__)
+
+_redis_client: redis_lib.Redis | None = None
+
+
+def _get_redis() -> redis_lib.Redis:
+    """Lazy Redis client for jti revocation. Reused across requests in a worker."""
+    global _redis_client
+    if _redis_client is None:
+        _redis_client = redis_lib.from_url(settings.redis_url)
+    return _redis_client
+
+
+def _revoked_key(jti: str) -> str:
+    return f"revoked_jti:{jti}"
+
+
+def revoke_jti(jti: str, ttl_seconds: int) -> None:
+    """Mark a refresh-token jti as consumed/revoked. Idempotent.
+
+    TTL matches the token's remaining lifetime — once it expires naturally, the
+    revocation entry expires with it, so the set stays bounded automatically.
+    """
+    if ttl_seconds <= 0:
+        return  # already expired by the JWT clock — no need to track
+    try:
+        _get_redis().set(_revoked_key(jti), "1", ex=ttl_seconds)
+    except Exception:
+        # Redis being down should not break logout/refresh — log and continue.
+        # Worst case: a refresh token isn't revoked, but it'll still expire naturally.
+        logger.warning("Failed to revoke jti %s", jti, exc_info=True)
+
+
+def is_jti_revoked(jti: str) -> bool:
+    """Return True if this jti has been previously consumed and should not be honored."""
+    try:
+        return bool(_get_redis().exists(_revoked_key(jti)))
+    except Exception:
+        # Fail-open on Redis outage: better to honor a valid token than to lock everyone out.
+        # The TTL on JWTs is the second line of defense.
+        logger.warning("Redis unavailable during jti check; allowing token", exc_info=True)
+        return False
 
 
 def hash_password(password: str) -> str:

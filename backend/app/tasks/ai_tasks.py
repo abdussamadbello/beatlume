@@ -9,6 +9,7 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.ai.context.assembler import AssembledContext, ContextAssembler
+from app.ai.errors import safe_error_message
 from app.ai.graph_metrics import run_graph
 from app.ai.graphs.insight_graph import build_insight_graph
 from app.ai.graphs.relationship_graph import build_relationship_graph
@@ -524,6 +525,12 @@ async def _run_generate_insights(task_id: str, story_id: str, org_id: str) -> di
                 ctx = await assembler.assemble_for_insight_analysis(uuid.UUID(story_id), act)
                 act_contexts[str(act)] = ctx.sections
 
+            # Skeleton is shared across the synthesis pass so the synthesizer can spot
+            # cross-act issues that no single per-act analysis could surface alone.
+            from app.ai.context.formatters import format_story_skeleton
+            full_skeleton = await assembler.retriever.get_story_skeleton(uuid.UUID(story_id))
+            story_skeleton_text = format_story_skeleton(full_skeleton)
+
             publish_event(
                 story_id,
                 "ai.progress",
@@ -539,6 +546,7 @@ async def _run_generate_insights(task_id: str, story_id: str, org_id: str) -> di
                 "story_id": story_id,
                 "story_context": story_context,
                 "act_contexts": act_contexts,
+                "story_skeleton_text": story_skeleton_text,
                 "chunk_findings": [],
                 "final_insights": None,
                 "error": None,
@@ -1042,7 +1050,7 @@ def continue_prose(self, story_id: str, scene_id: str, org_id: str):
                 "task_id": task_id,
                 "type": "prose_continuation",
                 "scene_id": scene_id,
-                "error": str(exc),
+                "error": safe_error_message(exc),
             },
         )
         raise self.retry(exc=exc)
@@ -1060,7 +1068,7 @@ def generate_insights(self, story_id: str, org_id: str):
             {
                 "task_id": self.request.id,
                 "type": "insight_generation",
-                "error": str(exc),
+                "error": safe_error_message(exc),
             },
         )
         raise self.retry(exc=exc)
@@ -1079,7 +1087,7 @@ def apply_insight(self, story_id: str, org_id: str, insight_id: str):
                 "task_id": self.request.id,
                 "type": "insight_apply",
                 "insight_id": insight_id,
-                "error": str(exc),
+                "error": safe_error_message(exc),
             },
         )
         raise self.retry(exc=exc) from exc
@@ -1097,7 +1105,7 @@ def infer_relationships(self, story_id: str, org_id: str):
             {
                 "task_id": self.request.id,
                 "type": "relationship_inference",
-                "error": str(exc),
+                "error": safe_error_message(exc),
             },
         )
         raise self.retry(exc=exc)
@@ -1116,7 +1124,7 @@ def summarize_scene(self, story_id: str, scene_id: str, org_id: str):
                 "task_id": self.request.id,
                 "type": "scene_summarization",
                 "scene_id": scene_id,
-                "error": str(exc),
+                "error": safe_error_message(exc),
             },
         )
         raise self.retry(exc=exc)
@@ -1157,7 +1165,7 @@ def scaffold_story(
             {
                 "task_id": task_id,
                 "type": "story_scaffolding",
-                "error": str(exc),
+                "error": safe_error_message(exc),
             },
         )
     except Exception as exc:
@@ -1167,7 +1175,7 @@ def scaffold_story(
             {
                 "task_id": task_id,
                 "type": "story_scaffolding",
-                "error": str(exc),
+                "error": safe_error_message(exc),
             },
         )
         raise self.retry(exc=exc) from exc
@@ -1213,7 +1221,7 @@ def generate_full_manuscript(
             {
                 "task_id": task_id,
                 "type": "full_manuscript",
-                "error": str(exc),
+                "error": safe_error_message(exc),
             },
         )
         raise self.retry(exc=exc) from exc

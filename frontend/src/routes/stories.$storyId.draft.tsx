@@ -15,9 +15,16 @@ function DraftPage() {
   const activeSceneN = useStore(s => s.activeSceneN)
   const setActiveSceneN = useStore(s => s.setActiveSceneN)
 
+  const aiTasks = useStore(s => s.aiTasks)
   const scenes = scenesData?.items ?? []
   const characters = charsData?.items ?? []
   const activeScene = scenes.find(s => s.n === activeSceneN)
+  const proseRunningForScene = !!activeScene && aiTasks.some(
+    (t) =>
+      t.kind === 'prose_continuation' &&
+      t.scene_id === activeScene.id &&
+      (t.status === 'queued' || t.status === 'running'),
+  )
 
   const { data: draftData, isLoading: draftLoading, isFetching: draftFetching } =
     useDraft(storyId, activeScene?.id)
@@ -139,10 +146,14 @@ function DraftPage() {
             <button
               className="btn"
               onClick={handleAiContinue}
-              disabled={continueMutation.isPending || !activeScene}
-              style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', cursor: continueMutation.isPending ? 'wait' : 'pointer' }}
+              disabled={continueMutation.isPending || proseRunningForScene || !activeScene}
+              style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', cursor: continueMutation.isPending || proseRunningForScene ? 'wait' : 'pointer' }}
             >
-              {continueMutation.isPending ? 'Running...' : 'AI continue'}
+              {continueMutation.isPending
+                ? 'Starting…'
+                : proseRunningForScene
+                  ? 'Streaming…'
+                  : 'AI continue'}
             </button>
             {continueMutation.isError && (
               <span style={{ fontSize: 10, color: 'var(--red, #c00)' }}>Failed</span>

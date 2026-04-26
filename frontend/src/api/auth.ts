@@ -1,5 +1,6 @@
 import { useStore } from '../store'
 import type { UserProfile } from '../types'
+import { api, ApiError } from './client'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -64,4 +65,29 @@ async function fetchMe(token: string): Promise<UserProfile> {
     headers: { Authorization: `Bearer ${token}` },
   })
   return response.json()
+}
+
+/**
+ * Hydrate the user profile from the backend.
+ *
+ * Goes through the refresh-aware api client, so an expired access token paired
+ * with a still-valid refresh cookie self-heals. Returns:
+ *   - 'hydrated' on success
+ *   - 'auth-failed' on real auth failure (refresh cookie also invalid → caller should logout)
+ *   - 'transient' on network/server hiccups (caller should leave state alone and retry later)
+ */
+export async function hydrateCurrentUser(): Promise<'hydrated' | 'auth-failed' | 'transient'> {
+  try {
+    const profile = await api.get<UserProfile>('/api/users/me')
+    const { accessToken } = useStore.getState()
+    if (!accessToken) return 'auth-failed'
+    useStore.getState().setAuth(accessToken, profile)
+    return 'hydrated'
+  } catch (err) {
+    if (err instanceof ApiError) {
+      if (err.status === 401 || err.status === 403) return 'auth-failed'
+      return 'transient'
+    }
+    return 'transient'
+  }
 }
