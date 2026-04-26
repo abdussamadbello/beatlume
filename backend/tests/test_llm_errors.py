@@ -89,3 +89,10 @@ class TestClassifyError:
         assert formatted["category"] == "rate_limit"
         assert formatted["retryable"] is True
         assert "message" in formatted
+
+
+def test_chat_task_type_has_tier_mapping():
+    from app.ai.llm import TASK_MODEL_MAP, TASK_TIER_MAP
+    assert "chat" in TASK_TIER_MAP
+    assert "chat" in TASK_MODEL_MAP
+    assert TASK_TIER_MAP["chat"] in TASK_MODEL_MAP["chat"]
