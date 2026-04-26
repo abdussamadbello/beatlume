@@ -11,8 +11,9 @@ import {
   useTriggerSummarize,
 } from '../../api/ai'
 import type { AITask, AITaskKind, AITaskStatus } from '../../types'
+import { ChatTab } from './chat/ChatTab'
 
-const PANEL_WIDTH = 360
+const PANEL_WIDTH = 420
 
 const kindLabels: Record<AITaskKind, string> = {
   insight_generation: 'Insight analysis',
@@ -145,13 +146,6 @@ const panelHead: CSSProperties = {
   letterSpacing: '0.1em',
   textTransform: 'uppercase',
   color: 'var(--ink-3)',
-}
-
-const headTitle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'baseline',
-  gap: 8,
-  color: 'var(--ink)',
 }
 
 const closeBtn: CSSProperties = {
@@ -336,6 +330,18 @@ const runGrid: CSSProperties = {
   padding: '0 16px 12px',
 }
 
+const tabBtn = (active: boolean): CSSProperties => ({
+  padding: '4px 10px',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 11,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  border: '1px solid var(--line)',
+  background: active ? 'var(--ink)' : 'transparent',
+  color: active ? 'var(--paper)' : 'var(--ink-2)',
+  cursor: 'pointer',
+})
+
 function statusLabel(task: AITask, now: number): string {
   if (task.status === 'queued') return 'Queued'
   if (task.status === 'running') {
@@ -368,7 +374,6 @@ function statusLabel(task: AITask, now: number): string {
   return `Failed ${formatRelative(at, now)} ago`
 }
 
-/** Right column: avoid "0s" for instant completes; show run length when we have both timestamps. */
 function taskRowDurationOrAge(task: AITask, now: number): string {
   if (task.status === 'completed' && task.completed_at != null) {
     const d = task.completed_at - task.started_at
@@ -432,9 +437,54 @@ function TaskRow({ task, now, onOpen }: { task: AITask; now: number; onOpen?: ()
 }
 
 export function AIPanel({ storyId }: { storyId: string }) {
-  const aiTasks = useStore((s) => s.aiTasks)
   const aiPanelOpen = useStore((s) => s.aiPanelOpen)
   const setAIPanelOpen = useStore((s) => s.setAIPanelOpen)
+  const tab = useStore((s) => s.aiPanelTab)
+  const setTab = useStore((s) => s.setAIPanelTab)
+
+  useEffect(() => {
+    if (aiPanelOpen && tab === 'chat') {
+      useStore.getState().clearChatUnread()
+    }
+  }, [aiPanelOpen, tab])
+
+  if (!aiPanelOpen) return null
+
+  return (
+    <aside style={panelShell} aria-label="AI panel">
+      <div style={panelHead}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            style={tabBtn(tab === 'chat')}
+            onClick={() => setTab('chat')}
+            aria-pressed={tab === 'chat'}
+          >
+            Chat
+          </button>
+          <button
+            style={tabBtn(tab === 'tasks')}
+            onClick={() => setTab('tasks')}
+            aria-pressed={tab === 'tasks'}
+          >
+            Tasks
+          </button>
+        </div>
+        <button
+          style={closeBtn}
+          onClick={() => setAIPanelOpen(false)}
+          aria-label="Close AI panel"
+        >
+          ×
+        </button>
+      </div>
+      {tab === 'chat' ? <ChatTab storyId={storyId} /> : <TasksTab storyId={storyId} />}
+    </aside>
+  )
+}
+
+function TasksTab({ storyId }: { storyId: string }) {
+  const aiTasks = useStore((s) => s.aiTasks)
+  const aiPanelOpen = useStore((s) => s.aiPanelOpen)
   const clearCompletedAITasks = useStore((s) => s.clearCompletedAITasks)
   const activeSceneId = useStore((s) => s.activeSceneId)
   const activeSceneN = useStore((s) => s.activeSceneN)
@@ -478,8 +528,6 @@ export function AIPanel({ storyId }: { storyId: string }) {
     (t) => t.kind === 'scene_summarization' && t.scene_id === activeSceneId && (t.status === 'queued' || t.status === 'running'),
   )
 
-  if (!aiPanelOpen) return null
-
   const active = aiTasks.filter((t) => t.status === 'queued' || t.status === 'running')
   const recent = aiTasks.filter((t) => t.status === 'completed' || t.status === 'error')
   const completedCount = recent.length
@@ -493,17 +541,7 @@ export function AIPanel({ storyId }: { storyId: string }) {
   const summaryDisabled = !activeSceneId || summaryBusyForScene
 
   return (
-    <aside style={panelShell} aria-label="AI task panel">
-      <div style={panelHead}>
-        <span style={headTitle}>
-          <span>AI</span>
-          <span style={{ color: 'var(--ink-3)', fontSize: 10 }}>tasks</span>
-        </span>
-        <button style={closeBtn} onClick={() => setAIPanelOpen(false)} aria-label="Close AI panel">
-          ×
-        </button>
-      </div>
-
+    <>
       <div style={runRowLabel}>Story-wide</div>
       <div style={runGrid}>
         <button
@@ -624,6 +662,6 @@ export function AIPanel({ storyId }: { storyId: string }) {
           </button>
         )}
       </div>
-    </aside>
+    </>
   )
 }
