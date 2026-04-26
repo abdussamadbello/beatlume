@@ -265,3 +265,27 @@ async def test_assembler_omits_story_metadata_when_empty(db_session):
         story_id=story.id, scene_id=scene.id, scene_n=1, pov="Iris"
     )
     assert "story_metadata" not in ctx.sections
+
+
+@pytest.mark.asyncio
+async def test_build_chat_context_medium_includes_scene_list_and_chars(
+    db_session, sample_story, sample_scene, sample_character
+):
+    from app.ai.context.assembler import build_chat_context
+    ctx = await build_chat_context(db_session, sample_story.id, active_scene_id=None)
+    assert sample_story.title in ctx
+    assert sample_character.name in ctx
+    assert str(sample_scene.n) in ctx
+
+
+@pytest.mark.asyncio
+async def test_build_chat_context_includes_active_scene_draft(
+    db_session, sample_story, sample_scene
+):
+    from app.services import draft as draft_service
+    await draft_service.upsert_draft(
+        db_session, sample_story.id, sample_scene.id, sample_scene.org_id, "ACTIVE_DRAFT_TEXT"
+    )
+    from app.ai.context.assembler import build_chat_context
+    ctx = await build_chat_context(db_session, sample_story.id, active_scene_id=sample_scene.id)
+    assert "ACTIVE_DRAFT_TEXT" in ctx
