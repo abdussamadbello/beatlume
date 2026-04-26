@@ -33,6 +33,7 @@ export function useCreateStory() {
       themes?: string[]
       target_words?: number
       structure_type?: string
+      story_type?: string
     }) => api.post<Story>('/api/stories', data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['stories'] }),
   })
