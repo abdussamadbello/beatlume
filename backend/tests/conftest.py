@@ -167,3 +167,38 @@ async def second_org_auth_token(client):
 @pytest.fixture
 def second_org_auth_headers(second_org_auth_token):
     return {"Authorization": f"Bearer {second_org_auth_token}"}
+
+
+from app.models.scene import Scene
+from app.models.character import Character
+
+
+@pytest.fixture
+async def sample_scene(db_session, sample_org, sample_story):
+    scene = Scene(
+        org_id=sample_org.id,
+        story_id=sample_story.id,
+        n=1,
+        title="Opening",
+        pov="Narrator",
+        summary="The story begins.",
+    )
+    db_session.add(scene)
+    await db_session.commit()
+    await db_session.refresh(scene)
+    return scene
+
+
+@pytest.fixture
+async def sample_character(db_session, sample_org, sample_story):
+    char = Character(
+        org_id=sample_org.id,
+        story_id=sample_story.id,
+        name="Marcus",
+        role="protagonist",
+        bio="A reluctant hero.",
+    )
+    db_session.add(char)
+    await db_session.commit()
+    await db_session.refresh(char)
+    return char
