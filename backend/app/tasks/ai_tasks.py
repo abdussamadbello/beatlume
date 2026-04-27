@@ -766,6 +766,35 @@ async def _run_infer_relationships(task_id: str, story_id: str, org_id: str) -> 
             )
             prose_by_scene = {d.scene_id: d.content for d in drafts if d.content}
 
+            # Fallback: when scene_participants is empty or sparse, augment by scanning
+            # scene title/summary/draft for character name mentions. Without this,
+            # stories scaffolded before the participant-sync fix produce zero pairs
+            # even when characters clearly co-occur in the prose.
+            missing_chars = [c for c in chars if c.id not in scene_ids_by_character]
+            if missing_chars:
+                import re as _re
+                name_patterns = [
+                    (
+                        c,
+                        _re.compile(
+                            r"\b" + _re.escape((c.name or "").strip()) + r"\b",
+                            _re.IGNORECASE,
+                        ),
+                    )
+                    for c in chars
+                    if (c.name or "").strip()
+                ]
+                for scene in scenes:
+                    parts = [scene.title or "", scene.summary or ""]
+                    if scene.id in prose_by_scene:
+                        parts.append(prose_by_scene[scene.id])
+                    text = "\n".join(parts)
+                    if not text.strip():
+                        continue
+                    for char, pat in name_patterns:
+                        if pat.search(text):
+                            scene_ids_by_character.setdefault(char.id, set()).add(scene.id)
+
             nodes = list(
                 (
                     await db.execute(

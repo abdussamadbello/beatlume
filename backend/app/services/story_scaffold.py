@@ -1,5 +1,6 @@
 """Apply LLM story scaffold JSON to the database (scenes, characters, graph edges)."""
 
+import re
 import uuid
 
 from sqlalchemy import func, select
@@ -9,6 +10,7 @@ from sqlalchemy.orm import aliased
 from app.models.character import Character
 from app.models.graph import CharacterEdge, CharacterNode, EdgeKind, EdgeProvenance
 from app.models.scene import Scene
+from app.models.scene_participant import SceneParticipant
 from app.services import character as character_service
 from app.services import graph as graph_service
 from app.services import scene as scene_service
@@ -171,4 +173,82 @@ async def apply_scaffold_to_story(
     if rels:
         await _sync_scaffold_edges(db, story_id, org_id, rels)
 
+    # Mention-based participant sync. The LLM scaffold rarely returns explicit
+    # participants; without this, only POV characters get linked to scenes,
+    # which leaves infer_relationships with no co-occurrence to work from.
+    await _sync_scene_participants_from_text(db, story_id, org_id)
+
     return len(flat)
+
+
+def _name_pattern(name: str) -> re.Pattern:
+    """Word-boundary, case-insensitive regex for a character name.
+    \b avoids matching 'Sam' inside 'Samuel'."""
+    return re.compile(r"\b" + re.escape(name.strip()) + r"\b", re.IGNORECASE)
+
+
+async def _sync_scene_participants_from_text(
+    db: AsyncSession, story_id: uuid.UUID, org_id: uuid.UUID
+) -> int:
+    """Scan each scene's title + summary for character name mentions and add
+    a SceneParticipant row per match. Best-effort, idempotent — skips pairs
+    that already exist. Returns the number of new rows added.
+
+    Role assignment: the scene's POV character (if matched) is recorded as
+    role='pov'; everyone else as role='supporting'. This is intentionally
+    coarse — fine-grained roles can be edited in the UI later.
+    """
+    chars = list(
+        (await db.execute(select(Character).where(Character.story_id == story_id)))
+        .scalars()
+        .all()
+    )
+    if not chars:
+        return 0
+    scenes = list(
+        (await db.execute(select(Scene).where(Scene.story_id == story_id)))
+        .scalars()
+        .all()
+    )
+    if not scenes:
+        return 0
+
+    existing = (
+        await db.execute(
+            select(SceneParticipant.scene_id, SceneParticipant.character_id).where(
+                SceneParticipant.scene_id.in_([s.id for s in scenes]),
+            )
+        )
+    ).all()
+    existing_pairs: set[tuple[uuid.UUID, uuid.UUID]] = {
+        (row[0], row[1]) for row in existing
+    }
+
+    name_patterns = [(c, _name_pattern(c.name)) for c in chars if (c.name or "").strip()]
+
+    added = 0
+    for scene in scenes:
+        text = " ".join([scene.title or "", scene.summary or ""])
+        if not text.strip():
+            continue
+        pov_lower = (scene.pov or "").strip().lower()
+        for char, pat in name_patterns:
+            if not pat.search(text):
+                continue
+            key = (scene.id, char.id)
+            if key in existing_pairs:
+                continue
+            role = "pov" if pov_lower == char.name.strip().lower() else "supporting"
+            db.add(
+                SceneParticipant(
+                    scene_id=scene.id,
+                    character_id=char.id,
+                    role=role,
+                    org_id=org_id,
+                )
+            )
+            existing_pairs.add(key)
+            added += 1
+    if added:
+        await db.commit()
+    return added
