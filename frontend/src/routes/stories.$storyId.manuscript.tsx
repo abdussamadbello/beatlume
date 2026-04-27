@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Btn, Label } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { useChapters } from '../api/manuscript'
@@ -30,7 +30,27 @@ function ManuscriptPage() {
   const { data: story, isLoading: storyLoading } = useStory(storyId)
   const { data: chaptersData, isLoading } = useChapters(storyId)
   const exportMutation = useTriggerExport(storyId)
+  const navigate = useNavigate()
   const editMode = useStore(s => s.editMode)
+
+  // Quick-export from the manuscript page: hands off to the dedicated export view,
+  // which already shows progress + the Download button. We persist the job id so
+  // that page picks it up automatically on arrival.
+  const startExport = (format: 'pdf' | 'docx') => {
+    exportMutation.mutate(
+      { format },
+      {
+        onSuccess: (res) => {
+          try {
+            window.localStorage.setItem(`beatlume:export-job:${storyId}`, res.job_id)
+          } catch {
+            // localStorage may be disabled (private mode, quota); fail silently
+          }
+          navigate({ to: '/stories/$storyId/export', params: { storyId } })
+        },
+      },
+    )
+  }
   const toggleEditMode = useStore(s => s.toggleEditMode)
 
   const [scrollProgress, setScrollProgress] = useState(0)
@@ -123,14 +143,14 @@ function ManuscriptPage() {
           <span>Reading time &asymp; {formatReadingTime(manuscriptWords)}</span>
           <Btn
             variant="ghost"
-            onClick={() => exportMutation.mutate({ format: 'pdf' })}
+            onClick={() => startExport('pdf')}
             disabled={exportMutation.isPending}
           >
             Export &middot; PDF
           </Btn>
           <Btn
             variant="ghost"
-            onClick={() => exportMutation.mutate({ format: 'docx' })}
+            onClick={() => startExport('docx')}
             disabled={exportMutation.isPending}
           >
             Export &middot; DOCX
