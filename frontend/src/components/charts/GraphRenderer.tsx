@@ -5,6 +5,8 @@ import {
   forceLink,
   forceManyBody,
   forceSimulation,
+  forceX,
+  forceY,
 } from 'd3-force';
 import type {
   Simulation,
@@ -221,6 +223,13 @@ export function GraphRenderer({
       )
       .force('charge', forceManyBody<SimNode>().strength(charge))
       .force('center', forceCenter(w / 2, h / 2))
+      // Soft per-node attractors so disconnected nodes don't drift to the corner.
+      // forceCenter only translates the center of mass; without these, a node with
+      // no links has nothing pulling it back against charge repulsion. Strength is
+      // gentle (0.08) so the link force (strength 0.55) still dominates connected
+      // cluster shape — this only matters for isolated nodes.
+      .force('x', forceX<SimNode>(w / 2).strength(0.08))
+      .force('y', forceY<SimNode>(h / 2).strength(0.08))
       .force(
         'collide',
         forceCollide<SimNode>().radius((d) => radiusFor(d) + 6),
