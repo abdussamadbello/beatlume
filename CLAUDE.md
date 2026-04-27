@@ -75,7 +75,7 @@ npx tsc --noEmit         # type check
 cd backend
 uv sync                              # install deps
 PYTHONPATH=. uv run uvicorn app.main:app --reload --port 8000  # dev server
-PYTHONPATH=. uv run pytest tests/ -v  # run tests (94 tests)
+PYTHONPATH=. uv run pytest tests/ -v  # run tests (~240 tests)
 PYTHONPATH=. uv run alembic upgrade head           # run migrations
 PYTHONPATH=. uv run alembic revision --autogenerate -m "description"  # new migration
 PYTHONPATH=. uv run python -m app.seeds.sample_story  # seed sample data
@@ -117,7 +117,7 @@ cd backend && docker compose up -d
 - `app/config.py` — Pydantic Settings (all config from env vars)
 - `app/deps.py` — `get_db`, `get_current_user`, `get_current_org`, `get_story`
 - `app/models/base.py` — SQLAlchemy Base, OrgScopedMixin, TimestampMixin
-- `app/api/router.py` — aggregates all 15 routers
+- `app/api/router.py` — aggregates all 17 routers (chat exposes two: story-scoped and thread-scoped)
 - `app/ai/llm.py` — LiteLLM client with model tier routing
 - `app/ai/context/assembler.py` — context engine for AI prompts
 - `app/tasks/celery_app.py` — Celery config with queue routing
@@ -132,7 +132,7 @@ cd backend && docker compose up -d
 
 ## Database
 
-17 tables, 14 with RLS. Key tables: organizations, users, memberships, stories, scenes, characters, character_nodes, character_edges, insights, draft_contents, core_config_nodes, core_settings, manuscript_chapters, collaborators, comments, activity_events, export_jobs.
+21 tables, 15 with RLS. Key tables: organizations, users, memberships, stories, scenes, beats, scene_participants, characters, character_nodes, character_edges, insights, draft_contents, core_config_nodes, core_settings, manuscript_chapters, collaborators, comments, activity_events, export_jobs, chat_threads, chat_messages.
 
 Seed user: `elena@beatlume.io` / `beatlume123`
 

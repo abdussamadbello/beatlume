@@ -207,6 +207,7 @@ BeatLume uses organization-scoped Row-Level Security. For org-scoped tables:
 - [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) - deeper developer handbook for local architecture, workflows, and implementation patterns
 - [docs/API.md](./docs/API.md) - current API surface, async task behavior, and SSE model
 - [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) - deeper systems and algorithms document
+- [docs/PRINCIPLES.md](./docs/PRINCIPLES.md) - engineering and AI design principles (the *why* behind the architecture)
 - [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - local and production deployment guidance
 - [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) - contribution workflow
 - [docs/PRD.md](./docs/PRD.md) - product requirements background

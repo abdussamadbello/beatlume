@@ -131,7 +131,7 @@ beatlume/
 ├── Makefile                     # Dev commands
 ├── frontend/
 │   ├── src/
-│   │   ├── api/                 # TanStack Query hooks (12 modules)
+│   │   ├── api/                 # TanStack Query hooks (16 modules incl. chat, auth-lifecycle)
 │   │   ├── hooks/               # Custom hooks (useSSE)
 │   │   ├── components/          # UI components (chrome, charts, primitives)
 │   │   ├── routes/              # TanStack Router file-based routes
@@ -143,9 +143,9 @@ beatlume/
 │   └── package.json
 ├── backend/
 │   ├── app/
-│   │   ├── api/                 # FastAPI routers (15 modules)
-│   │   ├── models/              # SQLAlchemy models (11 modules)
-│   │   ├── schemas/             # Pydantic schemas (12 modules)
+│   │   ├── api/                 # FastAPI routers (17 modules)
+│   │   ├── models/              # SQLAlchemy models (14 modules)
+│   │   ├── schemas/             # Pydantic schemas (14 modules)
 │   │   ├── services/            # Business logic + analytics/
 │   │   ├── ai/                  # LangGraph + LiteLLM + context engine
 │   │   ├── tasks/               # Celery tasks
@@ -157,7 +157,7 @@ beatlume/
 │   │   ├── deps.py              # FastAPI dependencies
 │   │   └── main.py              # App factory
 │   ├── migrations/              # Alembic migrations
-│   ├── tests/                   # pytest (94 tests)
+│   ├── tests/                   # pytest (~240 tests across 25 files)
 │   ├── pyproject.toml           # UV project config
 │   └── docker-compose.yml       # Infrastructure services
 └── docs/superpowers/

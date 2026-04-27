@@ -357,6 +357,30 @@ Story collaboration routes:
 - `DELETE /api/stories/{story_id}/comments/{comment_id}`
 - `GET /api/stories/{story_id}/activity`
 
+### Chat
+
+The chat router exposes a conversational planner agent that can read story state and propose tool calls (scene edits, character edits, graph edits) for the user to apply or reject. It is split across two prefixes for access-control reasons.
+
+Story-scoped routes — access is gated by the story dependency:
+
+- `POST /api/stories/{story_id}/chat/threads`
+- `GET  /api/stories/{story_id}/chat/threads`
+
+Thread-scoped routes — the service layer enforces `org_id` matching and returns `404` (not `403`) on cross-org access:
+
+- `GET    /api/chat/threads/{thread_id}`
+- `DELETE /api/chat/threads/{thread_id}` (archive)
+- `GET    /api/chat/threads/{thread_id}/messages`
+- `POST   /api/chat/threads/{thread_id}/messages`
+- `POST   /api/chat/tool_calls/{message_id}/apply`
+- `POST   /api/chat/tool_calls/{message_id}/reject`
+
+Notes:
+
+- `POST /threads/{thread_id}/messages` streams the agent turn directly back as `text/event-stream` — it does **not** publish through the story-wide SSE channel
+- proposed tool calls live as messages and require explicit `apply` or `reject` to mutate planner state
+- thread list supports `include_archived`, `offset`, `limit`; messages list supports `offset`, `limit`
+
 ### Analytics
 
 Routes under `/api/stories/{story_id}/analytics`:
@@ -495,6 +519,7 @@ The frontend mirrors the API by domain:
 - `frontend/src/api/core.ts`
 - `frontend/src/api/manuscript.ts`
 - `frontend/src/api/collaboration.ts`
+- `frontend/src/api/chat.ts`
 - `frontend/src/api/analytics.ts`
 - `frontend/src/api/export.ts`
 
