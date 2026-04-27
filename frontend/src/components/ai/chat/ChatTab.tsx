@@ -49,7 +49,7 @@ export function ChatTab({ storyId }: { storyId: string }) {
           <button
             style={ctaPrimary}
             onClick={async () => {
-              const t = await createThread.mutateAsync()
+              const t = await createThread.mutateAsync(undefined)
               select(t.id)
             }}
           >
@@ -66,7 +66,7 @@ export function ChatTab({ storyId }: { storyId: string }) {
       <button
         style={newBtn}
         onClick={async () => {
-          const t = await createThread.mutateAsync()
+          const t = await createThread.mutateAsync(undefined)
           select(t.id)
         }}
       >
