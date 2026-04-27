@@ -11,6 +11,7 @@ import {
   useTriggerSummarize,
 } from '../../api/ai'
 import type { AITask, AITaskKind, AITaskStatus } from '../../types'
+import { Spinner } from '../primitives'
 import { ChatTab } from './chat/ChatTab'
 
 const PANEL_WIDTH = 420
@@ -253,6 +254,10 @@ const list: CSSProperties = {
 
 const runBtn: CSSProperties = {
   flex: 1,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
   padding: '8px 10px',
   border: '1px solid var(--ink)',
   background: 'var(--paper)',
@@ -550,14 +555,14 @@ function TasksTab({ storyId }: { storyId: string }) {
           disabled={insightsBusy}
           onClick={() => triggerInsights.mutate()}
         >
-          {insightsBusy ? 'Insights running' : 'Generate insights'}
+          {insightsBusy ? <><Spinner variant="ticker" /> Insights running</> : 'Generate insights'}
         </button>
         <button
           style={relationshipsBusy ? runBtnDisabled : runBtn}
           disabled={relationshipsBusy}
           onClick={() => triggerRelationships.mutate()}
         >
-          {relationshipsBusy ? 'Relations running' : 'Infer relations'}
+          {relationshipsBusy ? <><Spinner variant="ticker" /> Relations running</> : 'Infer relations'}
         </button>
       </div>
 
@@ -578,7 +583,7 @@ function TasksTab({ storyId }: { storyId: string }) {
             })
           }}
         >
-          {scaffoldBusy ? 'Scaffolding…' : 'Story structure'}
+          {scaffoldBusy ? <><Spinner variant="ticker" /> Scaffolding</> : 'Story structure'}
         </button>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
           <button
@@ -587,7 +592,7 @@ function TasksTab({ storyId }: { storyId: string }) {
             title="Skips scenes that already have draft text."
             onClick={() => triggerManuscript.mutate({ skip_non_empty: true })}
           >
-            {manuscriptBusy ? 'Drafting…' : 'Fill empty scenes'}
+            {manuscriptBusy ? <><Spinner variant="ticker" /> Drafting</> : 'Fill empty scenes'}
           </button>
           <button
             style={!story || manuscriptBusy ? runBtnDisabled : runBtnDanger}
@@ -604,7 +609,7 @@ function TasksTab({ storyId }: { storyId: string }) {
               triggerManuscript.mutate({ skip_non_empty: false })
             }}
           >
-            {manuscriptBusy ? 'Drafting…' : 'Regenerate all'}
+            {manuscriptBusy ? <><Spinner variant="ticker" /> Drafting</> : 'Regenerate all'}
           </button>
         </div>
       </div>
@@ -617,7 +622,7 @@ function TasksTab({ storyId }: { storyId: string }) {
           onClick={() => activeSceneId && triggerProse.mutate(activeSceneId)}
           title={activeSceneId ? '' : 'Open the Draft view to set an active scene'}
         >
-          {proseBusyForScene ? 'Prose streaming' : 'Continue prose'}
+          {proseBusyForScene ? <><Spinner variant="ticker" /> Prose streaming</> : 'Continue prose'}
         </button>
         <button
           style={summaryDisabled ? runBtnDisabled : runBtn}
@@ -625,7 +630,7 @@ function TasksTab({ storyId }: { storyId: string }) {
           onClick={() => activeSceneId && triggerSummarize.mutate(activeSceneId)}
           title={activeSceneId ? '' : 'Open the Draft view to set an active scene'}
         >
-          {summaryBusyForScene ? 'Summarizing' : 'Summarize scene'}
+          {summaryBusyForScene ? <><Spinner variant="ticker" /> Summarizing</> : 'Summarize scene'}
         </button>
       </div>
 

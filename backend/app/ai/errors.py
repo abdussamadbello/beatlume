@@ -175,6 +175,15 @@ _PYTHONIC_NEEDLES = (
     "File \"",
     "<class '",
     "litellm.",
+    # JSON / parser-internal phrases. "Expecting value:", "Expecting property name:",
+    # "Extra data:", "Unterminated string", "JSONDecodeError" — all leak Python's
+    # json module language to users and should be sanitized.
+    "Expecting value",
+    "Expecting property",
+    "Extra data",
+    "Unterminated string",
+    "JSONDecodeError",
+    "(char ",  # appears in json.loads errors as "(char 0)"
 )
 
 

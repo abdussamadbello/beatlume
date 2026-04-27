@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { Btn, Panel, PanelHead } from '../components/primitives'
+import { Btn, Panel, PanelHead, Spinner } from '../components/primitives'
 import { useTriggerExport, useExportStatus, useExportHistory, type ExportJobStatus } from '../api/export'
 
 export const Route = createFileRoute('/stories/$storyId/export')({
@@ -291,11 +291,21 @@ function ExportPage() {
               }
               disabled={isRunning}
             >
-              {isRunning
-                ? job?.status === 'running'
-                  ? `Generating... ${Math.round((job.progress ?? 0) * 100)}%`
-                  : 'Exporting...'
-                : `Export as ${formats.find((f) => f.value === format)?.label}`}
+              {isRunning ? (
+                job?.status === 'running' ? (
+                  <>
+                    <Spinner variant="ticker" color="var(--paper)" />
+                    Generating · {Math.round((job.progress ?? 0) * 100)}%
+                  </>
+                ) : (
+                  <>
+                    <Spinner variant="pulse" color="var(--paper)" />
+                    Exporting
+                  </>
+                )
+              ) : (
+                `Export as ${formats.find((f) => f.value === format)?.label}`
+              )}
             </Btn>
             {exportMutation.isError && (
               <div style={{ fontSize: 10, color: 'var(--red, #c00)', marginTop: 6, textAlign: 'center' }}>

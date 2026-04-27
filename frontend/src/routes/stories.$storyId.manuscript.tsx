@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Btn, Label } from '../components/primitives'
+import { Btn, Label, Spinner } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { useChapters } from '../api/manuscript'
 import { useStory } from '../api/stories'
@@ -146,14 +146,22 @@ function ManuscriptPage() {
             onClick={() => startExport('pdf')}
             disabled={exportMutation.isPending}
           >
-            Export &middot; PDF
+            {exportMutation.isPending && exportMutation.variables?.format === 'pdf' ? (
+              <><Spinner variant="pulse" /> Starting export</>
+            ) : (
+              'Export · PDF'
+            )}
           </Btn>
           <Btn
             variant="ghost"
             onClick={() => startExport('docx')}
             disabled={exportMutation.isPending}
           >
-            Export &middot; DOCX
+            {exportMutation.isPending && exportMutation.variables?.format === 'docx' ? (
+              <><Spinner variant="pulse" /> Starting export</>
+            ) : (
+              'Export · DOCX'
+            )}
           </Btn>
           <Btn onClick={() => toggleEditMode()}>
             {editMode ? 'Read mode' : 'Edit mode'}

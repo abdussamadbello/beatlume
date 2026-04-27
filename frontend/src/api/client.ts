@@ -33,6 +33,13 @@ const PYTHONIC_NEEDLES = [
   'File "',
   "<class '",
   'litellm.',
+  // JSON / parser-internal phrases — mirrors backend sanitizer.
+  'Expecting value',
+  'Expecting property',
+  'Extra data',
+  'Unterminated string',
+  'JSONDecodeError',
+  '(char ',
 ]
 
 function sanitizeServerMessage(raw: unknown): string {

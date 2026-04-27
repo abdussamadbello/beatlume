@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { Tag, Label } from '../components/primitives'
+import { Tag, Label, Spinner } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { useScenes } from '../api/scenes'
 import { useCharacters } from '../api/characters'
@@ -149,11 +149,13 @@ function DraftPage() {
               disabled={continueMutation.isPending || proseRunningForScene || !activeScene}
               style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', cursor: continueMutation.isPending || proseRunningForScene ? 'wait' : 'pointer' }}
             >
-              {continueMutation.isPending
-                ? 'Starting…'
-                : proseRunningForScene
-                  ? 'Streaming…'
-                  : 'AI continue'}
+              {continueMutation.isPending ? (
+                <><Spinner variant="pulse" color="var(--paper)" /> Starting</>
+              ) : proseRunningForScene ? (
+                <><Spinner variant="ticker" color="var(--paper)" /> Streaming</>
+              ) : (
+                'AI continue'
+              )}
             </button>
             {continueMutation.isError && (
               <span style={{ fontSize: 10, color: 'var(--red, #c00)' }}>Failed</span>

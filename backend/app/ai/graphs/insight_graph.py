@@ -20,7 +20,10 @@ class InsightState(TypedDict):
 @instrumented_node("insight", "analyze_acts")
 async def analyze_acts(state: InsightState) -> dict:
     from app.ai.context.assembler import AssembledContext
+    from app.ai.errors import safe_error_message
+    import logging
 
+    log = logging.getLogger(__name__)
     all_findings = []
     for act_num, sections in state["act_contexts"].items():
         ctx = AssembledContext(sections=sections)
@@ -30,9 +33,19 @@ async def analyze_acts(state: InsightState) -> dict:
             findings = insight_analysis.validate_output(result)
             all_findings.append(findings)
         except Exception as e:
-            all_findings.append([{"severity": "blue", "category": "Structure",
-                                  "title": f"Analysis failed for Act {act_num}",
-                                  "body": str(e), "refs": []}])
+            # Per-act failure shouldn't kill the whole task. Log raw error, surface a
+            # clean stub finding so the user knows that act wasn't analyzed.
+            log.warning("Insight analysis failed for act %s: %s", act_num, e, exc_info=True)
+            all_findings.append([{
+                "severity": "blue",
+                "category": "Structure",
+                "title": f"Act {act_num} analysis incomplete",
+                "body": (
+                    f"The AI couldn't fully analyze Act {act_num} this run "
+                    f"({safe_error_message(e)}). Try again or edit scenes to add summaries."
+                ),
+                "refs": [],
+            }])
     return {"chunk_findings": all_findings}
 
 

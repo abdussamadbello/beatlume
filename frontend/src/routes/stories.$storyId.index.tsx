@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { TensionCurve } from '../components/charts'
-import { Panel, PanelHead, Tag, Label, PresenceStrip } from '../components/primitives'
+import { Panel, PanelHead, Tag, Label, PresenceStrip, Spinner } from '../components/primitives'
 import { LoadingState } from '../components/LoadingState'
 import { Modal } from '../components/Modal'
 import { useStory } from '../api/stories'
@@ -27,7 +27,10 @@ const calloutBox: CSSProperties = {
 }
 
 const primaryBtn: React.CSSProperties = {
-  display: 'inline-block',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
   padding: '10px 16px',
   border: '1px solid var(--ink)',
   background: 'var(--ink)',
@@ -174,7 +177,7 @@ function Overview() {
                 disabled={manuscriptRunning}
                 onClick={() => triggerManuscript.mutate({ skip_non_empty: true })}
               >
-                {manuscriptRunning ? 'Resuming…' : 'Resume full draft'}
+                {manuscriptRunning ? <><Spinner variant="ticker" color="var(--paper)" /> Resuming</> : 'Resume full draft'}
               </button>
             </div>
           )}
@@ -204,7 +207,7 @@ function Overview() {
                   })
                 }
               >
-                {scaffoldRunning || triggerScaffold.isPending ? 'Scaffolding…' : 'Generate story structure'}
+                {scaffoldRunning || triggerScaffold.isPending ? <><Spinner variant="ticker" color="var(--paper)" /> Scaffolding</> : 'Generate story structure'}
               </button>
               <button
                 type="button"
@@ -233,7 +236,7 @@ function Overview() {
                     setManuscriptOverwriteAck(false)
                   }}
                 >
-                  {manuscriptRunning ? 'Drafting all scenes…' : 'Generate full draft'}
+                  {manuscriptRunning ? <><Spinner variant="ticker" color="var(--paper)" /> Drafting all scenes</> : 'Generate full draft'}
                 </button>
                 <button
                   type="button"

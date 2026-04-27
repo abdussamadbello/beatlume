@@ -327,3 +327,71 @@ def test_insight_synthesis_build_prompt_works_without_skeleton():
     messages = insight_synthesis.build_prompt(findings, story_ctx)
     assert len(messages) == 2
     assert "STORY SKELETON" not in messages[1]["content"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# parse_json_response: empty / malformed model output
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_parse_json_response_rejects_empty_string():
+    """An empty model response must raise a clean, short ValueError — not bleed Python's
+    'Expecting value: line 1 column 1 (char 0)' to the user."""
+    from app.ai.llm import parse_json_response
+    with pytest.raises(ValueError) as exc_info:
+        parse_json_response("")
+    msg = str(exc_info.value)
+    assert "Expecting value" not in msg
+    assert "(char 0)" not in msg
+    assert "line 1 column 1" not in msg
+    assert "AI" in msg or "empty" in msg.lower()
+
+
+def test_parse_json_response_rejects_whitespace():
+    from app.ai.llm import parse_json_response
+    with pytest.raises(ValueError) as exc_info:
+        parse_json_response("   \n\n  ")
+    assert "Expecting value" not in str(exc_info.value)
+
+
+def test_parse_json_response_rejects_empty_code_fence():
+    """Model returns ```json\\n``` with nothing inside."""
+    from app.ai.llm import parse_json_response
+    with pytest.raises(ValueError) as exc_info:
+        parse_json_response("```json\n```")
+    assert "Expecting value" not in str(exc_info.value)
+
+
+def test_parse_json_response_rejects_garbage():
+    """Model returns prose like 'Sure, here are the findings:' — no JSON."""
+    from app.ai.llm import parse_json_response
+    with pytest.raises(ValueError) as exc_info:
+        parse_json_response("Sure, here are the findings:")
+    msg = str(exc_info.value)
+    assert "Expecting value" not in msg
+    assert "JSONDecodeError" not in msg
+
+
+def test_parse_json_response_accepts_valid_json():
+    from app.ai.llm import parse_json_response
+    assert parse_json_response('{"x": 1}') == {"x": 1}
+
+
+def test_parse_json_response_strips_markdown_code_fence():
+    from app.ai.llm import parse_json_response
+    assert parse_json_response('```json\n{"x": 1}\n```') == {"x": 1}
+
+
+def test_safe_error_message_sanitizes_jsondecodeerror():
+    """The needles must catch json-parse leakage that reaches the user."""
+    from app.ai.errors import safe_error_message
+    msg = safe_error_message(ValueError("Expecting value: line 1 column 1 (char 0)"))
+    assert "Expecting value" not in msg
+    assert "(char 0)" not in msg
+
+
+def test_insight_validator_with_empty_response_fails_loud():
+    """If the LLM returned nothing at all, validate_output should produce a clean error."""
+    with pytest.raises(ValueError) as exc_info:
+        insight_analysis.validate_output("")
+    msg = str(exc_info.value)
+    assert "Expecting value" not in msg

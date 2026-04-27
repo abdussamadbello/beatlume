@@ -403,12 +403,29 @@ _MARKDOWN_CODE_RE = re.compile(r"^```(?:\w+)?\s*\n?(.*?)\n?\s*```$", re.DOTALL)
 
 
 def parse_json_response(raw: str) -> dict:
-    """Parse JSON from LLM response, handling markdown code blocks."""
-    text = raw.strip()
+    """Parse JSON from an LLM response, stripping markdown code fences if present.
+
+    Raises ValueError with a short, user-presentable message on empty or unparseable
+    input. The original parse error goes into logs (callers can keep their
+    logger.exception); only the friendly message reaches the user.
+    """
+    text = (raw or "").strip()
+    if not text:
+        raise ValueError("Empty response from AI")
     match = _MARKDOWN_CODE_RE.match(text)
     if match:
         text = match.group(1).strip()
-    return json.loads(text)
+        if not text:
+            raise ValueError("Empty response from AI")
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        # Log the raw text fragment for debugging (capped); raise a clean message for users.
+        logger.warning(
+            "AI returned non-JSON response (first 200 chars): %r",
+            text[:200],
+        )
+        raise ValueError("AI returned an unreadable response. Please try again.") from exc
 
 
 async def call_llm_with_tools(
