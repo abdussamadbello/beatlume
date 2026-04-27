@@ -2,7 +2,7 @@
 # Usage: make <target>
 
 .PHONY: help install dev dev-stop dev-frontend dev-backend test test-backend test-frontend test-e2e test-e2e-live lint lint-backend lint-frontend \
-        migrate migrate-new seed db-create db-reset db-fresh db-clear-alembic build clean \
+        migrate migrate-new seed db-create db-reset db-fresh db-clear-alembic build clean reset \
         celery-fast celery-heavy celery-export celery-beat celery-all \
         docker-all docker-infra docker-api docker-frontend docker-down docker-clean docker-rebuild docker-db-fresh \
         observability-up observability-down observability-status observability-logs
@@ -201,6 +201,13 @@ docker-rebuild: ## Rebuild api image (picks up backend code changes) and restart
 	cd backend && docker compose up -d
 	@echo ""
 	@echo "✓ Rebuilt and restarted. Follow api logs: docker logs -f beatlume-api-1"
+
+reset: ## Full Tier-1 reset — wipe ALL volumes (DB + Redis + MinIO) and bring stack back up clean
+	cd backend && docker compose down --volumes --remove-orphans
+	cd backend && docker compose up -d
+	@echo ""
+	@echo "✓ Full reset done. migrate + seed re-ran. Login: elena@beatlume.io / beatlume123"
+	@echo "  Tail logs: docker logs -f beatlume-api-1"
 
 docker-db-fresh: ## Wipe ONLY the postgres volume and bring stack back up — migrate + seed re-run, other data kept
 	cd backend && docker compose down
