@@ -1,29 +1,107 @@
 # BeatLume
 
-BeatLume is a graph-driven AI fiction workspace for planning, drafting, and exporting long-form stories.
+**A graph-driven AI fiction workspace for planning, drafting, and exporting full-length stories.**
 
-It is not only a scene board or an analysis tool. The product guarantee is that a writer can move from setup to a complete, exportable manuscript inside the app, using AI-assisted scaffolding, scene drafting, manuscript assembly, and export.
+BeatLume takes you from a one-line premise to a complete, exportable manuscript — powered by AI scaffolding, scene-by-scene drafting, and whole-story generation. It is not just a planner: the guaranteed outcome is a **full generated story** you can iterate on and export.
 
-## Product Guarantee
+**Live app:** [https://beatlume.up.railway.app](https://beatlume.up.railway.app/)
 
-Every story workspace is expected to support this path:
+> **Try it now** — log in with the demo account `elena@beatlume.io` / `beatlume123`, or create your own account and start writing.
 
-1. Create a story and define the premise, structure, story type, and target word count.
-2. Scaffold the story into scenes, characters, and initial relationship edges.
-3. Refine the plan through scenes, beats, graph edits, analytics, and AI insights.
-4. Generate prose scene by scene or run a full-manuscript pass.
-5. Review the assembled manuscript and export it as PDF, DOCX, ePub, or plaintext.
+---
 
-That end-to-end path matters more than any isolated planning surface.
+## Screenshots
 
-## What BeatLume Includes
+### Onboarding
 
-- Guided setup for premise, structure, character seed data, and AI scaffold kickoff
-- Story-scoped views for overview, scenes, beats, characters, graph, timeline, AI insights, draft, manuscript, collaboration, and export
-- Async AI workflows for story scaffolding, insight generation, insight application, prose continuation, relationship inference, scene summarization, and full-manuscript generation
-- Real-time task feedback over SSE for AI progress, completion, and errors
-- Export pipeline for manuscript output in multiple formats
-- Organization-scoped multi-tenancy enforced with PostgreSQL Row-Level Security
+When you first sign up, a short onboarding wizard introduces BeatLume and captures your writing style.
+
+| Welcome | Writing Preferences |
+|---------|-------------------|
+| ![Welcome](images/01-welcome.png) | ![Writing Preferences](images/02-writing-preferences.png) |
+
+### Story Creation Wizard
+
+Create a new story in four guided steps — premise, structure, characters, and scaffold preview.
+
+**Step 1 — Premise:** Give your story a title, logline, genre, subgenre, and themes.
+
+![Premise](images/03-premise.png)
+
+**Step 2 — Structure:** Pick a story type (Short Story, Novelette, Novella, Novel, Epic) and an act structure (Three-Act, Save the Cat, Hero's Journey, Five-Act, or Freeform).
+
+![Structure](images/04-structure.png)
+
+**Step 3 — Characters:** Add your characters with roles (Protagonist, Antagonist, etc.). BeatLume suggests relationship edges automatically.
+
+![Characters](images/05-characters.png)
+
+**Step 4 — Scaffold & Preview:** Review your workspace setup before creating the story. Nothing is locked — you can change everything later.
+
+![Scaffold & Preview](images/06-scaffold-preview.png)
+
+### Story Workspace
+
+Once created, your story opens into a full workspace with planning, drafting, and publishing tools.
+
+**Overview** — See your story's premise, word target, genre tags, and a tension curve at a glance. The AI chat panel offers quick-start prompts. Hit **Generate Story Structure** to scaffold scenes instantly.
+
+![Story Overview](images/07-story-overview.png)
+
+**Scene Board** — All your scenes organized by act. Drag to reorder, move between acts, filter, and sort. Each card shows the POV character and tension score.
+
+![Scene Board](images/08-scene-board.png)
+
+**Graph** — Visualize character relationships as an interactive network. Switch between Characters, Scenes, Subplots, and Mixed views. Use the Tasks panel to trigger AI actions like generating insights, inferring relations, or running a full draft.
+
+![Graph](images/09-graph.png)
+
+**Timeline** — A tension curve showing the emotional arc across all scenes. See act boundaries, midpoint and climax markers, and statistical metrics (mean, max, std dev).
+
+![Timeline](images/10-timeline.png)
+
+**Draft Editor** — Write scene by scene with full story context in the sidebar: participants, active relationships, prior scene summary, and scene targets. Toggle between Outline mode and AI-assisted continuation.
+
+![Draft Editor](images/11-draft-editor.png)
+
+**Manuscript** — The assembled manuscript with chapter headings, word count, reading time, and page count. Export directly to **PDF** or **DOCX**.
+
+![Manuscript](images/12-manuscript.png)
+
+---
+
+## Features
+
+- **Guided story setup** — four-step wizard for premise, structure, characters, and AI scaffold
+- **AI story scaffolding** — generate a full scene map from your premise in one click
+- **Scene board** — drag-and-drop scene management grouped by act
+- **Character graph** — interactive relationship visualization with auto-inferred edges
+- **Tension timeline** — scene-by-scene emotional arc with act boundaries and climax markers
+- **Draft editor** — scene-locked writing with AI continuation and story memory in scope
+- **Full manuscript generation** — AI drafts all scenes in order, streaming progress in real time
+- **Manuscript viewer** — paginated chapter view with word count and reading time
+- **Export** — download your manuscript as PDF, DOCX, ePub, or plain text
+- **AI insights** — pacing analysis, plot hole detection, character arc suggestions
+- **AI chat** — story-scoped assistant that can inspect your data and propose changes
+- **Collaboration** — invite collaborators to your story workspace
+- **Real-time feedback** — SSE-powered progress updates for all AI tasks
+
+---
+
+## Getting Started
+
+### Try the Live App
+
+1. Go to [https://beatlume.up.railway.app](https://beatlume.up.railway.app/)
+2. **Log in** with `elena@beatlume.io` / `beatlume123` to explore a pre-seeded workspace, or **sign up** for a fresh account
+3. Click **New Story** from the dashboard
+4. Walk through the setup wizard: enter a title and logline, pick your structure, add characters
+5. On the final step, click **Create Story** to scaffold your workspace
+6. From the story overview, click **Generate Story Structure** to let AI create your scene map
+7. Use the **Tasks** panel or click **Full Draft** to generate prose for all scenes
+8. Open the **Manuscript** view to read the assembled book and export as PDF or DOCX
+
+---
 
 ## Monorepo Layout
 
@@ -32,6 +110,7 @@ beatlume/
 ├── frontend/               React + Vite + TanStack Router + TanStack Query + Zustand
 ├── backend/                FastAPI + SQLAlchemy + PostgreSQL + LangGraph + Celery
 ├── docs/                   Architecture, API, deployment, contribution, and product docs
+├── images/                 App screenshots
 ├── scripts/                Local development helpers
 ├── CLAUDE.md               Product and repo context for coding agents
 ├── AGENTS.md               Agent workflow rules for this repo
@@ -51,27 +130,26 @@ Frontend routes/components
             -> SSE back to the browser
 ```
 
+## Tech Stack
+
 ### Frontend
 
-- React 19
-- Vite
-- TanStack Router
-- TanStack Query
-- Zustand
-- TypeScript
+- React 19, Vite, TypeScript
+- TanStack Router (file-based routing)
+- TanStack Query (server state)
+- Zustand (auth + UI state)
 
 ### Backend
 
-- FastAPI
-- SQLAlchemy 2 async
-- PostgreSQL 16
-- Alembic
-- LangGraph
-- LiteLLM
-- Celery + Redis
-- OpenTelemetry + structlog
+- FastAPI (async), Python 3.12
+- SQLAlchemy 2 (async) + PostgreSQL 16 + Alembic
+- LangGraph + LiteLLM (AI workflows)
+- Celery + Redis (background tasks + pub/sub)
+- OpenTelemetry + structlog (observability)
 
-## Quick Start
+---
+
+## Local Development
 
 ### Prerequisites
 
@@ -97,7 +175,6 @@ make setup
 This installs dependencies, creates the database, runs migrations, and seeds local data.
 
 Seed login:
-
 - Email: `elena@beatlume.io`
 - Password: `beatlume123`
 
@@ -122,105 +199,34 @@ Default local URLs:
 - API: `http://localhost:8000`
 - Health check: `http://localhost:8000/health`
 
-## Testing And Validation
-
-Repo-local commands:
+## Testing
 
 ```bash
-make test
-make test-backend
-make test-frontend
-make test-e2e
-make lint
+make test              # all tests
+make test-backend      # backend only (pytest)
+make test-frontend     # frontend type check
+make test-e2e          # Playwright end-to-end
+make lint              # linting
 ```
 
-Direct commands used most often:
+Direct commands:
 
 ```bash
 cd backend && PYTHONPATH=. uv run pytest tests/ -v
 cd frontend && npx tsc --noEmit
 ```
 
-## Key Workflows
+---
 
-### Story Creation And Scaffold
+## Documentation
 
-The setup wizard creates the story record first, then can immediately trigger `/api/stories/{storyId}/ai/scaffold` using the writer's premise, structure, target word count, genres, and seed characters.
-
-The scaffold flow persists:
-
-- scenes
-- characters
-- graph edges inferred from scaffold relationships
-
-### Whole-Manuscript Generation
-
-BeatLume supports both scene-level prose continuation and story-wide drafting through `/api/stories/{storyId}/ai/generate-manuscript`.
-
-That job:
-
-- walks scenes in order
-- can skip scenes that already have prose
-- can resume from a scene number
-- emits progress and error events over SSE
-- updates draft and manuscript-facing views as work completes
-
-### Analytics And Explainable Insights
-
-The analytics layer computes:
-
-- tension curves
-- pacing
-- character presence
-- character arcs
-- health score
-- sparklines
-
-AI insights sit on top of those structural signals and route users back to the relevant story view instead of acting like a detached chatbot.
-
-## Development Conventions
-
-### Frontend
-
-- Server state lives in TanStack Query hooks under `frontend/src/api`
-- Auth and ephemeral UI state live in `frontend/src/store.ts`
-- Story pages use TanStack Router file routes like `stories.$storyId.*.tsx`
-- Styling is inline `CSSProperties` plus shared CSS tokens
-
-### Backend
-
-- Routes live in `backend/app/api`
-- Services work directly with SQLAlchemy sessions
-- Models live in `backend/app/models`
-- AI prompts, context assembly, and graphs live under `backend/app/ai`
-- Async AI and export jobs run through Celery tasks in `backend/app/tasks`
-
-### Multi-Tenancy
-
-BeatLume uses organization-scoped Row-Level Security. For org-scoped tables:
-
-- inserts must set `org_id`
-- queries do not need explicit `org_id` filters when the request session is configured through `get_current_org`
-
-## Documentation Map
-
-- [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) - deeper developer handbook for local architecture, workflows, and implementation patterns
-- [docs/API.md](./docs/API.md) - current API surface, async task behavior, and SSE model
-- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) - deeper systems and algorithms document
-- [docs/PRINCIPLES.md](./docs/PRINCIPLES.md) - engineering and AI design principles (the *why* behind the architecture)
-- [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - local and production deployment guidance
-- [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) - contribution workflow
-- [docs/PRD.md](./docs/PRD.md) - product requirements background
-- [docs/superpowers/plans](./docs/superpowers/plans) - implementation plans
-- [docs/superpowers/specs](./docs/superpowers/specs) - design and engineering specs
-
-## Notes For Contributors
-
-- Read the existing docs and recent code before changing architecture or workflow
-- Always use real UUIDs from the API or database; never invent identifiers
-- Backend commands should use `PYTHONPATH=.`
-- Avoid putting API data in Zustand; use Query cache instead
-- The repo may have unrelated local changes in flight; do not revert them casually
+- [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) — developer handbook
+- [docs/API.md](./docs/API.md) — API surface, async tasks, and SSE
+- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) — systems and algorithms
+- [docs/PRINCIPLES.md](./docs/PRINCIPLES.md) — engineering and AI design principles
+- [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) — deployment guidance
+- [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) — contribution workflow
+- [docs/PRD.md](./docs/PRD.md) — product requirements
 
 ## License
 
